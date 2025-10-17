@@ -21,15 +21,15 @@ df = pd.read_excel(FILE_PATH)
 region_col = '광역지역'
 subregion_col = '세부지역'
 
-# === 4️⃣ 시도 단위 추출 ===
+# === 4️⃣ 시도 단위 추출 및 NaN 처리 ===
 df['시도'] = df[region_col].astype(str).str.strip().str.extract(r'^(.*?[시도])')[0]
+df['시도'] = df['시도'].fillna('알수없음').astype(str).str.replace(" ", "")
 
 # === 5️⃣ 시도별 발전소 수 집계 ===
 sido_counts = df['시도'].value_counts().reset_index()
 sido_counts.columns = ['시도', '발전소수']
 total_count = sido_counts['발전소수'].sum()
 max_count = sido_counts['발전소수'].max()
-sido_counts['시도'] = sido_counts['시도'].str.replace(" ", "")
 
 # === 6️⃣ 지도 초기화 ===
 m = folium.Map(location=[36.5, 127.8], zoom_start=7)
@@ -71,16 +71,22 @@ def get_coords_kakao(address):
 coords_cache = {}
 
 for idx, row in tqdm(df.iterrows(), total=len(df), desc="발전소 좌표 조회"):
-    address = f"{row[region_col]} {row[subregion_col]}"
+    sido_name = str(row['시도']).replace(" ", "")
+    
+    # 주소 생성 (광역지역 + 세부지역)
+    region_str = str(row[region_col]) if pd.notna(row[region_col]) else ""
+    subregion_str = str(row[subregion_col]) if pd.notna(row[subregion_col]) else ""
+    address = f"{region_str} {subregion_str}".strip()
+    
+    # 좌표 조회 (캐싱)
     if address in coords_cache:
         lat, lon = coords_cache[address]
     else:
         lat, lon = get_coords_kakao(address)
         coords_cache[address] = (lat, lon)
-        time.sleep(0.2)  # API 부담 방지
+        time.sleep(0.2)
 
     # Marker 색상 & 크기
-    sido_name = row['시도'].replace(" ", "")
     count = int(sido_counts[sido_counts['시도'] == sido_name]['발전소수'].values[0])
     radius = 5 + (count / max_count) * 25
     color = colormap(count)
