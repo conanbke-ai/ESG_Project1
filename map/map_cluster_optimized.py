@@ -18,7 +18,7 @@ GEOJSON_FILE = r"C:\ESG_Project1\map\geoJson.json"
 OUTPUT_HTML = r"C:\ESG_Project1\map\generator_map.html"
 
 # ================== Kakao API ==================
-KAKAO_API_KEY = "93c089f75a2730af2f15c01838e892d3"
+KAKAO_API_KEY = "YOUR_KAKAO_API_KEY"
 KAKAO_URL = "https://dapi.kakao.com/v2/local/search/address.json"
 
 # ================== 데이터 로드 ==================
@@ -50,7 +50,6 @@ def get_coord(address):
             return coord
     except Exception as e:
         logging.warning(f"좌표 조회 실패: {address} → {e}")
-    # 기본값
     coord_cache[address] = [36.5, 127.5]
     return [36.5,127.5]
 
@@ -61,28 +60,23 @@ for _, row in df.iterrows():
         get_coord(loc)
         time.sleep(0.2)
 
-# 캐시 저장
 with open(CACHE_FILE,"w",encoding="utf-8") as f:
     json.dump(coord_cache,f,ensure_ascii=False, indent=2)
 
-# ================== 요약 ==================
-grouped = df.groupby(['광역지역','세부지역']).agg(
-    발전소수=('세부지역','count'),
-    설비용량=('설비용량','sum')
-).reset_index()
-
-region_summary = grouped.groupby('광역지역').agg(
-    총발전소수=('발전소수','sum'),
+# ================== 광역지역 요약 ==================
+region_summary = df.groupby('광역지역').agg(
+    총발전소수=('세부지역','count'),
     총설비용량=('설비용량','sum')
 ).reset_index()
 
-# ================== 지도 ==================
-m = folium.Map(location=[36.5,127.5], zoom_start=7)
+# ================== Folium 지도 생성 ==================
+m = folium.Map(location=[36.5,127.8], zoom_start=7)
 
-with open(GEOJSON_FILE,"r",encoding="utf-8") as f:
+# ================== GeoJSON 로드 ==================
+with open(GEOJSON_FILE, "r", encoding="utf-8") as f:
     geojson_data = json.load(f)
 
-# ================== 색상 농도 ==================
+# ================== 광역지역 색상 ==================
 min_val, max_val = region_summary['총발전소수'].min(), region_summary['총발전소수'].max()
 colormap = linear.YlOrRd_09.scale(min_val, max_val)
 colormap.caption = '광역지역별 총 발전소 수'
@@ -103,8 +97,8 @@ geojson_layer = folium.GeoJson(
     highlight_function=lambda x: {'weight':3,'color':'orange','fillOpacity':0.2}
 ).add_to(m)
 
-# ================== Plotly 버블 ==================
-grouped_json = grouped.to_dict(orient='records')
+# ================== Plotly 버블 JS ==================
+grouped_json = df.to_dict(orient='records')
 
 bubble_js = f"""
 <div id="right-graph" style="position:fixed; top:10px; right:10px; width:480px; height:500px;
@@ -114,39 +108,30 @@ background:white; z-index:9999; padding:10px; border:2px solid black; overflow:a
 var df = {json.dumps(grouped_json, ensure_ascii=False)};
 
 function drawGraph(region){{
-    var filtered = df.filter(r => r['광역지역']===region);
-    if(filtered.length===0) {{
-        document.getElementById('right-graph').innerHTML = "<p>데이터 없음</p>";
+    var filtered = df.filter(r=>r['광역지역']===region);
+    if(filtered.length===0){{
+        document.getElementById('right-graph').innerHTML="<p>데이터 없음</p>";
         return;
     }}
     var x = filtered.map(r=>r['세부지역']);
-    var y = filtered.map(r=>r['발전소수']);
-    var sizes = filtered.map(r=>r['설비용량']);
-    var minSize=10,maxSize=80;
-    var minVal=Math.min(...sizes), maxVal=Math.max(...sizes);
-    var scaleFactor = maxVal!==minVal ? (maxSize-minSize)/(maxVal-minVal) : 1;
-    var bubbleSizes = sizes.map(s => minSize + (s - minVal)*scaleFactor);
-
-    var trace = {{
-        x:x, y:y, text:x.map((loc,i)=>loc+'<br>설비용량:'+sizes[i]+' MW'),
-        mode:'markers', marker:{{size:bubbleSizes, color:'steelblue', sizemode:'area', sizemin:5}}
-    }};
-    var layout = {{
-        title: region + " 세부지역 발전소 현황",
-        xaxis:{{title:"세부지역", tickangle:-45}},
-        yaxis:{{title:"발전소 수"}},
-        margin:{{l:40,r:10,t:40,b:100}},
-        hovermode:'closest'
-    }};
-    Plotly.newPlot('right-graph',[trace],layout,{{responsive:true}});
+    var y = filtered.map(r=>r['설비용량']);
+    var trace={{x:x,y:y,text:x.map((loc,i)=>loc+"<br>설비용량:"+y[i]+" MW"),
+                mode:"markers", marker:{{size:y.map(v=>Math.sqrt(v)*3),color:"steelblue",sizemode:"area",sizemin:5}}}};
+    var layout={{title:region+" 세부지역 발전소 현황",
+                xaxis:{{title:"세부지역",tickangle:-45}},
+                yaxis:{{title:"설비용량 (MW)"}}, margin:{{l:40,r:10,t:40,b:100}}, hovermode:"closest"}};
+    Plotly.newPlot("right-graph",[trace],layout,{{responsive:true}});
 }}
 
-geojson_layer.eachLayer(function(layer){{
-    layer.on('click', function(e){{
-        var region = layer.feature.properties.name;
-        drawGraph(region);
-    }});
-}});
+// 클릭 이벤트 부착
+setTimeout(function(){{
+    var layers = document.getElementsByClassName('leaflet-interactive');
+    for(var i=0;i<layers.length;i++){{
+        layers[i].addEventListener('click', function(){{
+            drawGraph(this.__data__.properties.name);
+        }});
+    }}
+}}, 1000);
 </script>
 """
 
@@ -154,7 +139,6 @@ m.get_root().html.add_child(folium.Element(bubble_js))
 folium.LayerControl().add_to(m)
 
 # ================== 저장 ==================
-os.makedirs(os.path.dirname(OUTPUT_HTML), exist_ok=True)
 m.save(OUTPUT_HTML)
 webbrowser.open(OUTPUT_HTML)
-print("✅ 지도 생성 완료 — 광역지역 색상 농도 + 클릭 시 Plotly 버블 표시 + 카카오 API 좌표 포함")
+print("✅ 지도 + 광역지역 색상 + Plotly 버블 표시 완료")
