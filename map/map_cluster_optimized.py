@@ -1,194 +1,160 @@
 import os
 import json
+import time
+import requests
 import pandas as pd
 import folium
-from folium.plugins import MarkerCluster
-import requests
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from folium.features import GeoJsonTooltip
 from branca.colormap import linear
-import base64
-from io import BytesIO
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from folium import Element
+import webbrowser
+import logging
 
-# === 경로 설정 ===
-FILE_PATH = r"C:\ESG_Project1\file\generator_file\HOME_발전설비_발전기별.xlsx"
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+# ================== 경로 ==================
+EXCEL_FILE = r"C:\ESG_Project1\file\generator_file\HOME_발전설비_발전기별.xlsx"
+CACHE_FILE = r"C:\ESG_Project1\map\coord_cache.json"
+GEOJSON_FILE = r"C:\ESG_Project1\map\geoJson.json"
 OUTPUT_HTML = r"C:\ESG_Project1\map\generator_map.html"
-CACHE_FILE = r"C:\ESG_Project1\map\coords_cache.json"
+
+# ================== Kakao API ==================
 KAKAO_API_KEY = "93c089f75a2730af2f15c01838e892d3"
+KAKAO_URL = "https://dapi.kakao.com/v2/local/search/address.json"
 
-# === 데이터 불러오기 ===
-df = pd.read_excel(FILE_PATH)
-region_col = '광역지역'
-subregion_col = '세부지역'
+# ================== 데이터 로드 ==================
+df = pd.read_excel(EXCEL_FILE)
+required_cols = ['광역지역','세부지역','설비용량']
+for col in required_cols:
+    if col not in df.columns:
+        raise ValueError(f"엑셀에 '{col}' 컬럼 필요")
 
-df['시도'] = df[region_col].astype(str).str.extract(r'^(.*?[시도])')[0]
-df['시도'] = df['시도'].fillna('알수없음').astype(str).str.replace(" ", "")
-df['주소'] = (df[region_col].astype(str) + " " + df[subregion_col].astype(str)).str.strip()
-
-# === 시도별 통계 ===
-sido_counts = df['시도'].value_counts().reset_index()
-sido_counts.columns = ['시도', '발전소수']
-total_count = sido_counts['발전소수'].sum()
-max_count = sido_counts['발전소수'].max()
-
-# === 캐시 불러오기 ===
+# ================== 좌표 캐시 ==================
 if os.path.exists(CACHE_FILE):
-    with open(CACHE_FILE, "r", encoding="utf-8") as f:
-        coords_cache = json.load(f)
+    with open(CACHE_FILE,"r",encoding="utf-8") as f:
+        coord_cache = json.load(f)
 else:
-    coords_cache = {}
+    coord_cache = {}
 
-# === Kakao API 좌표 조회 ===
-def get_coords_kakao(address):
-    if address in coords_cache:
-        return address, coords_cache[address]
-    url = "https://dapi.kakao.com/v2/local/search/address.json"
+# ================== Kakao 좌표 함수 ==================
+def get_coord(address):
+    if address in coord_cache:
+        return coord_cache[address]
     headers = {"Authorization": f"KakaoAK {KAKAO_API_KEY}"}
-    params = {"query": address}
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=5)
-        result = response.json()
-        if result['documents']:
-            x = float(result['documents'][0]['x'])
-            y = float(result['documents'][0]['y'])
-            coords_cache[address] = [y, x]
-        else:
-            coords_cache[address] = [36.5, 127.8]
-    except:
-        coords_cache[address] = [36.5, 127.8]
-    return address, coords_cache[address]
+        r = requests.get(KAKAO_URL, headers=headers, params={"query":address}, timeout=5)
+        r.raise_for_status()
+        docs = r.json().get("documents", [])
+        if docs:
+            coord = [float(docs[0]['y']), float(docs[0]['x'])]
+            coord_cache[address] = coord
+            return coord
+    except Exception as e:
+        logging.warning(f"좌표 조회 실패: {address} → {e}")
+    # 기본값
+    coord_cache[address] = [36.5, 127.5]
+    return [36.5,127.5]
 
-# === 병렬 Kakao API 조회 ===
-unique_addresses = df['주소'].dropna().unique()
-addresses_to_fetch = [a for a in unique_addresses if a not in coords_cache]
+# ================== 세부지역 좌표 생성 ==================
+for _, row in df.iterrows():
+    loc = f"{row['광역지역']} {row['세부지역']}"
+    if loc not in coord_cache:
+        get_coord(loc)
+        time.sleep(0.2)
 
-if addresses_to_fetch:
-    print(f"📡 API 요청 대상: {len(addresses_to_fetch)}건 (캐시 {len(coords_cache)}개 존재)")
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        futures = [executor.submit(get_coords_kakao, addr) for addr in addresses_to_fetch]
-        for f in tqdm(as_completed(futures), total=len(futures), desc="좌표 변환 중"):
-            f.result()
-            time.sleep(0.05)
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(coords_cache, f, ensure_ascii=False, indent=2)
-    print(f"🗺️ 좌표 캐시 저장 완료 ({len(coords_cache)}개)")
+# 캐시 저장
+with open(CACHE_FILE,"w",encoding="utf-8") as f:
+    json.dump(coord_cache,f,ensure_ascii=False, indent=2)
 
-# === 좌표 병합 ===
-df['coords'] = df['주소'].map(coords_cache)
-df[['위도', '경도']] = pd.DataFrame(df['coords'].tolist(), index=df.index)
-df = df.dropna(subset=['위도', '경도'])
+# ================== 요약 ==================
+grouped = df.groupby(['광역지역','세부지역']).agg(
+    발전소수=('세부지역','count'),
+    설비용량=('설비용량','sum')
+).reset_index()
 
-# === 지도 초기화 ===
-m = folium.Map(location=[36.5, 127.8], zoom_start=7, tiles="CartoDB positron")
-colormap = linear.YlOrRd_09.scale(0, max_count)
-colormap.caption = '시도별 발전소 수'
+region_summary = grouped.groupby('광역지역').agg(
+    총발전소수=('발전소수','sum'),
+    총설비용량=('설비용량','sum')
+).reset_index()
+
+# ================== 지도 ==================
+m = folium.Map(location=[36.5,127.5], zoom_start=7)
+
+with open(GEOJSON_FILE,"r",encoding="utf-8") as f:
+    geojson_data = json.load(f)
+
+# ================== 색상 농도 ==================
+min_val, max_val = region_summary['총발전소수'].min(), region_summary['총발전소수'].max()
+colormap = linear.YlOrRd_09.scale(min_val, max_val)
+colormap.caption = '광역지역별 총 발전소 수'
 colormap.add_to(m)
 
-# === 시도별 대표 좌표 및 Pie Chart 생성 ===
-representative_addresses = (
-    df.groupby('시도')[[region_col, subregion_col]]
-      .first()
-      .assign(주소=lambda x: (x[region_col].astype(str) + " " + x[subregion_col].astype(str)).str.strip())
-)
-representative_addresses['coords'] = representative_addresses['주소'].map(coords_cache)
-sido_coords = representative_addresses['coords'].to_dict()
+def style_function(feature):
+    region = feature['properties']['name']
+    row = region_summary[region_summary['광역지역']==region]
+    if not row.empty:
+        val = row['총발전소수'].values[0]
+        return {'fillColor': colormap(val), 'color':'black','weight':1,'fillOpacity':0.7}
+    return {'fillColor':'#dddddd','color':'black','weight':0.5,'fillOpacity':0.4}
 
-pie_cache = {}
-for _, row in sido_counts.iterrows():
-    sido_name = row['시도']
-    sizes = [row['발전소수'], total_count - row['발전소수']]
-    fig, ax = plt.subplots(figsize=(1.8,1.8))
-    ax.pie(sizes, autopct='%1.1f%%', startangle=90, colors=['#ff6666','#dddddd'])
-    ax.axis('equal')
-    buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', transparent=True)
-    plt.close(fig)
-    buf.seek(0)
-    pie_cache[sido_name] = base64.b64encode(buf.read()).decode('utf-8')
+geojson_layer = folium.GeoJson(
+    geojson_data,
+    style_function=style_function,
+    tooltip=GeoJsonTooltip(fields=['name'], aliases=['광역지역']),
+    highlight_function=lambda x: {'weight':3,'color':'orange','fillOpacity':0.2}
+).add_to(m)
 
-# === MarkerCluster 생성 (세부 발전소) ===
-cluster_detail = MarkerCluster(name="세부 발전소 마커").add_to(m)
+# ================== Plotly 버블 ==================
+grouped_json = grouped.to_dict(orient='records')
 
-# === 시도 마커 Layer (줌 < 10) ===
-sido_layer = folium.FeatureGroup(name="시도별 마커", show=True).add_to(m)
-for _, row in sido_counts.iterrows():
-    sido = row['시도']
-    coord = sido_coords.get(sido, [36.5, 127.8])
-    lat, lon = coord
-    count = row['발전소수']
-    color = colormap(count)
-    radius = 8 + (count / max_count) * 20
-    img_base64 = pie_cache[sido]
-    html = f"""
-        <h4>{sido}</h4>
-        발전소 수: {count}개<br>
-        전체 대비: {count/total_count*100:.2f}%<br>
-        <img src="data:image/png;base64,{img_base64}" width="120">
-    """
-    folium.CircleMarker(
-        location=[lat, lon],
-        radius=radius,
-        color=color,
-        fill=True,
-        fill_color=color,
-        fill_opacity=0.9,
-        popup=folium.Popup(html, max_width=300)
-    ).add_to(sido_layer)
-
-# === 세부 발전소 마커 추가 (클러스터) ===
-for _, row in df.iterrows():
-    lat, lon = row['위도'], row['경도']
-    popup_html = f"""
-        <b>회사명:</b> {row.get('회사명','정보없음')}<br>
-        <b>발전기명:</b> {row.get('발전기명','정보없음')}<br>
-        <b>위치:</b> {row[region_col]} {row[subregion_col]}<br>
-        <b>발전원:</b> {row.get('발전원','정보없음')}<br>
-        <b>설비용량:</b> {row.get('설비용량','정보없음')} MW
-    """
-    folium.CircleMarker(
-        location=[lat, lon],
-        radius=3,
-        color='blue',
-        fill=True,
-        fill_opacity=0.6,
-        popup=folium.Popup(popup_html, max_width=300)
-    ).add_to(cluster_detail)
-
-# === JS로 줌 레벨에 따라 Layer 전환 & 시도 클릭 시 확대 ===
-zoom_click_js = f"""
+bubble_js = f"""
+<div id="right-graph" style="position:fixed; top:10px; right:10px; width:480px; height:500px;
+background:white; z-index:9999; padding:10px; border:2px solid black; overflow:auto;"></div>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script>
-var map = {m.get_name()};
-var sido_layer = {sido_layer.get_name()};
-var detail_cluster = {cluster_detail.get_name()};
+var df = {json.dumps(grouped_json, ensure_ascii=False)};
 
-function updateLayers() {{
-    if(map.getZoom() >= 10){{
-        if(map.hasLayer(sido_layer)) map.removeLayer(sido_layer);
-        if(!map.hasLayer(detail_cluster)) map.addLayer(detail_cluster);
-    }} else {{
-        if(!map.hasLayer(sido_layer)) map.addLayer(sido_layer);
-        if(map.hasLayer(detail_cluster)) map.removeLayer(detail_cluster);
+function drawGraph(region){{
+    var filtered = df.filter(r => r['광역지역']===region);
+    if(filtered.length===0) {{
+        document.getElementById('right-graph').innerHTML = "<p>데이터 없음</p>";
+        return;
     }}
-}}
-map.on('zoomend', updateLayers);
-updateLayers();
+    var x = filtered.map(r=>r['세부지역']);
+    var y = filtered.map(r=>r['발전소수']);
+    var sizes = filtered.map(r=>r['설비용량']);
+    var minSize=10,maxSize=80;
+    var minVal=Math.min(...sizes), maxVal=Math.max(...sizes);
+    var scaleFactor = maxVal!==minVal ? (maxSize-minSize)/(maxVal-minVal) : 1;
+    var bubbleSizes = sizes.map(s => minSize + (s - minVal)*scaleFactor);
 
-// 시도 마커 클릭 시 해당 위치 확대
-sido_layer.eachLayer(function(layer){{
+    var trace = {{
+        x:x, y:y, text:x.map((loc,i)=>loc+'<br>설비용량:'+sizes[i]+' MW'),
+        mode:'markers', marker:{{size:bubbleSizes, color:'steelblue', sizemode:'area', sizemin:5}}
+    }};
+    var layout = {{
+        title: region + " 세부지역 발전소 현황",
+        xaxis:{{title:"세부지역", tickangle:-45}},
+        yaxis:{{title:"발전소 수"}},
+        margin:{{l:40,r:10,t:40,b:100}},
+        hovermode:'closest'
+    }};
+    Plotly.newPlot('right-graph',[trace],layout,{{responsive:true}});
+}}
+
+geojson_layer.eachLayer(function(layer){{
     layer.on('click', function(e){{
-        map.setView(e.latlng, 11);
+        var region = layer.feature.properties.name;
+        drawGraph(region);
     }});
 }});
 </script>
 """
-m.get_root().html.add_child(Element(zoom_click_js))
 
-# === 레이어 컨트롤 추가 ===
+m.get_root().html.add_child(folium.Element(bubble_js))
 folium.LayerControl().add_to(m)
 
-# === 결과 저장 ===
+# ================== 저장 ==================
+os.makedirs(os.path.dirname(OUTPUT_HTML), exist_ok=True)
 m.save(OUTPUT_HTML)
-print(f"✅ 클릭 확대+클러스터 지도 생성 완료!\n저장 위치: {OUTPUT_HTML}")
+webbrowser.open(OUTPUT_HTML)
+print("✅ 지도 생성 완료 — 광역지역 색상 농도 + 클릭 시 Plotly 버블 표시 + 카카오 API 좌표 포함")
