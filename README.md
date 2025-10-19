@@ -7,4 +7,7 @@
   
 * 라이브러리 설치
   python -m pip install --upgrade pip
-  pip install pandas folium requests tqdm matplotlib branca openpyxl
+  pip install pandas folium requests tqdm matplotlib branca openpyxl plotly
+
+* 출처
+  - 지도 경계 데이터 : https://simplemaps.com/gis/country/kr?utm_source=chatgpt.com
