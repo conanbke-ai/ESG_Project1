@@ -245,6 +245,7 @@ final_html = f"""
 <title>태양광 발전소 지도 대시보드</title>
 <style>
 body {{ display:flex; flex-wrap:wrap; margin:0; background:#f9f9f9; font-family:'Malgun Gothic','Segoe UI',sans-serif; }}
+#header {{ width:100%; text-align:center; padding:15px 0; background:#4CAF50; color:white; font-size:24px; font-weight:bold; box-shadow:0 0 10px rgba(0,0,0,0.2); }}
 #left-panel {{ flex:1 1 40%; min-width:400px; margin:10px; }}
 #chart {{ text-align:center; margin-bottom:20px; }}
 #chart img {{ width:95%; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.2); }}
@@ -258,6 +259,7 @@ body {{ display:flex; flex-wrap:wrap; margin:0; background:#f9f9f9; font-family:
 </style>
 </head>
 <body>
+<div id="header">태양광 발전소 현황</div>
 <div id="left-panel">
   <div id="chart">
     <h2><시도별 발전소 수 및 설비용량></h2>
