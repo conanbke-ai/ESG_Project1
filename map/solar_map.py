@@ -1,4 +1,4 @@
-import os, json, time, html, webbrowser, re, colorsys, logging
+import os, json, time, re, colorsys, logging, base64, webbrowser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 import requests
@@ -6,26 +6,23 @@ from tqdm import tqdm
 import folium
 from folium import Element, FeatureGroup, LayerControl
 import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
 from matplotlib import font_manager, rc
+from io import BytesIO
 
-# ===== 로깅 =====
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] ✅ %(message)s')
-
-# ===== 한글 폰트 =====
-font_path = "C:/Windows/Fonts/malgun.ttf"
-if os.path.exists(font_path):
-    font_name = font_manager.FontProperties(fname=font_path).get_name()
-    rc('font', family=font_name)
-else:
-    logging.warning("한글 폰트를 찾을 수 없습니다. 그래프가 깨질 수 있습니다.")
+# ===== 로깅 설정 =====
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s]✅ %(message)s')
 
 # ===== 경로 / API =====
 FILE_PATH   = r"C:\ESG_Project1\file\generator_file\HOME_발전설비_발전기별.xlsx"
 CACHE_FILE  = r"C:\ESG_Project1\map\coord_cache.json"
 OUTPUT_HTML = r"C:\ESG_Project1\map\solar_dashboard.html"
 KAKAO_API_KEY = "93c089f75a2730af2f15c01838e892d3"
+
+# ===== 한글 폰트 설정 =====
+try:
+    rc('font', family='Malgun Gothic')  # Windows 기본 한글 폰트
+except:
+    logging.warning("한글 폰트를 설정할 수 없습니다. 기본 폰트를 사용합니다.")
 
 # ===== 유틸 =====
 def clean_cols(cols: pd.Index) -> pd.Index:
@@ -66,6 +63,7 @@ def _hsv_hex(h, s=0.85, v=0.9):
 logging.info("엑셀 파일 불러오는 중...")
 df = pd.read_excel(FILE_PATH)
 df.columns = clean_cols(df.columns)
+
 region_col, subregion_col = '광역지역', '세부지역'
 df['설비용량'] = pd.to_numeric(df.get('설비용량', 0), errors='coerce').fillna(0)
 df['광역지역_norm'] = df[region_col].apply(normalize_region)
@@ -78,6 +76,7 @@ logging.info(f"데이터 로드 완료: {len(df)}건")
 unique_regions = sorted({r for r in df['광역지역_norm'] if valid_region(r)})
 palette = [_hsv_hex(i / max(1, len(unique_regions))) for i in range(len(unique_regions))]
 REGION_COLORS = dict(zip(unique_regions, palette))
+
 def pick_region_color(region):
     return REGION_COLORS.get(region, "#7f7f7f")
 
@@ -120,97 +119,33 @@ if targets:
 df['coords'] = df['주소'].map(coords_cache)
 df[['위도','경도']] = pd.DataFrame(df['coords'].tolist(), index=df.index)
 df = df.dropna(subset=['위도','경도'])
-logging.info("좌표 변환 완료.")
+logging.info("좌표 변환 완료")
 
-# ===== 요약 (세부지역 단위) =====
-grouped = (
+# ===== 요약 =====
+grouped_sub = (
     df.groupby(['위도','경도'], as_index=False)
-      .agg(
-          발전소수=('발전기명','count'),
-          총설비용량=('설비용량','sum'),
-          대표광역=('광역지역_norm', lambda x: x.value_counts().idxmax()),
-          세부지역=('세부지역_norm', lambda x: x.value_counts().idxmax()),
-      )
+      .agg(발전소수=('발전기명','count'),
+           총설비용량=('설비용량','sum'),
+           대표광역=('광역지역_norm', lambda x: x.value_counts().idxmax()),
+           세부지역=('세부지역_norm', lambda x: x.value_counts().idxmax()))
 )
-
-# ===== 지도 생성 =====
-m = folium.Map(location=[36.5, 127.8], zoom_start=7, tiles="CartoDB positron")
-region_layer = FeatureGroup(name="광역지역", show=True).add_to(m)
-subregion_layer = FeatureGroup(name="세부지역", show=False).add_to(m)
-bounds = []
-
-for _, r in grouped.iterrows():
-    lat, lon = float(r['위도']), float(r['경도'])
-    color = pick_region_color(r['대표광역'])
-    radius = (r['발전소수']**0.05)
-    
-    # 세부지역 레이어
-    folium.CircleMarker(
-        location=[lat, lon],
-        radius=radius,
-        color=color,
-        fill=True,
-        fill_color=color,
-        fill_opacity=0.85,
-        popup=folium.Popup(f"<b>{r['세부지역']}</b><br>발전소 수: {r['발전소수']}<br>총 설비용량: {r['총설비용량']:.2f} MW", max_width=320),
-        tooltip=r['세부지역']
-    ).add_to(subregion_layer)
-
-    # 광역지역 레이어
-    folium.CircleMarker(
-        location=[lat, lon],
-        radius=radius,
-        color=color,
-        fill=True,
-        fill_color=color,
-        fill_opacity=0.6,
-        popup=folium.Popup(f"<b>{r['대표광역']}</b>", max_width=200),
-        tooltip=r['대표광역']
-    ).add_to(region_layer)
-    
-    bounds.append([lat, lon])
-
-if bounds:
-    m.fit_bounds(bounds)
-
-# 범례
-legend_items = ''.join(
-    f'<div><span style="display:inline-block;width:14px;height:14px;background:{color};border-radius:50%;margin-right:6px;border:1px solid #333;"></span>{name}</div>'
-    for name, color in sorted(REGION_COLORS.items())
-)
-legend_html = f'''
-<div style="position: fixed; left: 20px; bottom: 20px; z-index: 9999;
- background: rgba(255,255,255,0.95); padding: 8px 10px; border: 1px solid #888;
- border-radius: 6px; font-size: 12px; max-height: 260px; overflow:auto;">
-  <b>지역 색상</b>
-  <div style="margin-top:6px;">{legend_items}</div>
-</div>
-'''
-m.get_root().html.add_child(Element(legend_html))
-
-# 토글 버튼
-LayerControl(collapsed=False).add_to(m)
-
-# ===== 그래프 생성 (Matplotlib) =====
-region_stats = (
+grouped_region = (
     df.groupby('광역지역_norm', as_index=False)
-      .agg(발전소수=('발전기명','count'), 총설비용량=('설비용량','sum'))
-      .sort_values('발전소수', ascending=False)
+      .agg(발전소수=('발전기명','count'),
+           총설비용량=('설비용량','sum'))
 )
 
-fig, ax1 = plt.subplots(figsize=(8,4))
-bar_colors = [pick_region_color(r) for r in region_stats['광역지역_norm']]
-ax1.bar(region_stats['광역지역_norm'], region_stats['발전소수'], color=bar_colors, label="발전소 수")
+# ===== 그래프 생성 =====
+logging.info("그래프 생성 중...")
+region_stats = grouped_region.sort_values('발전소수', ascending=False)
+colors = [REGION_COLORS.get(r, '#999') for r in region_stats['광역지역_norm']]
+
+fig, ax1 = plt.subplots(figsize=(7, 3.5))
+ax1.bar(region_stats['광역지역_norm'], region_stats['발전소수'], color=colors, label="발전소수")
 ax2 = ax1.twinx()
-ax2.plot(region_stats['광역지역_norm'], region_stats['총설비용량'],
-         color='black', linestyle='--', marker='o', label="총 설비용량(MW)")
-ax1.set_xlabel("광역지역")
-ax1.set_ylabel("발전소 수")
-ax2.set_ylabel("총 설비용량(MW)")
-ax1.set_title("광역지역별 발전소 수 및 설비용량")
+ax2.plot(region_stats['광역지역_norm'], region_stats['총설비용량'], color='black', linestyle='--', marker='o', label="총설비용량(MW)")
+ax1.set_title("광역지역별 발전소 수 및 설비용량", fontsize=12)
 ax1.tick_params(axis='x', rotation=45)
-ax1.legend(loc="upper left")
-ax2.legend(loc="upper right")
 plt.tight_layout()
 
 buf = BytesIO()
@@ -219,51 +154,139 @@ buf.seek(0)
 chart_base64 = base64.b64encode(buf.read()).decode('utf-8')
 plt.close()
 
+# ===== 지도 생성 =====
+logging.info("지도 생성 중...")
+
+m = folium.Map(location=[36.5, 127.8], zoom_start=7, tiles=None)
+
+folium.TileLayer(
+    tiles='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attr='Map data © OpenStreetMap contributors',
+    name='지역별'
+).add_to(m)
+
+# 세부지역 레이어
+sub_layer = FeatureGroup(name='세부지역', show=True)
+for _, r in grouped_sub.iterrows():
+    folium.CircleMarker(
+        location=[r['위도'], r['경도']],
+        radius=(r['발전소수'] ** 0.2),
+        color=pick_region_color(r['대표광역']),
+        fill=True, fill_color=pick_region_color(r['대표광역']),
+        fill_opacity=0.85,
+        popup=f"<b>{r['세부지역']}</b><br>발전소 수: {r['발전소수']}<br>총 설비용량: {r['총설비용량']:.2f} MW"
+    ).add_to(sub_layer)
+sub_layer.add_to(m)
+
+# 광역지역 레이어
+region_layer = FeatureGroup(name='광역지역', show=False)
+min_count = grouped_region['발전소수'].min()
+max_count = grouped_region['발전소수'].max()
+for _, r in grouped_region.iterrows():
+    locs = df[df['광역지역_norm'] == r['광역지역_norm']][['위도', '경도']].values
+    if len(locs) == 0: continue
+    lat, lon = locs.mean(axis=0)
+    ratio = (r['발전소수'] - min_count) / max(1, max_count - min_count)
+    color = f'rgba(255,0,0,{0.3 + 0.5 * ratio})'
+    folium.CircleMarker(
+        location=[lat, lon],
+        radius=(r['발전소수'] ** 0.3),
+        color='red',
+        fill=True, fill_color=color, fill_opacity=0.7,
+        popup=f"<b>{r['광역지역_norm']}</b><br>발전소 수: {r['발전소수']}"
+    ).add_to(region_layer)
+region_layer.add_to(m)
+LayerControl(collapsed=False).add_to(m)
+
 # ===== HTML 결합 =====
+logging.info("최종 HTML 결합 중...")
+
+# 광역지역 요약표 HTML 생성
+table_html = grouped_region.sort_values('발전소수', ascending=False).to_html(
+    index=False,
+    justify='center',
+    border=0,
+    classes='data-table',
+    float_format='{:,.2f}'.format
+)
+
+# HTML (좌측: 그래프+표, 우측: 지도)
 final_html = f"""
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>태양광 발전소 대시보드</title>
+<title>태양광 발전소 지도 대시보드</title>
 <style>
 body {{
   display: flex;
   flex-wrap: wrap;
   margin: 0;
-  font-family: 'Segoe UI', sans-serif;
   background: #f9f9f9;
+  font-family: 'Malgun Gothic', 'Segoe UI', sans-serif;
+}}
+#left-panel {{
+  flex: 1 1 40%;
+  min-width: 400px;
+  margin: 10px;
 }}
 #chart {{
-  flex: 1 1 35%;
   text-align: center;
-  margin: 10px;
-  min-width: 380px;
+  margin-bottom: 20px;
 }}
 #chart img {{
   width: 95%;
   border-radius: 10px;
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
 }}
+#table {{
+  width: 95%;
+  margin: auto;
+  text-align: center;
+}}
+.data-table {{
+  border-collapse: collapse;
+  width: 100%;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}}
+.data-table th {{
+  background-color: #4CAF50;
+  color: white;
+  padding: 8px;
+}}
+.data-table td {{
+  border: 1px solid #ddd;
+  padding: 8px;
+}}
+.data-table tr:nth-child(even) {{
+  background-color: #f2f2f2;
+}}
+.data-table tr:hover {{
+  background-color: #ddd;
+}}
 #map {{
-  flex: 1 1 60%;
-  height: 95vh;
-  margin: 10px;
+  flex: 1 1 55%;
   min-width: 500px;
+  height: 90vh;
+  margin: 10px;
   border-radius: 12px;
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
-}}
-@media (max-width: 900px) {{
-  body {{ flex-direction: column; align-items: center; }}
-  #map, #chart {{ width: 90%; height: auto; }}
 }}
 </style>
 </head>
 <body>
-<div id="chart">
-  <h2>광역지역별 발전소 수 및 설비용량</h2>
-  <img src="data:image/png;base64,{chart_base64}" alt="chart">
+<div id="left-panel">
+  <div id="chart">
+    <h2>광역지역별 발전소 수 및 설비용량</h2>
+    <img src="data:image/png;base64,{chart_base64}" alt="chart">
+  </div>
+
+  <div id="table">
+    <h2>📋 광역지역별 요약표</h2>
+    {table_html}
+  </div>
 </div>
+
 <div id="map">{m._repr_html_()}</div>
 </body>
 </html>
