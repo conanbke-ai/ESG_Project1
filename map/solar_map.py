@@ -11,7 +11,7 @@ import base64
 from matplotlib import font_manager, rc
 
 # ===== 로깅 =====
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] ✅ %(message)s')
 
 # ===== 한글 폰트 =====
 font_path = "C:/Windows/Fonts/malgun.ttf"
@@ -142,7 +142,7 @@ bounds = []
 for _, r in grouped.iterrows():
     lat, lon = float(r['위도']), float(r['경도'])
     color = pick_region_color(r['대표광역'])
-    radius = 2 + (r['발전소수']**0.5)
+    radius = (r['발전소수']**0.05)
     
     # 세부지역 레이어
     folium.CircleMarker(
@@ -272,5 +272,5 @@ body {{
 with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
     f.write(final_html)
 
-logging.info(f"✅ 대시보드 생성 완료: {OUTPUT_HTML}")
+logging.info(f"대시보드 생성 완료: {OUTPUT_HTML}")
 webbrowser.open(OUTPUT_HTML)
