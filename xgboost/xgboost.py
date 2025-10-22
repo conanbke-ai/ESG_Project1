@@ -1,194 +1,151 @@
 import pandas as pd
 import numpy as np
-from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
 import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
-import webbrowser
-import os
-import logging
+import seaborn as sns
+from matplotlib.backends.backend_pdf import PdfPages
 
-# ===== 로깅 설정 =====
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s]✅ %(message)s')
+# =======================
+# 1️⃣ 데이터 불러오기
+# =======================
+df = pd.read_csv("solar_data.csv", parse_dates=["date"])
+df = df.sort_values("date")
+df['year'] = df['date'].dt.year
 
-# ==== 1️⃣ 데이터 로드 & 전처리 ====
-pv_file = "pv_data.csv"          
-weather_file = "weather_data.csv"
+# =======================
+# 2️⃣ Feature Engineering
+# =======================
+for lag in range(1, 4):
+    df[f'lag_{lag}'] = df['generation'].shift(lag)
+df = df.dropna()
+features = ['lag_1','lag_2','lag_3','temperature','sunlight_hours','radiation']
 
-logging.info("데이터 파일 불러오는 중...")
-pv_df = pd.read_csv(pv_file)
-weather_df = pd.read_csv(weather_file)
+# =======================
+# 3️⃣ 학습용/테스트용 분리
+# =======================
+train_df = df[df['year'].isin([2022, 2023, 2024])]
+test_df = df[df['year'] == 2025]
 
-logging.info("데이터 통합 중...")
-df = pd.merge(pv_df, weather_df,
-              on=['광역지역', '세부지역', '발전소명', '날짜'], how='inner')
-df['날짜'] = pd.to_datetime(df['날짜'], format="%Y-%m-%d %H:%M")
-df = df.sort_values(['광역지역','세부지역','발전소명','날짜'])
+X_train, y_train = train_df[features], train_df['generation']
+X_test, y_test = test_df[features], test_df['generation']
 
-df['hour'] = df['날짜'].dt.hour
-df['dayofweek'] = df['날짜'].dt.dayofweek
+# =======================
+# 4️⃣ XGBoost 학습
+# =======================
+model = XGBRegressor(n_estimators=200, learning_rate=0.1)
+model.fit(X_train, y_train)
 
-cat_cols = ['광역지역','세부지역','발전소명']
-for col in cat_cols:
-    df[col] = df[col].astype('category').cat.codes
+# =======================
+# 5️⃣ 예측 및 잔차 계산
+# =======================
+y_pred = model.predict(X_test)
+residual = y_test - y_pred
+test_df = test_df.copy()
+test_df['residual'] = residual
 
-lag_hours = [1,2,3]
-roll_windows = [3,6]
+# =======================
+# 6️⃣ 이상치 탐지 (3σ)
+# =======================
+threshold = 3 * np.std(residual)
+test_df['outlier'] = np.abs(residual) > threshold
+outliers = test_df[test_df['outlier']]
+normal = test_df[~test_df['outlier']]
 
-logging.info("지연(lag) 및 이동평균(rolling) 피처 생성 중...")
-df_grouped = []
-for _, group in df.groupby(['광역지역','세부지역','발전소명']):
-    g = group.copy()
-    for lag in lag_hours:
-        g[f'발전량_lag_{lag}'] = g['발전량'].shift(lag)
-    for w in roll_windows:
-        g[f'발전량_roll_{w}'] = g['발전량'].shift(1).rolling(w).mean()
-    df_grouped.append(g)
+# =======================
+# 7️⃣ Feature Importance
+# =======================
+importances = model.feature_importances_
+feature_imp = pd.DataFrame({'feature': features, 'importance': importances}).sort_values(by='importance', ascending=False)
 
-df = pd.concat(df_grouped)
-df = df.dropna().reset_index(drop=True)
+# =======================
+# 8️⃣ 상관분석 (잔차 vs 기상 변수)
+# =======================
+corrs = residual.corr(pd.DataFrame({
+    'temperature': test_df['temperature'],
+    'sunlight_hours': test_df['sunlight_hours'],
+    'radiation': test_df['radiation']
+}))
 
-target = '발전량'
-features = ['광역지역','세부지역','발전소명','기온','강수량','일조량','일사량','hour','dayofweek']
-features += [f'발전량_lag_{lag}' for lag in lag_hours]
-features += [f'발전량_roll_{w}' for w in roll_windows]
-
-X = df[features]
-y = df[target]
-
-logging.info("데이터 학습/테스트 분리 중...")
-train_idx, test_idx = [], []
-for _, group in df.groupby(['광역지역','세부지역','발전소명']):
-    n = len(group)
-    split = int(n*0.8)
-    train_idx.extend(group.index[:split])
-    test_idx.extend(group.index[split:])
-
-X_train, X_test = X.loc[train_idx], X.loc[test_idx]
-y_train, y_test = y.loc[train_idx], y.loc[test_idx]
-
-# ==== 2️⃣ XGBoost 학습 ====
-logging.info("XGBoost 모델 학습 시작...")
-xgb_model = XGBRegressor(
-    n_estimators=1000,
-    max_depth=5,
-    learning_rate=0.05,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    reg_alpha=0.1,
-    reg_lambda=1.0,
-    random_state=42
-)
-
-xgb_model.fit(
-    X_train, y_train,
-    eval_set=[(X_test, y_test)],
-    eval_metric='rmse',
-    early_stopping_rounds=50,
-    verbose=False
-)
-logging.info("모델 학습 완료")
-
-# ==== 3️⃣ 예측 ====
-logging.info("테스트 데이터 예측 중...")
-df_test = df.loc[test_idx].copy()
-df_test['pred'] = xgb_model.predict(X_test)
-
-# ==== 4️⃣ 발전소별 RMSE 계산 ====
-logging.info("발전소별 RMSE 계산 중...")
-rmse_list = []
-for (gname, g), group in df_test.groupby(['광역지역','세부지역','발전소명']):
-    rmse = mean_squared_error(group['발전량'], group['pred'], squared=False)
-    rmse_list.append([gname[0], gname[1], gname[2], rmse])
-
-rmse_df = pd.DataFrame(rmse_list, columns=['광역지역','세부지역','발전소명','RMSE'])
-rmse_df = rmse_df.sort_values('RMSE', ascending=False).reset_index(drop=True)
-logging.info(f"RMSE 계산 완료, 상위 5개 발전소:\n{rmse_df.head()}")
-
-# ==== 5️⃣ 시계열 그래프 생성 ====
-def plot_timeseries(df_subset):
-    plt.figure(figsize=(6,3))
-    plt.plot(df_subset['날짜'], df_subset['발전량'], label='실제', marker='o')
-    plt.plot(df_subset['날짜'], df_subset['pred'], label='예측', marker='x')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.legend()
-    buf = BytesIO()
-    plt.savefig(buf, format='png')
+# =======================
+# 9️⃣ PDF 보고서 생성
+# =======================
+pdf_path = "Solar_Outlier_Report_2025_Enhanced.pdf"
+with PdfPages(pdf_path) as pdf:
+    
+    # === 표 1: 이상치 요약 ===
+    fig, ax = plt.subplots(figsize=(8,2))
+    ax.axis('off')
+    text = f"2025년도 이상치 분석 보고서 (Enhanced)\n총 데이터: {len(test_df)}, 이상치 수: {len(outliers)}"
+    ax.text(0.5, 0.5, text, fontsize=14, ha='center', va='center')
+    pdf.savefig()
     plt.close()
-    buf.seek(0)
-    return base64.b64encode(buf.read()).decode('utf-8')
 
-top10_stations = rmse_df.head(10)
-plot_imgs = []
-logging.info("상위 10개 발전소 시계열 그래프 생성 중...")
-for _, row in top10_stations.iterrows():
-    subset = df_test[(df_test['광역지역']==row['광역지역']) &
-                     (df_test['세부지역']==row['세부지역']) &
-                     (df_test['발전소명']==row['발전소명'])].copy()
-    img_b64 = plot_timeseries(subset)
-    plot_imgs.append((f"{row['광역지역']} {row['세부지역']} {row['발전소명']}", img_b64))
+    # === 표 2: 이상치 데이터 ===
+    fig, ax = plt.subplots(figsize=(12,4))
+    ax.axis('off')
+    tbl = outliers[['date','generation','residual','temperature','sunlight_hours','radiation']]
+    ax.table(cellText=tbl.values, colLabels=tbl.columns, loc='center', cellLoc='center').auto_set_font_size(False)
+    pdf.savefig()
+    plt.close()
+    
+    # === 표 3: 이상치 vs 정상치 평균 비교 ===
+    fig, ax = plt.subplots(figsize=(8,3))
+    ax.axis('off')
+    summary = ""
+    for col in ['temperature','sunlight_hours','radiation']:
+        summary += f"{col}: 정상={normal[col].mean():.2f}, 이상치={outliers[col].mean():.2f}\n"
+    ax.text(0.5,0.5,summary, fontsize=12, ha='center', va='center')
+    pdf.savefig()
+    plt.close()
 
-# ==== 6️⃣ Feature Importance ====
-logging.info("Feature Importance 그래프 생성 중...")
-plt.figure(figsize=(6,4))
-importances = xgb_model.feature_importances_
-indices = np.argsort(importances)[::-1]
-plt.barh(range(len(indices)), importances[indices], align='center')
-plt.yticks(range(len(indices)), [features[i] for i in indices])
-plt.gca().invert_yaxis()
-plt.title("Feature Importance")
-buf = BytesIO()
-plt.savefig(buf, format='png', bbox_inches='tight')
-plt.close()
-buf.seek(0)
-feat_b64 = base64.b64encode(buf.read()).decode('utf-8')
+    # === 표 4: 잔차 vs 기상 변수 상관계수 ===
+    fig, ax = plt.subplots(figsize=(8,3))
+    ax.axis('off')
+    corr_text = "Residual vs Weather Variables Correlation:\n" + \
+                "\n".join([f"{col}: {residual.corr(test_df[col]):.3f}" for col in ['temperature','sunlight_hours','radiation']])
+    ax.text(0.5,0.5,corr_text, fontsize=12, ha='center', va='center')
+    pdf.savefig()
+    plt.close()
 
-# ==== 7️⃣ HTML 생성 ====
-logging.info("HTML 대시보드 생성 중...")
-html_content = f"""
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>태양광 발전량 예측 대시보드</title>
-<style>
-body {{ font-family: 'Malgun Gothic','Segoe UI',sans-serif; margin:20px; }}
-h2 {{ color:#2c3e50; }}
-table {{ border-collapse: collapse; width: 100%; margin-bottom:20px; }}
-th, td {{ border:1px solid #ddd; padding:8px; text-align:center; }}
-th {{ background-color:#4CAF50; color:white; }}
-tr:nth-child(even) {{ background-color:#f2f2f2; }}
-img {{ width:100%; max-width:600px; margin-bottom:20px; }}
-.scroll-container {{
-    max-height: 800px; overflow-y: scroll; border:1px solid #ccc; padding:10px;
-}}
-</style>
-</head>
-<body>
-<h2>1️⃣ 발전소별 RMSE</h2>
-{rmse_df.to_html(index=False)}
+    # === 시각화 1: 발전량 시계열 + 이상치 ===
+    plt.figure(figsize=(12,5))
+    plt.plot(test_df['date'], test_df['generation'], label='Actual', color='blue')
+    plt.scatter(outliers['date'], outliers['generation'], color='red', label='Outlier', s=30)
+    plt.xlabel('Date')
+    plt.ylabel('Generation')
+    plt.title('2025 Solar Generation & Outliers')
+    plt.legend()
+    pdf.savefig()
+    plt.close()
 
-<h2>2️⃣ 상위 10개 발전소 예측 vs 실제 시계열</h2>
-<div class="scroll-container">
-"""
+    # === 시각화 2: 잔차 vs 기상 변수 ===
+    plt.figure(figsize=(12,5))
+    for col, color in zip(['temperature','sunlight_hours','radiation'], ['orange','green','purple']):
+        sns.scatterplot(x=col, y='residual', data=test_df, label=col, color=color)
+        # 상관계수 주석
+        plt.text(x=test_df[col].max()*0.8, y=test_df['residual'].max()*0.8,
+                 s=f"corr={residual.corr(test_df[col]):.2f}", fontsize=10, color=color)
+    plt.xlabel('Weather Variables')
+    plt.ylabel('Residuals')
+    plt.title('Residuals vs Weather Variables (2025)')
+    plt.legend()
+    pdf.savefig()
+    plt.close()
 
-for name, img_b64 in plot_imgs:
-    html_content += f"<h3>{name}</h3><img src='data:image/png;base64,{img_b64}' />"
+    # === 시각화 3: 이상치/정상치 기상 변수 분포 ===
+    plt.figure(figsize=(12,5))
+    sns.boxplot(data=pd.melt(test_df, id_vars='outlier', value_vars=['temperature','sunlight_hours','radiation']),
+                x='variable', y='value', hue='outlier')
+    plt.title('Weather Variables Distribution: Outliers vs Normal (2025)')
+    pdf.savefig()
+    plt.close()
 
-html_content += f"""
-</div>
-<h2>3️⃣ Feature Importance</h2>
-<img src='data:image/png;base64,{feat_b64}' />
-</body>
-</html>
-"""
+    # === 표 5: Feature Importance ===
+    fig, ax = plt.subplots(figsize=(8,3))
+    ax.axis('off')
+    imp_text = "Feature Importance:\n" + "\n".join([f"{row.feature}: {row.importance:.3f}" for idx,row in feature_imp.iterrows()])
+    ax.text(0.5,0.5,imp_text, fontsize=10, ha='center', va='center')
+    pdf.savefig()
+    plt.close()
 
-# ==== 8️⃣ HTML 저장 및 브라우저 열기 ====
-OUTPUT_HTML = "pv_xgb_dashboard.html"
-with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
-    f.write(html_content)
-
-webbrowser.open('file://' + os.path.realpath(OUTPUT_HTML))
-logging.info(f"대시보드 생성 완료: {OUTPUT_HTML}")
+print(f"✅ Enhanced PDF 보고서 생성 완료: {pdf_path}")
