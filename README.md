@@ -9,8 +9,6 @@
   python -m pip install --upgrade pip
   pip install pandas folium requests tqdm matplotlib branca openpyxl plotly
 
-<<<<<<< HEAD
-=======
 * 용량 큰 파일 처리
 
   # 1. Git LFS 사용
@@ -40,6 +38,7 @@
   # 강제 푸시
   git push origin main --force
 
->>>>>>> dcf78bd013fbaf7b782254dd74d834912e313889
 * 출처
   - 지도 경계 데이터 : https://simplemaps.com/gis/country/kr?utm_source=chatgpt.com
+  - 발전량 데이터 : https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do
+  - 기상청 데이터 : https://data.kma.go.kr/data/grnd/selectAsosRltmList.do
