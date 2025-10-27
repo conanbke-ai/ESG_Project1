@@ -34,6 +34,7 @@ def move_and_encode_csv(base_path: str, year_dir: str, file_name: str):
 
 def download_solar_data(base_path: str, year: int, max_retry: int = 3):
     """지정 연도의 태양광 발전량 데이터를 월별로 다운로드"""
+    base_path = base_path + "\한국남동발전"
     os.makedirs(base_path, exist_ok=True)
 
     options = webdriver.ChromeOptions()
