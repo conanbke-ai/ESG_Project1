@@ -42,6 +42,6 @@
   - 지도 경계 데이터 : https://simplemaps.com/gis/country/kr?utm_source=chatgpt.com
   - 발전량 데이터 : https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do
   - 기상청 데이터 : https://data.kma.go.kr/data/grnd/selectAsosRltmList.do
-  - 카카오 API :
+  - 카카오 API : https://dapi.kakao.com/v2/local/search/address.json
   - XGBoost 모델 : https://github.com/yun-ss97/solar_prediction/blob/main/XGBoost.ipynb
   - CNN_LSTM 모델 : https://github.com/muntasirhsn/CNN-LSTM-model-for-energy-usage-forecasting/blob/main/CNN_LSTM_univariate_multistep_output_github.ipynb
