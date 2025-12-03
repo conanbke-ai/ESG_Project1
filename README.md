@@ -45,10 +45,39 @@
   - 카카오 API : https://dapi.kakao.com/v2/local/search/address.json
   - XGBoost 모델 : https://github.com/yun-ss97/solar_prediction/blob/main/XGBoost.ipynb
   - CNN_LSTM 모델 : https://github.com/muntasirhsn/CNN-LSTM-model-for-energy-usage-forecasting/blob/main/CNN_LSTM_univariate_multistep_output_github.ipynb
+<<<<<<< ours
+<<<<<<< ours
+=======
+>>>>>>> theirs
 
 ## CNN-BiLSTM 파이프라인 (Optuna + 강화학습)
 
 `cnn_bilstm` 디렉터리에 학습/검증/이상치 분석을 분리한 파이썬 모듈을 추가했습니다.
+
+<<<<<<< ours
+<<<<<<< ours
+=======
+=======
+>>>>>>> theirs
+### main.py 실행 예시
+
+CLI로 학습/비교/이상치 분석을 실행하려면 아래처럼 `main.py`를 사용합니다.
+
+```bash
+# 1) 학습 + 저장 (Optuna + 강화학습 옵션)
+python main.py train data/your_dataset.csv target_column \
+    --features col1,col2,col3 \
+    --output-dir test/checkpoints \
+    --n-trials 20 --reinforcement
+
+# 2) 저장된 체크포인트 성능 비교
+python main.py compare test/checkpoints data/your_dataset.csv target_column \
+    --features col1,col2,col3 --output cnn_bilstm/output/checkpoints/benchmark.csv
+
+# 3) 체크포인트 불러오기 + 이상치 탐지 결과 저장
+python main.py analyze test/checkpoints/<timestamp>/cnn_bilstm.pt data/your_dataset.csv target_column \
+    --features col1,col2,col3 --output-dir test/analysis
+```
 
 ```python
 import pandas as pd
@@ -96,3 +125,4 @@ python -m pytest test
 ```
 
 이전 노트북 없이도 동일한 파이프라인을 스크립트로 재사용할 수 있습니다.
+
