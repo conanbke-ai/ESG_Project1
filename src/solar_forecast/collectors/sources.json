@@ -62,5 +62,19 @@
     "homepage": "https://data.kma.go.kr/data/grnd/selectAwosRltmList.do?pgmNo=638",
     "mode": "optional_not_enabled",
     "reason": "분 자료는 1회 최대 1일이며 기존 ASOS 시간자료가 학습 피처와 기간을 충족함"
+  },
+  "komipo": {
+    "organization": "한국중부발전",
+    "dataset_page": "https://www.data.go.kr/data/15084511/openapi.do",
+    "endpoint": "https://apis.data.go.kr/B552521/renewEnergy/getData",
+    "mode": "service_key_required_bounded_daily_partitions",
+    "environment_variable": "DATA_GO_SERVICE_KEY",
+    "admission_status": "bronze_only_until_daypower_unit_and_plant_location_are_verified"
+  },
+  "kdhc": {
+    "organization": "한국지역난방공사",
+    "dataset_page": "https://www.data.go.kr/data/15157890/openapi.do",
+    "mode": "candidate_service_key_required",
+    "admission_status": "disabled_until_endpoint_schema_and_cumulative_inverter_conversion_are_verified"
   }
 }

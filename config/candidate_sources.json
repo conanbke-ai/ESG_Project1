@@ -28,11 +28,10 @@
       "access": "public CSV attachment downloaded",
       "granularity": "용수리 태양광, daily wide with 24 hourly buckets",
       "verified_files": "2020-10-01 through 2026-02-28, 1,977 daily rows",
-      "status": "standardized_but_weather_mapping_quarantined",
+      "status": "gold_admitted_through_available_2025_weather",
       "role": "extend a long-running Jeolla-area public plant series",
       "blockers": [
-        "the generation file does not carry a defensible address or coordinate",
-        "capacity and a reviewed KMA station mapping must be joined from an official facility source"
+        "2026 generation remains in Silver until the matching official KMA annual file is available"
       ]
     },
     {
@@ -42,11 +41,10 @@
       "access": "public CSV attachment downloaded",
       "granularity": "신풍리 태양광, daily wide with 24 hourly buckets",
       "verified_files": "2021-05-01 through 2026-02-28, 1,765 daily rows",
-      "status": "standardized_but_weather_mapping_quarantined",
+      "status": "gold_admitted_through_available_2025_weather",
       "role": "extend a long-running public plant series",
       "blockers": [
-        "the generation file does not carry a defensible address or coordinate",
-        "capacity and a reviewed KMA station mapping must be joined from an official facility source"
+        "2026 generation remains in Silver until the matching official KMA annual file is available"
       ]
     },
     {
@@ -82,10 +80,10 @@
       "official_url": "https://www.data.go.kr/data/15084511/openapi.do",
       "access": "public automatic-approval REST API; service key required",
       "granularity": "headquarters, plant, equipment, measurement time, and generation",
-      "status": "service_key_and_continuity_audit_required",
+      "status": "bounded_bronze_collector_ready_service_key_required",
       "role": "high-priority fifth generation-company source",
       "blockers": [
-        "response history, unit, pagination, and revision behavior must be profiled",
+        "response history, the unspecified daypower unit, and revision behavior must be profiled",
         "capacity and reviewed KMA mappings are required before model admission"
       ]
     },
@@ -97,12 +95,10 @@
       "granularity": "three plants, daily wide with 24 hourly buckets",
       "verified_files": "2020-2025 downloaded; entity-safe 2022-2025 accepted for generation audit",
       "verified_plants": ["영암1차", "영암2차", "율치"],
-      "status": "generation_ready_weather_mapping_and_unit_review_required",
+      "status": "admitted_to_gold_after_unit_and_weather_review",
       "role": "highest-priority new plant candidate",
       "blockers": [
-        "2020-2021 files do not contain a plant identifier and remain quarantined",
-        "portal labels hourly buckets as kW although daily totals imply one-hour energy buckets",
-        "plant coordinates or an explicitly reviewed KMA ASOS mapping are still required"
+        "2020-2021 files do not contain a plant identifier and remain quarantined"
       ]
     },
     {

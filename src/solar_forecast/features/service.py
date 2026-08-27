@@ -17,13 +17,18 @@ from solar_forecast.collectors.normalization import (
     read_csv_with_fallback,
 )
 from solar_forecast.quality.policy import GenerationQualityPolicy, QUALITY_COLUMNS
+from solar_forecast.settings import PROJECT_ROOT
 
 from .engineering import (
     MODEL_READY_FEATURES,
     SELECTED_MODEL_FEATURES,
     LeakageSafeFeatureEngineer,
 )
-from .registry import KmaStationCatalog, NationwidePlantRegistryBuilder
+from .registry import (
+    KmaStationCatalog,
+    NationwidePlantRegistryBuilder,
+    ReviewedStationMappingCatalog,
+)
 from .weather import KmaAsosNormalizer
 
 
@@ -109,7 +114,14 @@ class NationwideModelDatasetBuilder:
                 self.weather_root / "META_관측지점정보.csv"
             )
             registry_path = Path(destination).with_name("plant_registry.csv")
-            registry = NationwidePlantRegistryBuilder(self.metadata, station_catalog).build(
+            reviewed_mappings = ReviewedStationMappingCatalog.from_json(
+                PROJECT_ROOT / "config" / "reviewed_weather_mappings.json"
+            )
+            registry = NationwidePlantRegistryBuilder(
+                self.metadata,
+                station_catalog,
+                reviewed_mappings,
+            ).build(
                 paths,
                 registry_path,
                 legacy_mapping=legacy_generation,
@@ -120,10 +132,22 @@ class NationwideModelDatasetBuilder:
             generation = legacy_generation
 
         years = sorted(generation["timestamp"].dt.year.unique())
-        weather_paths = [self.weather_root / f"OBS_ASOS_TIM_{year}.csv" for year in years]
-        missing_weather = [path for path in weather_paths if not path.exists()]
-        if missing_weather:
-            raise FileNotFoundError(f"KMA hourly files are missing: {missing_weather}")
+        requested_weather_paths = [
+            self.weather_root / f"OBS_ASOS_TIM_{year}.csv" for year in years
+        ]
+        weather_paths = [path for path in requested_weather_paths if path.exists()]
+        missing_weather = [path for path in requested_weather_paths if not path.exists()]
+        if not weather_paths:
+            raise FileNotFoundError(
+                f"No KMA hourly files cover generation years: {requested_weather_paths}"
+            )
+        available_weather_years = {int(path.stem.rsplit("_", 1)[-1]) for path in weather_paths}
+        weather_unavailable = generation.loc[
+            ~generation["timestamp"].dt.year.isin(available_weather_years)
+        ].copy()
+        generation = generation.loc[
+            generation["timestamp"].dt.year.isin(available_weather_years)
+        ].copy()
         weather = KmaAsosNormalizer(self.weather_root / "META_관측지점정보.csv").read(
             weather_paths,
             station_ids=generation["station_id"].unique(),
@@ -184,12 +208,25 @@ class NationwideModelDatasetBuilder:
             "legacy_source_usage": (
                 "reviewed KOSPO plant-to-ASOS mapping seed only; never target or time/plant filter"
             ),
+            "weather_availability": {
+                "available_years": sorted(available_weather_years),
+                "missing_files": [str(path) for path in missing_weather],
+                "withheld_generation_rows": len(weather_unavailable),
+                "withheld_plants": int(weather_unavailable["plant_id"].nunique())
+                if not weather_unavailable.empty
+                else 0,
+                "policy": (
+                    "retain generation in Silver but withhold it from Gold until the matching "
+                    "official KMA annual file is present"
+                ),
+            },
             "plant_registry": str(registry_path) if registry_path else None,
             "plant_registry_policy": {
                 "identity": "company + plant + energy_source",
                 "administrative_region": "public address parsed separately from weather station",
                 "weather_mapping": (
-                    "reviewed legacy, <=50 km coordinate nearest, or unambiguous exact municipality"
+                    "version-controlled reviewed mapping, reviewed legacy, <=50 km coordinate "
+                    "nearest, or unambiguous exact municipality"
                 ),
                 "ambiguous_mapping": "quarantine; never silently assign nearest city",
                 "quarantined_plants": quarantined_plants,
@@ -264,6 +301,12 @@ class NationwideModelDatasetBuilder:
         eligible_registry = registry.loc[
             registry["model_ready_status"].eq("eligible")
         ].copy()
+        eligible_registry["plant"] = [
+            self.metadata.canonical_plant(company, plant)
+            for company, plant in eligible_registry[["company", "plant"]].itertuples(
+                index=False, name=None
+            )
+        ]
         eligible_keys = set(
             eligible_registry[["company", "plant", "energy_source"]]
             .astype(str)
@@ -285,11 +328,25 @@ class NationwideModelDatasetBuilder:
                 ],
             )
             source["timestamp"] = pd.to_datetime(source["timestamp"], errors="coerce")
+            source["plant"] = [
+                self.metadata.canonical_plant(company, plant)
+                for company, plant in source[["company", "plant"]].itertuples(
+                    index=False, name=None
+                )
+            ]
             keys = pd.MultiIndex.from_frame(
                 source[["company", "plant", "energy_source"]].astype(str)
             )
             source = source.loc[keys.isin(eligible_keys)]
             if not source.empty:
+                # Aggregate all meters/units inside one source snapshot first.
+                # A later public snapshot for the same physical asset replaces
+                # this aggregate; it must never be added to it.
+                source = source.groupby(
+                    ["timestamp", "company", "plant", "energy_source"],
+                    as_index=False,
+                    sort=False,
+                )["generation_mwh"].sum()
                 source["_partition_order"] = partition_order
                 snapshot_dates = re.findall(r"20\d{6}", Path(path).name)
                 source["_snapshot_date"] = max(map(int, snapshot_dates), default=0)
@@ -299,7 +356,7 @@ class NationwideModelDatasetBuilder:
         generation = pd.concat(parts, ignore_index=True)
         generation["generation_mwh"] = pd.to_numeric(generation["generation_mwh"], errors="coerce")
         generation = generation.dropna(subset=["timestamp", "generation_mwh"])
-        identity = ["timestamp", "company", "plant_id"]
+        identity = ["timestamp", "company", "plant", "energy_source"]
         duplicate_mask = generation.duplicated(identity, keep=False)
         conflicts = (
             generation.loc[duplicate_mask]
@@ -321,11 +378,7 @@ class NationwideModelDatasetBuilder:
             identity,
             keep="last",
         )
-        generation = generation.groupby(
-            ["timestamp", "company", "plant", "energy_source"],
-            as_index=False,
-            sort=False,
-        )["generation_mwh"].sum()
+        generation = generation.drop(columns=["_snapshot_date", "_partition_order"])
 
         mapping_columns = [
             "company",

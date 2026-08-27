@@ -1,0 +1,70 @@
+{
+  "version": "reviewed-weather-mapping.v1",
+  "reviewed_at": "2026-08-27",
+  "policy": "Only mappings backed by an official plant location and an explicitly reviewed ASOS choice are admitted. Municipality centroids are never treated as plant coordinates.",
+  "mappings": [
+    {
+      "company": "iwest",
+      "plant": "영암F1 태양광",
+      "station_id": 165,
+      "evidence_url": "https://www.iwest.co.kr/iwest/686/subview.do",
+      "rationale": "Official location is Yeongam-gun Samho-eup; Mokpo ASOS is the reviewed nearby coastal station."
+    },
+    {
+      "company": "iwest",
+      "plant": "화순풍력",
+      "station_id": 156,
+      "evidence_url": "https://www.iwest.co.kr/iwest/686/subview.do",
+      "rationale": "Official location is Hwasun-gun Dong-myeon; Gwangju ASOS is the reviewed nearby station."
+    },
+    {
+      "company": "koen",
+      "plant": "해창만 수상(98MW)",
+      "station_id": 262,
+      "evidence_url": "https://www.koenergy.kr/kosep/hw/fr/ov/ovhw25/main.do?menuCd=FN030503",
+      "rationale": "Official location is Goheung-gun; Goheung ASOS is an exact municipality match."
+    },
+    {
+      "company": "kospo",
+      "plant": "다송리",
+      "station_id": 140,
+      "evidence_url": "https://www.data.go.kr/data/15140095/fileData.do",
+      "rationale": "Official metadata locates the plant in Iksan-si Hamyeol-eup; Gunsan ASOS is the reviewed nearby station."
+    },
+    {
+      "company": "kospo",
+      "plant": "신풍리 태양광(제주)",
+      "station_id": 188,
+      "evidence_url": "https://www.data.go.kr/data/15109998/fileData.do",
+      "rationale": "Official metadata locates the plant in Seogwipo-si Seongsan-eup; Seongsan ASOS is the locality station."
+    },
+    {
+      "company": "kospo",
+      "plant": "제주 용수리 태양광",
+      "station_id": 185,
+      "evidence_url": "https://www.data.go.kr/data/15095404/fileData.do",
+      "rationale": "Official metadata locates the plant in Jeju-si Hangyeong-myeon; Gosan ASOS is the reviewed nearby station."
+    },
+    {
+      "company": "krc",
+      "plant": "영암1차",
+      "station_id": 165,
+      "evidence_url": "https://www.data.go.kr/dataset/15005796/fileData.do?lang=ko",
+      "rationale": "The official series identifies a Yeongam-gun asset; public construction records place phases 1 and 2 in the Samho-eup Yeongam district, mapped to Mokpo ASOS."
+    },
+    {
+      "company": "krc",
+      "plant": "영암2차",
+      "station_id": 165,
+      "evidence_url": "https://www.data.go.kr/dataset/15005796/fileData.do?lang=ko",
+      "rationale": "The official series identifies a Yeongam-gun asset; public construction records place phases 1 and 2 in the Samho-eup Yeongam district, mapped to Mokpo ASOS."
+    },
+    {
+      "company": "krc",
+      "plant": "율치",
+      "station_id": 259,
+      "evidence_url": "https://www.water.or.kr/upload/board/2024/03/20240320180535_1.pdf",
+      "rationale": "The official water-monitoring plan locates Yulchi reservoir in Yeongam-gun Haksan-myeon Sangwol-ri; Gangjin-gun ASOS is the reviewed nearest station."
+    }
+  ]
+}

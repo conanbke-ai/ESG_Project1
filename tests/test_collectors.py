@@ -1,4 +1,5 @@
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -15,6 +16,7 @@ from solar_forecast.collectors.normalization import (
     KOSPO_WIDE_SCHEMA,
     KoenGenerationNormalizer,
 )
+from solar_forecast.collectors.openapi import KomipoRenewableCollector
 
 
 def test_collection_config_rejects_reverse_date_range():
@@ -157,3 +159,61 @@ def test_public_coordinate_columns_are_corrected_only_for_korea_range_inversion(
     result = DailyWideGenerationNormalizer(EWP_POINT_SCHEMA).transform(pandas.DataFrame([row]))
     assert result.iloc[0]["latitude"] == pytest.approx(37.48313)
     assert result.iloc[0]["longitude"] == pytest.approx(129.1453)
+
+
+class _XmlResponse:
+    def __init__(self, content: bytes):
+        self.content = content
+
+    def raise_for_status(self):
+        return None
+
+
+class _KomipoSession:
+    def __init__(self):
+        self.params = []
+
+    def get(self, _url, *, params, timeout):
+        self.params.append((params, timeout))
+        return _XmlResponse(
+            b"""<response><header><resultCode>00</resultCode><resultMsg>NORMAL</resultMsg></header>
+            <body><totalCount>1</totalCount><items><item>
+            <siteterm>Boryeong</siteterm><unitterm>Solar-1</unitterm>
+            <gathdtm>2025-01-01 12:00:00</gathdtm><daypower>6287</daypower>
+            </item></items></body></response>"""
+        )
+
+
+def test_komipo_collector_writes_resumable_bounded_bronze_partition(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_GO_SERVICE_KEY", "test-key")
+    session = _KomipoSession()
+    config = CollectionConfig(
+        start_date=date(2025, 1, 1),
+        end_date=date(2025, 1, 1),
+        output_dir=tmp_path,
+        komipo_station_codes=["8509"],
+        api_max_calls=1,
+    )
+    result = KomipoRenewableCollector(config, session=session).collect()
+
+    assert result.status == "downloaded"
+    assert result.rows == 1
+    assert len(session.params) == 1
+    assert result.files[0] == Path(tmp_path) / "komipo/station=8509/year=2025/date=20250101.csv.gz"
+    frame = __import__("pandas").read_csv(result.files[0])
+    assert frame.iloc[0]["generation_value"] == 6287
+    assert frame.iloc[0]["source_unit"] == "portal_unspecified"
+
+
+def test_komipo_collector_preflights_daily_call_budget(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_GO_SERVICE_KEY", "test-key")
+    config = CollectionConfig(
+        start_date=date(2025, 1, 1),
+        end_date=date(2025, 1, 2),
+        output_dir=tmp_path,
+        komipo_station_codes=["8509"],
+        api_max_calls=1,
+    )
+    result = KomipoRenewableCollector(config, session=_KomipoSession()).collect()
+    assert result.status == "configuration_required"
+    assert "at least 2 calls" in result.message

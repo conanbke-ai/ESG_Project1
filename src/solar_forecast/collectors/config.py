@@ -17,10 +17,14 @@ class CollectionConfig:
     output_dir: Path = Path("file/raw")
     existing_weather_dir: Path = Path("file/KMA_data_file")
     overwrite: bool = False
+    komipo_station_codes: Sequence[str] = field(default_factory=tuple)
+    api_max_calls: int = 900
 
     def __post_init__(self) -> None:
         if self.end_date < self.start_date:
             raise ValueError("end_date must be on or after start_date")
+        if self.api_max_calls < 1:
+            raise ValueError("api_max_calls must be positive")
 
 
 def load_source_catalog() -> dict[str, dict[str, Any]]:

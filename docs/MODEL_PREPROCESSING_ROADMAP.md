@@ -214,7 +214,8 @@ MoLE은 이런 적응형 router가 단일 예측 규칙의 주기 변화 한계�
   missing mask, 전역 4구간 분할, lazy sequence, 26개 물리 피처, Hybrid v2 근거 계층,
   회사×연도 Gold 파티션과 10만행/float32/1.5GB 학습 로더.
 - 추가 데이터 완료: 한국농어촌공사 영암 2020~2025·진도 2019, 남부발전 용수리·신풍리 최신
-  원문 확보. 영암 2022~2025는 개체 안전 정규화했고 불확실한 기간·단위·기상 매핑은 quarantine.
+  원문 확보. 영암 2022~2025는 개체 안전 정규화·단위 물리검증·검토 ASOS 매핑 후 Gold 편입했고,
+  식별자 없는 2020~2021과 기상이 아직 없는 2026 구간만 quarantine/withhold.
 - 다음: 좌표/용량 미확보 발전소 보강, 예보 발행시각이 있는 기상 예보 수집,
   plant embedding group-holdout ablation, capacity-factor 보조 타깃.
 - 그 다음: XGBoost → TimeXer+RevIN → PatchTST/TimeMixer → graph model 순서의 동일 조건 실험.

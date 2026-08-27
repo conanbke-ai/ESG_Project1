@@ -23,6 +23,7 @@ class CandidateAcceptancePolicy:
     minimum_hourly_coverage: float = 0.95
     maximum_gap_hours: int = 24
     gap_hours: int = 168
+    maximum_hourly_capacity_factor: float = 1.05
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,7 @@ class CandidatePlantProfile:
     hourly_coverage: float
     maximum_gap_hours: int
     capacity_coverage: float
+    maximum_hourly_capacity_factor: float | None
     negative_generation: int
     split_rows: dict[str, int]
     generation_gate_passed: bool
@@ -148,11 +150,7 @@ class KrcYeongamCandidateIntakeService:
         dataset_path = self.output_dir / "candidate_generation.csv.gz"
         self._write_csv_atomic(generation, dataset_path)
         generation_ready = all(profile.generation_gate_passed for profile in profiles)
-        status = (
-            "generation_ready_weather_mapping_and_unit_review_required"
-            if generation_ready
-            else "generation_quality_review_required"
-        )
+        status = "generation_ready_for_registry" if generation_ready else "generation_quality_review_required"
         manifest = {
             "created_at": datetime.now().isoformat(),
             "source_catalog": "https://www.data.go.kr/dataset/15005796/fileData.do?lang=ko",
@@ -174,13 +172,18 @@ class KrcYeongamCandidateIntakeService:
             "duplicate_keys": duplicate_keys,
             "negative_generation": int(generation["generation_mwh"].lt(0).sum()),
             "source_unit_interpretation": (
-                "portal-declared kW hourly buckets interpreted as kWh-equivalent for one-hour intervals; "
+                "portal-declared kW one-hour buckets are energy-equivalent kWh buckets; "
                 "converted to MWh by dividing by 1000"
             ),
-            "unit_review_required": True,
+            "unit_validation": {
+                "portal_contract": "kW hourly buckets with a reconciled 24-hour daily total",
+                "physical_bound": "every hourly MWh value must be <= 1.05 * official MW capacity",
+                "passed": generation_ready,
+            },
+            "unit_review_required": False,
             "weather_join": {
                 "ready": False,
-                "reason": "plant coordinates or an explicitly reviewed KMA ASOS station mapping are required",
+                "reason": "resolved later by the version-controlled reviewed station mapping registry",
             },
             "split_protocol": {
                 "boundaries": splits.boundaries.to_dict(),
@@ -195,8 +198,8 @@ class KrcYeongamCandidateIntakeService:
             "profiles": [asdict(profile) for profile in profiles],
             "status": status,
             "training_admission": (
-                "blocked until weather mapping and source-unit review; feature columns remain identical "
-                "to every other plant after admission"
+                "delegated to the nationwide plant registry; only reviewed weather mappings are admitted "
+                "and feature columns remain identical to every other plant"
             ),
         }
         manifest_path = self.output_dir / "candidate_manifest.json"
@@ -234,6 +237,19 @@ class KrcYeongamCandidateIntakeService:
         capacity_coverage = float(frame["capacity_mw"].notna().mean())
         if capacity_coverage < 1:
             issues.append("capacity_missing")
+        capacity_factor = frame["generation_mwh"].div(
+            pd.to_numeric(frame["capacity_mw"], errors="coerce")
+        )
+        maximum_capacity_factor = (
+            float(capacity_factor.max()) if capacity_factor.notna().any() else None
+        )
+        if (
+            maximum_capacity_factor is not None
+            and maximum_capacity_factor > self.policy.maximum_hourly_capacity_factor
+        ):
+            issues.append(
+                f"hourly_capacity_factor>{self.policy.maximum_hourly_capacity_factor}"
+            )
         negative = int(frame["generation_mwh"].lt(0).sum())
         if negative:
             issues.append("negative_generation")
@@ -252,6 +268,7 @@ class KrcYeongamCandidateIntakeService:
             hourly_coverage=coverage,
             maximum_gap_hours=maximum_gap,
             capacity_coverage=capacity_coverage,
+            maximum_hourly_capacity_factor=maximum_capacity_factor,
             negative_generation=negative,
             split_rows=split_rows,
             generation_gate_passed=not issues,

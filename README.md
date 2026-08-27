@@ -1,6 +1,6 @@
 # 전국 재생에너지 표준화·태양광 발전량 예측·이상징후 알림 시스템
 
-현재 확보한 한국남동발전·한국남부발전·한국동서발전·한국서부발전 자료를 출발점으로, 기관을
+현재 확보한 한국남동발전·한국남부발전·한국동서발전·한국서부발전·한국농어촌공사 자료를 출발점으로, 기관을
 고정하지 않고 공통 데이터 계약과 품질 게이트를 통과한 국내 발전소를 계속 추가하는 전국 발전량
 예측 프로젝트입니다. 예측 잔차와 공개 기상자료는 이상징후 분석·알림에 사용합니다.
 
@@ -47,8 +47,10 @@ python app.py pipeline target_column --input-dir file/merge_data --features feat
 ## 공식 데이터 자동 수집
 
 현재 자동화된 4개 발전사 파일은 각 공식 홈페이지의 공공데이터 게시물 또는 그 게시물이 연결한
-공공데이터포털 첨부파일에서 내려받습니다. 발전사별 다운로드 URL 환경변수는 필요하지 않습니다.
-기상청 로그인이 필요한 경우에만 `KMA_CHROME_USER_DATA_DIR`을 사용합니다.
+공공데이터포털 첨부파일에서 내려받습니다. 한국농어촌공사 영암 원본은 확보된 주기성 파일을
+`prepare-data`가 자동 심사·편입합니다. 발전사별 다운로드 URL 환경변수는 필요하지 않습니다.
+기상청 로그인이 필요한 경우에는 `KMA_CHROME_USER_DATA_DIR`, 중부발전 선택 수집에는
+`DATA_GO_SERVICE_KEY`를 `.env.local`에 설정합니다. 형식은 [`.env.example`](.env.example)을 따릅니다.
 
 ```bash
 python app.py collect --start-date 2024-01-01 \
@@ -62,14 +64,18 @@ python app.py prepare-data
 ```
 
 `prepare-data`는 현재 `file/solar_data_file/`의 88개 원본을 4,236,565개 시간 행의 파일별 gzip CSV
-파티션으로 변환하고,
-`file/standardized/generation_manifest.json`에 행 수·기간·결측 커버리지·음수·중복 검사를 기록합니다.
+파티션으로 변환합니다. 이어 농어촌공사 영암 6개 파일을 심사해 개체 식별이 가능한 2022~2025
+4개 파일·105,191개 시간 행을 같은 계약으로 편입하고, 2020~2021은 식별자 부재로 격리합니다.
+기본 원본 검사는 `generation_manifest.json`, 영암 검사는
+`candidates/krc_yeongam/candidate_manifest.json`에 행 수·기간·결측·음수·중복·물리 상한과 함께 기록합니다.
 각 파티션은 한 원본 파일 단위로 처리하고 완성된 임시 파일만 원자적으로 교체합니다. manifest에는
 입력·출력 byte와 SHA-256을 기록해 같은 파일명의 수정본과 재처리 lineage를 추적합니다.
 이후 공식 표준 발전량을 발전소·시간 단위로 재집계하고, 기존 병합본에서는 발전소별 ASOS 지점
 매핑만 가져와 단일 호환본 `file/standardized/model_ready.csv.gz`와 학습용 회사×연도 파티션
 `file/standardized/model_ready_parts/`를 생성합니다. 현재 품질·기상 매핑을 통과한 Gold는
-2,230,839행·37개 발전소이고, 29개 발전소는 근거 없는 기상 결합 대신 registry에 격리합니다.
+2,525,434행·46개 발전소(태양광 43, 풍력 2, 소수력 1)이고, 22개 발전소는 근거 없는 기상 결합
+대신 registry에 격리합니다. 2026년 기상 연간 파일이 아직 없어 해당 발전량 2,832행·2개소는
+Silver에는 보존하고 Gold에서만 보류합니다.
 기존 병합 타깃과 공식 원본의
 차이는 `legacy_pipeline_quality_report.csv`에 별도로 기록합니다. 생성물은
 재현 가능한 중간 산출물이므로 Git에는 넣지 않습니다.
@@ -77,15 +83,21 @@ python app.py prepare-data
 같은 실행에서 `plant_quality_report.csv`와 `quality_manifest.json`도 생성합니다. 발전소별 시간
 커버리지, 음수, 용량초과, 주간 0, 양의 값 flatline, 기상 결측, 일별 형태 일관성, 지역 peer
 상관을 기록하되 공개 데이터만으로 센서·설비 고장을 확정하지 않습니다.
+현재 46개 Gold 발전소 중 `low` 40개, 사람 검토가 필요한 `review` 6개, `high` 0개입니다. 전남은
+태양광 8개소·273,955행과 풍력 2개소·17,520행, 전북은 태양광 2개소·22,824행입니다. 상세 원인과
+제공자별 건수는 [`docs/DATA_COLLECTION_AUDIT.md`](docs/DATA_COLLECTION_AUDIT.md)에 있습니다.
 
-수집 종료일은 입력받지 않고 실행 당일로 자동 설정합니다. 기상 관측자료는 당일 값이 불완전할 수 있어 전일까지, 남동발전은 현재 연도의 현재 월까지만 요청합니다.
+`--end-date`를 생략하면 수집 종료일은 실행 당일입니다. 기상 관측자료는 당일 값이 불완전할 수
+있어 전일까지, 남동발전은 현재 연도의 현재 월까지만 요청합니다.
 
 - `koen`: 남동발전 발전량 조회 화면에서 요청 기간의 월별 CSV를 내려받습니다.
 - `kospo`: 남부발전 공공데이터 목록이 연결한 데이터셋 `15156688`의 최신 첨부 ID를 조회해 CSV를 내려받습니다.
 - `ewp`: 동서발전 공공데이터 게시물 `43582`의 전국 태양광 학습 CSV를 공식 POST 폼으로 내려받습니다.
 - `iwest`: 서부발전 태양광 발전 현황 데이터셋 `15025486`의 최신 첨부 ID를 조회해 CSV를 내려받습니다.
+- `komipo`: 중부발전 API 데이터셋 `15084511`을 본부코드×일자 단위 gzip Bronze 파티션으로
+  제한 수집합니다. 공식 `daypower` 단위가 명시되지 않아 바로 MWh나 학습행으로 승격하지 않습니다.
 - `kma`: 기상자료개방포털 ASOS 화면에서 시간자료를 최대 1년 단위로 나누어 CSV로 내려받습니다. API 키는 사용하지 않습니다.
-- 요청 기간이 `file/KMA_data_file/OBS_ASOS_TIM_<연도>.csv`에 이미 포함되면 API를 호출하거나 파일을 복제하지 않고 기존 자료를 그대로 등록합니다. 현재 보유 범위는 2013-01-01~2025-11-03입니다.
+- 요청 기간이 `file/KMA_data_file/OBS_ASOS_TIM_<연도>.csv`에 이미 포함되면 API를 호출하거나 파일을 복제하지 않고 기존 자료를 그대로 등록합니다. 현재 Gold 결합 가능 연도는 2013~2025입니다.
 - 공공기관 기상관측 분 자료는 기관별 요소 차이와 1회 최대 1일 제한 때문에 기본 수집에서 제외했습니다.
 - 기상청 로그인이 필요한 경우 `KMA_CHROME_USER_DATA_DIR`에 로그인 전용 Chrome 프로필을 지정합니다. 실행 중인 일반 Chrome 프로필과 같은 경로를 동시에 사용하지 않는 것을 권장합니다.
 - 발전사 원본은 `file/raw/<회사>/`에 그대로 보존하고, UTF-8 표준본은 각 `normalized/`에 저장합니다.
@@ -108,6 +120,16 @@ python app.py prepare-data
 - 기상청 기존 파일 재사용 여부는 요청 기간과 `--overwrite`로 제어합니다. 발전사 공식 첨부는 최신 내용을 확인하기 위해 실행할 때마다 갱신합니다.
 - 출처 하나가 실패해도 나머지 수집은 계속되며, 실패 출처에는 `error.log`가 생성됩니다.
 
+중부발전 API 키를 발급받은 뒤에는 본부코드를 명시하고 호출 예산 안에서 탐색 수집합니다.
+
+```powershell
+python app.py collect --sources komipo --start-date 2026-08-01 --end-date 2026-08-07 `
+  --komipo-station-codes CODE1,CODE2 --api-max-calls 100
+```
+
+완료한 station/day 파티션은 재호출하지 않으며 `--overwrite`일 때만 갱신합니다. API 결과는 단위,
+설비 위치, 용량, 이력 연속성을 검토하기 전까지 Bronze 격리 상태입니다.
+
 현재 확보 파일의 행 수·기간·결측·중복 검증 결과는
 [`docs/DATA_COLLECTION_AUDIT.md`](docs/DATA_COLLECTION_AUDIT.md)에 기록했습니다.
 
@@ -124,8 +146,10 @@ python app.py audit-candidate-data
 
 이 명령은 원본 hash, 스키마, 일계 합산, 중복·음수·결측, 발전소별 시간 커버리지와
 Train/Validation/Calibration/Test 구간을 검사해 연도별 gzip 파티션과 후보 manifest를 만듭니다.
-현재 영암 데이터는 발전량 연속성은 통과하지만, 원천의 `kW` 시간 버킷 단위 의미와 정확한 KMA
-관측소 매핑을 검토할 때까지 기존 학습 테이블에는 자동 편입하지 않습니다. 한국지역난방공사
+영암 데이터는 원문의 일계가 24개 1시간 버킷 합과 일치하고 세 설비 모두 시간 발전량이 공식
+용량의 1.05배 이내임을 확인했습니다. 1시간 평균출력 `kW` 버킷은 에너지 수치상 `kWh`와 같으므로
+MWh로 변환하고, 영암1·2차는 목포 ASOS 165, 율치는 강진군 ASOS 259라는 검토 매핑과 근거 URL을
+버전 관리해 Gold에 자동 편입합니다. 한국지역난방공사
 대구·신안 및 2026 인버터 실시간 API, 한국중부발전 발전량 API·169개소 안심구역 자료,
 전력거래소 지역 집계의 용도와 우선순위는
 [`docs/ADDITIONAL_DATA_SOURCE_AUDIT.md`](docs/ADDITIONAL_DATA_SOURCE_AUDIT.md)에 정리했습니다.
@@ -165,7 +189,7 @@ rolling-origin fold로 추가 컬럼을 검증했습니다. 뒤쪽 10% Calibrati
 보존하되 학습에서 제외하고, 발전량 타깃 결측은 정답을 만들어 넣지 않습니다. 강수 공란은 다른
 핵심 센서가 정상인 무강수 문맥에서만 0, 일조·일사 공란은 계산상 야간일 때만 0으로 해석합니다.
 그 밖의 결측과 초기 168시간 history 결측은 그대로 유지합니다. 현재 전국 Gold는 history 결측을
-이유로 행을 버리지 않으며 2,230,839행을 보존합니다.
+이유로 행을 버리지 않으며 2,525,434행을 보존합니다.
 
 - XGBoost: 중앙값으로 덮지 않고 `NaN`을 전달해 트리가 Train에서 결측 기본 분기 방향을
   학습합니다. 분할별 피처 결측률을 `preprocessing.json`에 남깁니다.
@@ -176,8 +200,9 @@ rolling-origin fold로 추가 컬럼을 검증했습니다. 뒤쪽 10% Calibrati
 - 메모리 상한: 회사×연도 gzip 파티션을 100,000행 chunk로 읽고 필요한 컬럼과
   `energy_source=solar`, `quality_train_eligible=true`를 먼저 적용합니다. 수치는 `float32`로
   축소하고 예상 프레임이 1,536MB를 넘으면 임의 샘플링 없이 `MemoryError`로 중단합니다.
-- 실측: 28개 파티션 2,230,839행을 스캔해 2,115,471개 학습가능 태양광 행을 유지했고,
-  XGBoost의 26개 피처와 문맥 컬럼을 포함한 DataFrame은 361.14MB였습니다.
+- 실측: 32개 파티션 2,525,434행을 스캔해 2,401,306개 학습가능 태양광 행을 유지했고,
+  XGBoost의 26개 피처와 문맥 컬럼을 포함한 DataFrame은 409.93MB였습니다. 입력 gzip은
+  126,723,824 byte였고 1,536MB hard limit 아래에서 임의 샘플링 없이 완료했습니다.
 - 시간 분할: 모든 발전소에 같은 전역 날짜 경계를 적용합니다. Train 60%, Validation 15%,
   Calibration 10%, Test 15%이며 각 경계 앞에 최대 lookback 168시간을 비웁니다.
 - 역할 분리: Validation은 조기 종료·피처·Hybrid gate 선택, Calibration은 잔차 임계값 고정,

@@ -61,19 +61,24 @@ def test_candidate_intake_separates_generation_gate_from_weather_admission(tmp_p
     result = KrcYeongamCandidateIntakeService(
         source_dir,
         output_dir,
-        CandidateAcceptancePolicy(minimum_days=4, gap_hours=0),
+        CandidateAcceptancePolicy(
+            minimum_days=4,
+            gap_hours=0,
+            maximum_hourly_capacity_factor=1.10,
+        ),
     ).run()
 
     assert result.rows == 4 * 3 * 24
     assert result.plants == 3
-    assert result.status == "generation_ready_weather_mapping_and_unit_review_required"
+    assert result.status == "generation_ready_for_registry"
     assert [item.status for item in result.source_files] == [
         "quarantined",
         "accepted_for_generation_audit",
     ]
     assert all(profile.generation_gate_passed for profile in result.profiles)
     manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
-    assert manifest["unit_review_required"] is True
+    assert manifest["unit_review_required"] is False
+    assert manifest["unit_validation"]["passed"] is True
     assert manifest["weather_join"]["ready"] is False
     assert set(manifest["split_protocol"]["rows"]) == {
         "train",

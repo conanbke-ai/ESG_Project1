@@ -1,16 +1,22 @@
 {
   "display_name": "전국 태양광 발전량 예측·이상징후 알림 시스템",
   "scope_id": "nationwide_public_multi_provider",
-  "current_generation_providers": ["koen", "kospo", "ewp", "iwest"],
-  "expansion_providers": ["krc", "kdhc", "komipo", "kpx"],
+  "current_generation_providers": ["koen", "kospo", "ewp", "iwest", "krc"],
+  "expansion_providers": ["kdhc", "komipo", "kpx"],
   "nationwide_definition": "기관 수를 고정하지 않고, 공통 계약·기상 매핑·품질 게이트를 통과한 국내 공개 발전소를 지속적으로 확장하는 전국 표본",
   "current_validated_snapshot": {
     "as_of": "2026-08-27",
-    "source_files": 88,
-    "standardized_hourly_rows": 4236565,
-    "model_ready_rows": 2230839,
-    "model_ready_plants": 37,
-    "quarantined_plants": 29
+    "base_source_files": 88,
+    "candidate_source_files_inspected": 6,
+    "standardized_source_files": 92,
+    "standardized_hourly_rows": 4341756,
+    "registry_plants": 68,
+    "model_ready_rows": 2525434,
+    "model_ready_plants": 46,
+    "model_ready_solar_rows": 2401306,
+    "model_ready_solar_plants": 43,
+    "quarantined_plants": 22,
+    "withheld_for_missing_2026_weather_rows": 2832
   },
   "excludes": [
     "국내 모든 민간·공공 태양광 설비의 전수자료라는 주장",

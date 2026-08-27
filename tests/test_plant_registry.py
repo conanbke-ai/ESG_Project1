@@ -2,8 +2,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from solar_forecast.collectors.metadata import PlantMetadataCatalog
-from solar_forecast.features.registry import KmaStationCatalog, parse_administrative_area
+from solar_forecast.collectors.metadata import PlantMetadata, PlantMetadataCatalog
+from solar_forecast.features.registry import (
+    KmaStationCatalog,
+    ReviewedStationMapping,
+    ReviewedStationMappingCatalog,
+    parse_administrative_area,
+)
 from solar_forecast.features.service import NationwideModelDatasetBuilder
 
 
@@ -61,6 +66,27 @@ def test_station_catalog_quarantines_an_address_without_a_defensible_match():
     assert match.station_id is None
     assert match.review_required
     assert "insufficient" in str(match.reason)
+
+
+def test_reviewed_alias_keeps_one_physical_plant_identity_and_filters_ess_capacity():
+    catalog = PlantMetadataCatalog(
+        [
+            PlantMetadata("iwest", "화순풍력", "wind", 16.0, None, "전남 화순군", None),
+            PlantMetadata("iwest", "화순풍력", "storage", 1.25, None, "전남 화순군", None),
+        ]
+    )
+    assert catalog.canonical_plant("iwest", "영암에프원태양광b") == "영암F1 태양광"
+    assert catalog.canonical_plant("iwest", "(군산)영암F1태양광") == "영암F1 태양광"
+    wind = catalog.lookup("iwest", "화순풍력발전", energy_source="wind", aggregate=True)
+    assert wind is not None
+    assert wind.capacity_mw == 16.0
+
+
+def test_reviewed_station_mapping_catalog_is_explicit_and_auditable():
+    mapping = ReviewedStationMapping("krc", "율치", 259, "https://example.test", "reviewed")
+    catalog = ReviewedStationMappingCatalog([mapping])
+    assert catalog.get("krc", "율치") == mapping
+    assert catalog.get("krc", "영암1차") is None
 
 
 def test_nationwide_builder_does_not_filter_to_legacy_company_or_date(tmp_path: Path):

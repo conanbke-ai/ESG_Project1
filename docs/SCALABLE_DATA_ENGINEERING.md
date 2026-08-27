@@ -20,7 +20,7 @@
 |---|---|---|
 | 원본과 표준본 분리 | 원천 재현성과 재처리 가능성 | `file/raw`, `file/standardized` 경계 |
 | 스키마 registry/adapter | 회사별 컬럼 변경을 핵심 모델 코드에서 격리 | `collectors/normalization.py`, `archive.py` |
-| 파일 단위 처리 | 88개 파일 전체를 한 번에 원본 DataFrame으로 만들지 않음 | source-file bounded 표준화 |
+| 파일 단위 처리 | 88개 기본 파일과 4개 편입 후보 파일 전체를 한 번에 원본 DataFrame으로 만들지 않음 | source-file bounded 표준화 |
 | Silver/Gold 파티션 | Silver는 원본 파일별, Gold는 회사×연도로 잘라 필요한 컬럼·행만 읽음 | generation/model-ready manifests |
 | SHA-256·byte lineage | 같은 이름의 수정 파일과 입력 변경 추적 | partition별 source/output hash |
 | atomic replace | 중간 실패 시 완성되지 않은 manifest/파티션 노출 방지 | `.tmp` 완성 후 replace |
@@ -29,24 +29,24 @@
 | 누수 방지 분할 | 모든 발전소에 동일 날짜 경계와 168시간 purge 적용 | `TemporalSplitter` |
 | 메모리 제한 시퀀스 | `(행 × lookback)` 사전 복제를 피함 | `LazyWindowSequenceDataset` |
 | bounded 학습 로더 | 10만 행 chunk, 필터 pushdown, float32, 1.5GB hard limit | `DatasetLoadPolicy`/`DatasetLoadReport` |
+| API 호출 예산 | 중부발전 요청 전 최소 호출 수를 계산하고 station/day로 원자 저장·재개 | `KomipoRenewableCollector` |
 | 열 단위 CNN 통계 | Train 중앙값 계산 시 전체 훈련행×피처 행렬을 한 번 더 합치지 않음 | feature-wise median fitting |
 | 프레임워크별 결측 처리 | XGBoost는 native NaN, CNN은 Train 통계+mask | split별 preprocessing manifest |
 
-현재 검증 범위는 88개 공식 원본, 4,236,565개 표준 시간 행, 85개 설비단위 `plant_id`입니다.
-발전소×발전원 registry 66개 중 행정·기상 매핑 근거를 통과한 Gold는 37개 발전소,
-2,230,839행이며 29개는 quarantine했습니다. 이 수치들은 분산 빅데이터를 의미하지는 않지만,
+현재 검증 범위는 기본 공식 원본 88개와 농어촌공사 파일 6개입니다. 식별자 없는 2개 파일을
+격리하고 92개 파일에서 4,341,756개 표준 시간 행을 만들었습니다. 발전소×발전원 registry 68개 중
+행정·기상 매핑 근거를 통과한 Gold는 46개 발전소, 2,525,434행이며 22개는 quarantine했습니다.
+이 수치들은 분산 빅데이터를 의미하지는 않지만,
 파티셔닝·lineage·idempotent 재처리·품질 게이트를 실데이터로 설명하기에는 충분합니다.
-현재 원본 28,203,932 byte가 시간별 long gzip 파티션 32,752,403 byte가 됐습니다. gzip인데도
+편입 원본 28,833,903 byte가 시간별 long gzip 파티션 33,707,476 byte가 됐습니다. gzip인데도
 원본보다 큰 이유는 일별 wide 행의 메타데이터가 24개 시간 행에 반복되기 때문이며, 이 측정은
 Parquet columnar encoding 전환의 구체적인 근거로 사용합니다.
 
-Gold 28개 회사×연도 gzip 파티션은 110,222,041 byte입니다. 실제 XGBoost 계약으로 전체
-2,230,839행을 스캔해 태양광·품질 게이트를 통과한 2,115,471행만 유지했을 때, 26개 피처와
-문맥 컬럼을 포함한 pandas DataFrame은 361.14MB였습니다. 모든 수치 피처·타깃은 `float32`이며
+Gold 32개 회사×연도 gzip 파티션은 126,723,824 byte입니다. 실제 XGBoost 계약으로 전체
+2,525,434행을 스캔해 태양광·품질 게이트를 통과한 2,401,306행만 유지했을 때, 26개 피처와
+문맥 컬럼을 포함한 pandas DataFrame은 409.93MB였습니다. 모든 수치 피처·타깃은 `float32`이며
 설정된 1,536MB 상한을 넘으면 일부 행을 임의 샘플링하지 않고 실패합니다. 이 값은 DataFrame
 메모리 측정값이고 프로세스 peak RSS라고 과장하지 않습니다.
-최종 `prepare-data` 실행의 품질 프로파일링 구간에서 별도로 관측한 process working set은
-624.7MB였지만, 이것도 연속 계측한 peak RSS가 아니라 한 시점의 운영 확인값으로만 기록합니다.
 
 ## 확장 시 교체 순서
 
@@ -80,9 +80,9 @@ scanned/retained rows, 선택 컬럼, chunk 크기, dtype, DataFrame 메모리�
 
 ## 권장 포트폴리오 서술
 
-> 서로 다른 공공기관의 wide CSV를 버전 있는 시간별 MWh 계약으로 표준화하고, 424만 원천행과
-> 223만 Gold 행을 Silver/Gold gzip 파티션으로 처리했습니다. 원본·산출물 SHA-256과 atomic write로
-> lineage와 실패 안전성을 확보하고, 불확실한 29개 발전소는 quarantine했습니다. 학습 시에는
+> 서로 다른 공공기관의 wide CSV를 버전 있는 시간별 MWh 계약으로 표준화하고, 434만 Silver 행과
+> 253만 Gold 행을 gzip 파티션으로 처리했습니다. 원본·산출물 SHA-256과 atomic write로
+> lineage와 실패 안전성을 확보하고, 불확실한 22개 발전소는 quarantine했습니다. 학습 시에는
 > 10만 행 chunk에서 컬럼·품질 필터를 먼저 적용하고 float32·1.5GB hard limit를 강제했으며,
 > XGBoost native NaN과 CNN lazy window/missing mask로 결측과 메모리를 모델 특성에 맞게 처리했습니다.
 

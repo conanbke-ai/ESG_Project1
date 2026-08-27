@@ -15,6 +15,7 @@ from .generation import (
     KoenHomepageCollector,
 )
 from .kma import KmaAsosHourlyCollector
+from .openapi import KomipoRenewableCollector
 from .normalization import (
     DailyWideGenerationNormalizer,
     IWEST_WIDE_SCHEMA,
@@ -60,6 +61,7 @@ class CollectionService:
                 iwest_spec, config, DailyWideGenerationNormalizer(IWEST_WIDE_SCHEMA)
             ),
             "kma": lambda: KmaAsosHourlyCollector(config),
+            "komipo": lambda: KomipoRenewableCollector(config),
         }
 
     def run(self) -> list[CollectionResult]:

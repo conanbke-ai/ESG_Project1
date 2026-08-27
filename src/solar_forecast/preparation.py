@@ -7,6 +7,10 @@ from solar_forecast.collectors.archive import (
     HistoricalGenerationStandardizationService,
     StandardizationRun,
 )
+from solar_forecast.collectors.candidates import (
+    CandidateIntakeResult,
+    KrcYeongamCandidateIntakeService,
+)
 from solar_forecast.collectors.metadata import PlantMetadataCatalog
 from solar_forecast.features.service import ModelDatasetResult, NationwideModelDatasetBuilder
 from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
@@ -20,6 +24,7 @@ class DataPreparationResult:
     model_dataset: ModelDatasetResult
     quality: QualityAuditResult
     legacy_quality: QualityAuditResult
+    candidate_intake: CandidateIntakeResult | None = None
 
 
 class DataPreparationService:
@@ -48,6 +53,22 @@ class DataPreparationService:
             Path(partition.destination)
             for partition in generation.partitions
         )
+        candidate_intake: CandidateIntakeResult | None = None
+        krc_source = self.input_root.parent / "raw" / "한국농어촌공사" / "영암"
+        if krc_source.exists() and any(krc_source.glob("*.csv")):
+            candidate_intake = KrcYeongamCandidateIntakeService(
+                krc_source,
+                self.output_dir / "candidates" / "krc_yeongam",
+            ).run()
+            if candidate_intake.status == "generation_ready_for_registry":
+                candidate_paths = tuple(
+                    sorted(
+                        (self.output_dir / "candidates" / "krc_yeongam" / "generation").glob(
+                            "*.csv.gz"
+                        )
+                    )
+                )
+                generation_paths = (*generation_paths, *candidate_paths)
         builder = NationwideModelDatasetBuilder(self.weather_root, metadata)
         legacy_generation = builder.read_legacy_generation(self.merged_source)
         legacy_quality = QualityAuditService().run(
@@ -83,4 +104,10 @@ class DataPreparationService:
             self.output_dir,
             reference_paths=generation_paths,
         )
-        return DataPreparationResult(generation, model_dataset, quality, legacy_quality)
+        return DataPreparationResult(
+            generation,
+            model_dataset,
+            quality,
+            legacy_quality,
+            candidate_intake,
+        )

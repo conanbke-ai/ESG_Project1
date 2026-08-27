@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from math import asin, cos, radians, sin, sqrt
 from pathlib import Path
 import re
@@ -70,6 +71,47 @@ class StationMatch:
     confidence: str
     review_required: bool
     reason: str | None = None
+
+
+@dataclass(frozen=True)
+class ReviewedStationMapping:
+    company: str
+    plant: str
+    station_id: int
+    evidence_url: str
+    rationale: str
+
+
+class ReviewedStationMappingCatalog:
+    """Version-controlled, auditable exceptions for plants without local ASOS."""
+
+    def __init__(self, mappings: Iterable[ReviewedStationMapping] = ()):
+        self._mappings: dict[tuple[str, str], ReviewedStationMapping] = {}
+        for mapping in mappings:
+            key = (mapping.company, mapping.plant)
+            if key in self._mappings:
+                raise ValueError(f"Duplicate reviewed weather mapping: {key}")
+            self._mappings[key] = mapping
+
+    @classmethod
+    def from_json(cls, path: Path) -> "ReviewedStationMappingCatalog":
+        source = Path(path)
+        if not source.exists():
+            return cls()
+        payload = json.loads(source.read_text(encoding="utf-8"))
+        return cls(
+            ReviewedStationMapping(
+                company=str(row["company"]),
+                plant=str(row["plant"]),
+                station_id=int(row["station_id"]),
+                evidence_url=str(row["evidence_url"]),
+                rationale=str(row["rationale"]),
+            )
+            for row in payload.get("mappings", [])
+        )
+
+    def get(self, company: str, plant: str) -> ReviewedStationMapping | None:
+        return self._mappings.get((str(company), str(plant)))
 
 
 def parse_administrative_area(address: object) -> AdministrativeArea:
@@ -271,9 +313,15 @@ class NationwidePlantRegistryBuilder:
         "address",
     ]
 
-    def __init__(self, metadata: PlantMetadataCatalog, stations: KmaStationCatalog):
+    def __init__(
+        self,
+        metadata: PlantMetadataCatalog,
+        stations: KmaStationCatalog,
+        reviewed_mappings: ReviewedStationMappingCatalog | None = None,
+    ):
         self.metadata = metadata
         self.stations = stations
+        self.reviewed_mappings = reviewed_mappings or ReviewedStationMappingCatalog()
 
     def build(
         self,
@@ -289,7 +337,12 @@ class NationwidePlantRegistryBuilder:
             company = str(profile["company"])
             plant = str(profile["plant"])
             energy_source = str(profile["energy_source"])
-            record = self.metadata.lookup(company, plant, aggregate=True)
+            record = self.metadata.lookup(
+                company,
+                plant,
+                energy_source=energy_source,
+                aggregate=True,
+            )
             capacity = record.capacity_mw if record and record.capacity_mw is not None else profile["capacity_mw"]
             tilt = record.tilt_deg if record and record.tilt_deg is not None else profile["tilt_deg"]
             address = record.address if record and record.address else profile["address"]
@@ -333,9 +386,12 @@ class NationwidePlantRegistryBuilder:
             latitude = profile["latitude"]
             longitude = profile["longitude"]
             area = profile["area"]
-            legacy_station_id = legacy.get((company, plant))
+            reviewed = self.reviewed_mappings.get(company, plant)
+            legacy_station_id = reviewed.station_id if reviewed else legacy.get((company, plant))
             reviewed_method = "reviewed_legacy_mapping"
-            if legacy_station_id is None:
+            if reviewed:
+                reviewed_method = "reviewed_config_mapping"
+            elif legacy_station_id is None:
                 colocated_ids = colocated.get(self._address_key(address), set())
                 if len(colocated_ids) == 1:
                     legacy_station_id = next(iter(colocated_ids))
@@ -367,8 +423,11 @@ class NationwidePlantRegistryBuilder:
                     "weather_mapping_method": match.method,
                     "weather_mapping_confidence": match.confidence,
                     "weather_mapping_review_required": match.review_required,
+                    "weather_mapping_evidence_url": reviewed.evidence_url if reviewed else None,
+                    "weather_mapping_rationale": reviewed.rationale if reviewed else None,
                     "generation_start": profile["generation_start"],
                     "generation_end": profile["generation_end"],
+                    "source_plant_aliases": profile["source_plant_aliases"],
                     "source_observation_rows": profile["source_observation_rows"],
                     "source_partition_count": profile["source_partition_count"],
                     "model_ready_status": "eligible" if eligible else "quarantined",
@@ -395,7 +454,8 @@ class NationwidePlantRegistryBuilder:
             source = pd.read_csv(Path(path), usecols=self.scan_columns)
             source["timestamp"] = pd.to_datetime(source["timestamp"], errors="coerce")
             for key, group in source.groupby(["company", "plant", "energy_source"], sort=False):
-                company, plant, energy_source = map(str, key)
+                company, source_plant, energy_source = map(str, key)
+                plant = self.metadata.canonical_plant(company, source_plant)
                 profile = profiles.setdefault(
                     (company, plant, energy_source),
                     {
@@ -411,6 +471,7 @@ class NationwidePlantRegistryBuilder:
                         "generation_end": None,
                         "source_observation_rows": 0,
                         "source_partitions": set(),
+                        "source_plant_aliases": set(),
                     },
                 )
                 for column in ("capacity_mw", "tilt_deg", "latitude", "longitude", "address"):
@@ -424,22 +485,27 @@ class NationwidePlantRegistryBuilder:
                     profile["generation_end"] = end
                 profile["source_observation_rows"] = int(profile["source_observation_rows"]) + len(group)
                 profile["source_partitions"].add(str(path))
+                profile["source_plant_aliases"].add(source_plant)
         result = []
         for profile in profiles.values():
             profile["generation_start"] = profile["generation_start"].isoformat()
             profile["generation_end"] = profile["generation_end"].isoformat()
             profile["source_partition_count"] = len(profile.pop("source_partitions"))
+            profile["source_plant_aliases"] = " | ".join(sorted(profile["source_plant_aliases"]))
             result.append(profile)
         return result
 
-    @staticmethod
-    def _legacy_map(frame: pd.DataFrame | None) -> dict[tuple[str, str], int]:
+    def _legacy_map(self, frame: pd.DataFrame | None) -> dict[tuple[str, str], int]:
         if frame is None or frame.empty:
             return {}
         required = {"company", "plant", "station_id"}
         if not required.issubset(frame.columns):
             return {}
-        mapping = frame[list(required)].dropna().drop_duplicates()
+        mapping = frame[list(required)].dropna().drop_duplicates().copy()
+        mapping["plant"] = [
+            self.metadata.canonical_plant(company, plant)
+            for company, plant in mapping[["company", "plant"]].itertuples(index=False, name=None)
+        ]
         ambiguous = mapping.groupby(["company", "plant"]).size()
         ambiguous = ambiguous[ambiguous.gt(1)]
         if not ambiguous.empty:

@@ -86,10 +86,12 @@ def _run_hybrid(args: argparse.Namespace) -> None:
 def _run_collect(args: argparse.Namespace) -> None:
     config = CollectionConfig(
         start_date=date.fromisoformat(args.start_date),
-        end_date=date.today(),
+        end_date=date.fromisoformat(args.end_date) if args.end_date else date.today(),
         sources=_csv_list(args.sources) or [],
         output_dir=Path(args.output_dir),
         overwrite=args.overwrite,
+        komipo_station_codes=_csv_list(args.komipo_station_codes) or [],
+        api_max_calls=args.api_max_calls,
     )
     results = CollectionService(config).run()
     for result in results:
@@ -118,6 +120,12 @@ def _run_prepare_data(args: argparse.Namespace) -> None:
         f"Generation standardized: {len(result.generation.partitions)} files, "
         f"{result.generation.rows} hourly rows"
     )
+    if result.candidate_intake:
+        print(
+            f"Candidate generation admitted to registry gate: "
+            f"{result.candidate_intake.rows} rows, {result.candidate_intake.plants} plants "
+            f"({result.candidate_intake.status})"
+        )
     print(f"Generation manifest: {result.generation.manifest_path}")
     print(
         f"Model dataset: {result.model_dataset.path} "
@@ -196,9 +204,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     collect = commands.add_parser("collect", help="Collect official generation and KMA data")
     collect.add_argument("--start-date", required=True)
+    collect.add_argument("--end-date")
     collect.add_argument("--sources", default="koen,kospo,ewp,iwest,kma")
     collect.add_argument("--output-dir", default="file/raw")
     collect.add_argument("--overwrite", action="store_true")
+    collect.add_argument("--komipo-station-codes")
+    collect.add_argument("--api-max-calls", type=int, default=900)
     collect.set_defaults(func=_run_collect)
 
     prepare = commands.add_parser(
@@ -253,3 +264,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     args.func(args)
+
+
+if __name__ == "__main__":
+    main()

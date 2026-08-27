@@ -37,6 +37,8 @@ def classify_energy_source(value: object) -> str:
         return "wind"
     if any(token in name for token in ("수력", "hydro")):
         return "hydro"
+    if any(token in name for token in ("ess", "에너지저장", "energy storage")):
+        return "storage"
     return "unknown"
 
 

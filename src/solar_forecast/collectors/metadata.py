@@ -7,7 +7,7 @@ from typing import Iterable
 
 import pandas as pd
 
-from .normalization import read_csv_with_fallback
+from .normalization import classify_energy_source, read_csv_with_fallback
 
 
 def canonical_plant_name(value: object) -> str:
@@ -47,6 +47,7 @@ def _capacity_mw(value: object, default_unit: str) -> float | None:
 class PlantMetadata:
     company: str
     plant: str
+    energy_source: str | None
     capacity_mw: float | None
     tilt_deg: float | None
     address: str | None
@@ -64,6 +65,7 @@ class PlantMetadataCatalog:
     aliases = {
         ("koen", "구미태양광"): "구미정수장",
         ("koen", "탑선태양광"): "탑선옥상형",
+        ("koen", "고흥만 수상태양광"): "해창만 수상(98MW)",
         ("kospo", "하동본부"): "하동화력",
         ("kospo", "부산본부"): "부산발전본부1400kw",
         ("kospo", "부산수처리장"): "부산수처리건물",
@@ -71,14 +73,30 @@ class PlantMetadataCatalog:
         ("kospo", "신인천전망대"): "신인천법사면전망대",
         ("kospo", "신인천해수구취수구"): "신인천해수취수구",
         ("kospo", "하동보건소"): "하동군보건소",
+        ("kospo", "익산 다송리"): "다송리",
+        ("kospo", "신풍리"): "신풍리 태양광(제주)",
+        ("kospo", "용수리"): "제주 용수리 태양광",
         ("iwest", "(군산)삼랑진태양광"): "삼랑진 태양광 (FIT)",
+        ("iwest", "(군산)영암F1태양광"): "영암F1 태양광",
         ("iwest", "영암에프원태양광b"): "영암F1 태양광",
+        ("iwest", "화순풍력발전"): "화순풍력",
         ("iwest", "안산연성정수장태양광"): "경기도 안산연성 태양광",
         ("iwest", "태안#9,10 수상태양광"): "태안수상태양광",
     }
 
     def __init__(self, records: Iterable[PlantMetadata]):
         self.records = tuple(records)
+
+    @classmethod
+    def canonical_plant(cls, company: str, plant: str) -> str:
+        """Return the reviewed physical-asset name used across snapshots.
+
+        Public files rename the same asset between revisions.  Keeping the
+        alias decision in one catalog prevents registry, reconciliation, and
+        training identities from drifting apart.
+        """
+
+        return cls.aliases.get((str(company), str(plant)), str(plant)).strip()
 
     @classmethod
     def from_directory(cls, directory: Path) -> "PlantMetadataCatalog":
@@ -91,11 +109,24 @@ class PlantMetadataCatalog:
             if {"발전소명", "설치용량", "설치각"}.issubset(columns):
                 records.extend(cls._kospo(frame))
             elif {"사업명", "용량(kW)", "위치"}.issubset(columns):
-                records.extend(cls._standard(frame, "koen", "용량(kW)", "kw", "위치"))
+                records.extend(
+                    cls._standard(frame, "koen", "용량(kW)", "kw", "위치", "에너지원")
+                )
             elif {"사업명", "용량(kw)", "위치"}.issubset(columns):
-                records.extend(cls._standard(frame, "ewp", "용량(kw)", "kw", "위치"))
+                records.extend(
+                    cls._standard(frame, "ewp", "용량(kw)", "kw", "위치", "에너지원")
+                )
             elif {"사업명", "용량(MW)", "소재지"}.issubset(columns):
-                records.extend(cls._standard(frame, "iwest", "용량(MW)", "mw", "소재지"))
+                records.extend(
+                    cls._standard(
+                        frame,
+                        "iwest",
+                        "용량(MW)",
+                        "mw",
+                        "소재지",
+                        "신재생에너지원",
+                    )
+                )
         return cls(records)
 
     @staticmethod
@@ -107,6 +138,7 @@ class PlantMetadataCatalog:
                 PlantMetadata(
                     company="kospo",
                     plant=name,
+                    energy_source="solar",
                     unit=_unit_number(name),
                     capacity_mw=_capacity_mw(row.get("설치용량"), "kw"),
                     tilt_deg=_first_number(row.get("설치각")),
@@ -122,6 +154,7 @@ class PlantMetadataCatalog:
         capacity_column: str,
         capacity_unit: str,
         address_column: str,
+        energy_source_column: str | None = None,
     ) -> list[PlantMetadata]:
         rows = []
         for row in frame.to_dict("records"):
@@ -130,6 +163,11 @@ class PlantMetadataCatalog:
                 PlantMetadata(
                     company=company,
                     plant=name,
+                    energy_source=(
+                        classify_energy_source(row.get(energy_source_column))
+                        if energy_source_column
+                        else None
+                    ),
                     unit=_unit_number(name),
                     capacity_mw=_capacity_mw(row.get(capacity_column), capacity_unit),
                     tilt_deg=None,
@@ -143,15 +181,20 @@ class PlantMetadataCatalog:
         company: str,
         plant: str,
         unit: str | None = None,
+        energy_source: str | None = None,
         *,
         aggregate: bool = False,
     ) -> PlantMetadata | None:
-        query = self.aliases.get((company, plant), plant)
+        query = self.canonical_plant(company, plant)
         query_key = re.sub(r"#\d+$", "", canonical_plant_name(query))
         candidates = [
             record
             for record in self.records
             if record.company == company
+            and (
+                energy_source is None
+                or record.energy_source in {None, "unknown", energy_source}
+            )
             and (
                 record.key == query_key
                 or (len(query_key) >= 4 and query_key in record.key)
@@ -167,6 +210,7 @@ class PlantMetadataCatalog:
             return PlantMetadata(
                 company=company,
                 plant=plant,
+                energy_source=energy_source,
                 capacity_mw=sum(capacities) if capacities else None,
                 tilt_deg=sum(tilts) / len(tilts) if tilts else None,
                 address=addresses[0] if addresses else None,
@@ -180,26 +224,40 @@ class PlantMetadataCatalog:
 
     def enrich(self, frame: pd.DataFrame, *, aggregate: bool = False) -> pd.DataFrame:
         result = frame.copy()
-        keys = result[["company", "plant", "unit"]].drop_duplicates()
+        key_columns = ["company", "plant", "unit"]
+        if "energy_source" in result:
+            key_columns.append("energy_source")
+        keys = result[key_columns].drop_duplicates()
+        merge_keys = ["company", "plant", "unit"]
+        if "energy_source" in result:
+            merge_keys.append("energy_source")
         metadata_rows: list[dict[str, object]] = []
         for row in keys.itertuples(index=False):
             company, plant, unit = str(row.company), str(row.plant), str(row.unit)
-            record = self.lookup(company, plant, unit, aggregate=aggregate)
+            energy_source = str(getattr(row, "energy_source", "")) or None
+            record = self.lookup(
+                company,
+                plant,
+                unit,
+                energy_source=energy_source,
+                aggregate=aggregate,
+            )
             if record:
-                metadata_rows.append(
-                    {
-                        "company": company,
-                        "plant": plant,
-                        "unit": unit,
-                        "_capacity_mw": record.capacity_mw,
-                        "_tilt_deg": record.tilt_deg,
-                        "_address": record.address,
-                    }
-                )
+                metadata_row = {
+                    "company": company,
+                    "plant": plant,
+                    "unit": unit,
+                    "_capacity_mw": record.capacity_mw,
+                    "_tilt_deg": record.tilt_deg,
+                    "_address": record.address,
+                }
+                if "energy_source" in result:
+                    metadata_row["energy_source"] = energy_source
+                metadata_rows.append(metadata_row)
         if not metadata_rows:
             return result
         metadata = pd.DataFrame(metadata_rows)
-        result = result.merge(metadata, on=["company", "plant", "unit"], how="left", validate="many_to_one")
+        result = result.merge(metadata, on=merge_keys, how="left", validate="many_to_one")
         for target, fallback in (
             ("capacity_mw", "_capacity_mw"),
             ("tilt_deg", "_tilt_deg"),

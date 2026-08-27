@@ -10,6 +10,7 @@ from .normalization import (
 )
 from .archive import HistoricalGenerationStandardizationService
 from .candidates import KrcYeongamCandidateIntakeService
+from .openapi import KomipoRenewableCollector
 
 __all__ = [
     "CollectionConfig",
@@ -20,5 +21,6 @@ __all__ = [
     "KrcYeongamCandidateIntakeService",
     "KrcYeongamGenerationNormalizer",
     "KoenGenerationNormalizer",
+    "KomipoRenewableCollector",
     "collect_all",
 ]
