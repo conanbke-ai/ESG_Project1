@@ -29,6 +29,7 @@
 | 누수 방지 분할 | 모든 발전소에 동일 날짜 경계와 168시간 purge 적용 | `TemporalSplitter` |
 | 메모리 제한 시퀀스 | `(행 × lookback)` 사전 복제를 피함 | `LazyWindowSequenceDataset` |
 | bounded 학습 로더 | 10만 행 chunk, 필터 pushdown, float32, 1.5GB hard limit | `DatasetLoadPolicy`/`DatasetLoadReport` |
+| bounded 하이퍼파라미터 탐색 | XGBoost 대표행·CNN lazy sequence 상한, trial/시간 예산, pruning 후 전체 Train 재학습 | 모델별 `optimizer` 설정·SQLite study |
 | API 호출 예산 | 중부발전 요청 전 최소 호출 수를 계산하고 station/day로 원자 저장·재개 | `KomipoRenewableCollector` |
 | 열 단위 CNN 통계 | Train 중앙값 계산 시 전체 훈련행×피처 행렬을 한 번 더 합치지 않음 | feature-wise median fitting |
 | 프레임워크별 결측 처리 | XGBoost는 native NaN, CNN은 Train 통계+mask | split별 preprocessing manifest |
@@ -77,6 +78,11 @@ Gold 32개 회사×연도 gzip 파티션은 126,723,824 byte입니다. 실제 XG
 scanned/retained rows, 선택 컬럼, chunk 크기, dtype, DataFrame 메모리를 남깁니다. wall time과
 프로세스 peak RSS 자동 계측, Parquet predicate pushdown, 변경 파티션 skip은 다음 데이터
 엔지니어링 실험으로 분리합니다.
+
+Optuna는 모델별 study를 SQLite에 저장하고 중단 후 남은 trial만 수행합니다. 튜닝 단계는 XGBoost
+Train 750,000/Validation 250,000행, CNN Train 250,000/Validation 100,000 lazy sequence를 기본
+상한으로 사용하지만, 최종 선택 모델은 전체 Train으로 다시 학습합니다. Calibration/Test를 탐색
+표본으로 사용하지 않으므로 계산량 제한이 평가 누수로 이어지지 않습니다.
 
 ## 권장 포트폴리오 서술
 

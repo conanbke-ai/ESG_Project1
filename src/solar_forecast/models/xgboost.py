@@ -15,6 +15,9 @@ from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.pipeline.preprocessing import NumericPreprocessor
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT
 
+from .optimization import OptimizationSettings
+from .xgboost_optimization import XGBoostHyperparameterOptimizer
+
 
 class XGBoostTrainer:
     """Concrete training strategy that owns XGBoost-specific persistence."""
@@ -53,19 +56,55 @@ class XGBoostTrainer:
             purge_gap_hours=0 if smoke else int(config.values.get("purge_gap_hours", 168)),
             )
         )
+        run_dir.mkdir(parents=True, exist_ok=True)
+        optimization_settings = OptimizationSettings.from_values(
+            config.values,
+            model="xgboost",
+        )
+        optimization_result = None
+        if optimization_settings.enabled and not smoke:
+            optimization_result = XGBoostHyperparameterOptimizer(
+                optimization_settings,
+                config.values,
+            ).optimize(
+                train_frame,
+                validation_frame,
+                feature_columns=prepared.feature_columns,
+                target_column=target,
+                artifact_dir=run_dir,
+            )
+        optimizer_values = config.values.get("optimizer", {})
         params = {
-            "n_estimators": 20 if smoke else int(config.values.get("n_estimators", 500)),
+            "n_estimators": (
+                20
+                if smoke
+                else int(
+                    optimizer_values.get("trial_max_estimators", 1_500)
+                    if optimization_result and isinstance(optimizer_values, dict)
+                    else config.values.get("n_estimators", 500)
+                )
+            ),
             "max_depth": int(config.values.get("max_depth", 8)),
             "learning_rate": float(config.values.get("learning_rate", 0.05)),
             "subsample": float(config.values.get("subsample", 0.9)),
             "colsample_bytree": float(config.values.get("colsample_bytree", 0.9)),
             "tree_method": "hist",
             "max_bin": int(config.values.get("max_bin", 256)),
+            "eval_metric": "mae",
             "random_state": int(config.values.get("seed", 42)),
             "n_jobs": int(config.values.get("n_jobs", 4)),
         }
+        if optimization_result:
+            params.update(optimization_result.best_params)
         if not smoke:
-            params["early_stopping_rounds"] = int(config.values.get("early_stopping_rounds", 10))
+            params["early_stopping_rounds"] = int(
+                optimizer_values.get(
+                    "early_stopping_rounds",
+                    config.values.get("early_stopping_rounds", 10),
+                )
+                if isinstance(optimizer_values, dict)
+                else config.values.get("early_stopping_rounds", 10)
+            )
         model = XGBRegressor(**params)
         model.fit(
             train_frame[prepared.feature_columns],
@@ -76,7 +115,6 @@ class XGBoostTrainer:
         validation_predicted = model.predict(validation_frame[prepared.feature_columns])
         calibration_predicted = model.predict(calibration_frame[prepared.feature_columns])
         predicted = model.predict(test_frame[prepared.feature_columns])
-        run_dir.mkdir(parents=True, exist_ok=True)
         model_path = run_dir / "model.json"
         model.save_model(model_path)
         preprocessing_path = run_dir / "preprocessing.json"
@@ -98,6 +136,16 @@ class XGBoostTrainer:
                         }.items()
                     },
                     "quality_filter_column": config.values.get("quality_filter_column"),
+                    "optimizer": (
+                        optimization_result.to_dict()
+                        if optimization_result
+                        else {
+                            "enabled": False,
+                            "reason": "smoke_mode" if smoke else "disabled_by_config",
+                            "selection_data": "validation_only",
+                            "test_usage": "none",
+                        }
+                    ),
                     "memory_aware_loading": load_report.to_dict(),
                     "temporal_split": split_metadata,
                 },
@@ -138,6 +186,14 @@ class XGBoostTrainer:
             "n_calibration": len(calibration_frame),
             "n_test": len(test_frame),
             "temporal_split": split_metadata,
+            "optimizer": (
+                optimization_result.to_dict()
+                if optimization_result
+                else {
+                    "enabled": False,
+                    "reason": "smoke_mode" if smoke else "disabled_by_config",
+                }
+            ),
             "memory_aware_loading": load_report.to_dict(),
         }
 

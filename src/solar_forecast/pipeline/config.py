@@ -20,6 +20,7 @@ class PipelineConfig:
     epochs: int = 50
     n_trials: int = 10
     use_optuna: bool = True
+    optimizer_timeout_seconds: int | None = None
     use_reinforcement: bool = False
     contamination: float = 0.05
     artifact_level: str = "minimal"
@@ -27,3 +28,7 @@ class PipelineConfig:
     def __post_init__(self) -> None:
         if self.artifact_level not in {"minimal", "standard", "debug"}:
             raise ValueError("artifact_level must be one of: minimal, standard, debug")
+        if self.n_trials < 1:
+            raise ValueError("n_trials must be positive")
+        if self.optimizer_timeout_seconds is not None and self.optimizer_timeout_seconds < 1:
+            raise ValueError("optimizer_timeout_seconds must be positive or null")

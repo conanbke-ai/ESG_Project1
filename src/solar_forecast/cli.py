@@ -14,7 +14,7 @@ from solar_forecast.ensemble.service import HybridExperiment
 from solar_forecast.evaluation import FeatureAblationService
 from solar_forecast.jobs.training import TrainingService
 from solar_forecast.preparation import DataPreparationService
-from solar_forecast.settings import PROJECT_ROOT, load_model_config
+from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT, load_model_config
 
 
 def _csv_list(value: str | None) -> list[str] | None:
@@ -66,6 +66,7 @@ def _run_pipeline(args: argparse.Namespace) -> None:
         epochs=args.epochs,
         n_trials=args.n_trials,
         use_optuna=not args.no_optuna,
+        optimizer_timeout_seconds=args.optimizer_timeout_seconds,
         use_reinforcement=args.reinforcement,
         contamination=args.contamination,
         artifact_level=args.artifact_level,
@@ -105,6 +106,16 @@ def _run_train(args: argparse.Namespace) -> None:
     config = load_model_config(config_path)
     if config.model != args.model:
         raise ValueError(f"Config model '{config.model}' does not match '{args.model}'")
+    values = dict(config.values)
+    optimizer = dict(values.get("optimizer", {}))
+    if args.no_optuna:
+        optimizer["enabled"] = False
+    if args.max_trials is not None:
+        optimizer["max_trials"] = args.max_trials
+    if args.optimizer_timeout_seconds is not None:
+        optimizer["timeout_seconds"] = args.optimizer_timeout_seconds
+    values["optimizer"] = optimizer
+    config = ModelJobConfig(config.model, config.profile, values, config.source)
     run_dir = TrainingService().run(config, smoke=args.smoke)
     print(f"Completed {args.model}: {run_dir}")
 
@@ -188,6 +199,7 @@ def build_parser() -> argparse.ArgumentParser:
     pipeline.add_argument("--output-dir", default="output/pipeline")
     pipeline.add_argument("--epochs", type=int, default=50)
     pipeline.add_argument("--n-trials", type=int, default=10)
+    pipeline.add_argument("--optimizer-timeout-seconds", type=int)
     pipeline.add_argument("--no-optuna", action="store_true")
     pipeline.add_argument("--reinforcement", action="store_true")
     pipeline.add_argument("--contamination", type=float, default=0.05)
@@ -240,6 +252,21 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("model", choices=["xgboost", "cnn_bilstm"])
     train.add_argument("--config")
     train.add_argument("--smoke", action="store_true")
+    train.add_argument(
+        "--no-optuna",
+        action="store_true",
+        help="Skip hyperparameter search and use the fixed model config",
+    )
+    train.add_argument(
+        "--max-trials",
+        type=int,
+        help="Override the maximum total trials in the resumable study",
+    )
+    train.add_argument(
+        "--optimizer-timeout-seconds",
+        type=int,
+        help="Override the wall-time budget for this optimization call",
+    )
     train.set_defaults(func=_run_train)
 
     status = commands.add_parser("status", help="Show the active training job")

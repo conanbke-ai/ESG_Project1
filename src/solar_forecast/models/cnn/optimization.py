@@ -1,7 +1,10 @@
 """Optuna study utilities for the CNN-BiLSTM model."""
 from __future__ import annotations
 
+import copy
+import gc
 import json
+from pathlib import Path
 from typing import Dict, Optional
 
 import numpy as np
@@ -10,9 +13,14 @@ import torch
 import torch.nn as nn
 from optuna.trial import Trial
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
-from .data import SequenceConfig, prepare_datasets
+from solar_forecast.models.optimization import (
+    OptimizationSettings,
+    OptunaStudyService,
+)
+
+from .data import SequenceConfig, prepare_dataset_splits
 from .model import CNNBiLSTM, ModelConfig, build_model
 
 
@@ -73,6 +81,33 @@ def _suggest_model_config(trial: Trial, n_features: int) -> ModelConfig:
     )
 
 
+def _bounded_loader(
+    loader: DataLoader,
+    maximum_sequences: int | None,
+    *,
+    shuffle: bool,
+) -> DataLoader:
+    if maximum_sequences is None or len(loader.dataset) <= maximum_sequences:
+        return loader
+    if maximum_sequences < 1:
+        raise ValueError("optimizer sequence limits must be positive or null")
+    indices = np.linspace(
+        0,
+        len(loader.dataset) - 1,
+        num=maximum_sequences,
+        dtype=np.int64,
+    ).tolist()
+    bounded = DataLoader(
+        Subset(loader.dataset, indices),
+        batch_size=loader.batch_size,
+        shuffle=shuffle,
+        num_workers=0,
+    )
+    bounded.preprocessing_state = getattr(loader, "preprocessing_state", None)
+    bounded.split_metadata = getattr(loader, "split_metadata", None)
+    return bounded
+
+
 def run_study(
     frame,
     target_column: str,
@@ -83,42 +118,83 @@ def run_study(
     timeout: Optional[int] = None,
     entity_column: Optional[str] = None,
     timestamp_column: Optional[str] = None,
+    trial_epochs: int = 20,
+    early_stopping_patience: int = 5,
+    maximum_train_sequences: int | None = None,
+    maximum_validation_sequences: int | None = None,
+    settings: OptimizationSettings | None = None,
+    artifact_dir: Path | None = None,
 ) -> optuna.Study:
-    """Execute an Optuna study returning the Study object."""
+    """Select architecture and optimizer values from Validation only."""
 
     cfg = sequence_config or SequenceConfig()
-    train_loader, val_loader, _, n_features = prepare_datasets(
+    loaders = prepare_dataset_splits(
         frame, target_column, feature_columns, cfg, entity_column, timestamp_column
     )
+    train_loader = _bounded_loader(
+        loaders.train,
+        maximum_train_sequences,
+        shuffle=cfg.shuffle,
+    )
+    val_loader = _bounded_loader(
+        loaders.validation,
+        maximum_validation_sequences,
+        shuffle=False,
+    )
+    n_features = loaders.n_features
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if min(trial_epochs, early_stopping_patience) < 1:
+        raise ValueError("optimizer trial epochs and patience must be positive")
 
     def objective(trial: Trial) -> float:
+        seed = (settings.seed if settings else 42) + trial.number
+        np.random.seed(seed)
+        torch.manual_seed(seed)
         model_cfg = _suggest_model_config(trial, n_features)
         model = build_model(model_cfg, device=device)
         lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
         weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         criterion = nn.MSELoss()
-        patience, best_loss, wait = 5, float("inf"), 0
+        best_mae, wait = float("inf"), 0
 
-        for epoch in range(50):
-            _train_one_epoch(model, train_loader, criterion, optimizer, device)
-            metrics = _evaluate(model, val_loader, criterion, device)
-            trial.report(metrics["loss"], step=epoch)
-            if trial.should_prune():
-                raise optuna.TrialPruned()
+        try:
+            for epoch in range(trial_epochs):
+                _train_one_epoch(model, train_loader, criterion, optimizer, device)
+                metrics = _evaluate(model, val_loader, criterion, device)
+                validation_mae = float(metrics["mae"])
+                trial.report(validation_mae, step=epoch)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
 
-            if metrics["loss"] + 1e-6 < best_loss:
-                best_loss = metrics["loss"]
-                wait = 0
-            else:
-                wait += 1
-            if wait >= patience:
-                break
-        return best_loss
+                if validation_mae + 1e-6 < best_mae:
+                    best_mae = validation_mae
+                    wait = 0
+                else:
+                    wait += 1
+                if wait >= early_stopping_patience:
+                    break
+            trial.set_user_attr("tuning_train_sequences", len(train_loader.dataset))
+            trial.set_user_attr(
+                "tuning_validation_sequences", len(val_loader.dataset)
+            )
+            return best_mae
+        finally:
+            del model
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
-    study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=n_trials, timeout=timeout)
+    if settings:
+        if artifact_dir is None:
+            raise ValueError("artifact_dir is required for a persistent Optuna study")
+        return OptunaStudyService(settings).run(objective, artifact_dir).study
+    study = optuna.create_study(
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=42),
+        pruner=optuna.pruners.MedianPruner(),
+    )
+    study.optimize(objective, n_trials=n_trials, timeout=timeout, gc_after_trial=True)
     return study
 
 
@@ -131,6 +207,14 @@ def train_with_best_trial(
     device: Optional[torch.device] = None,
     entity_column: Optional[str] = None,
     timestamp_column: Optional[str] = None,
+    epochs: int = 50,
+    trial_epochs: int = 20,
+    early_stopping_patience: int = 5,
+    maximum_train_sequences: int | None = None,
+    maximum_validation_sequences: int | None = None,
+    settings: OptimizationSettings | None = None,
+    artifact_dir: Path | None = None,
+    timeout: Optional[int] = None,
 ) -> Dict[str, object]:
     """Run Optuna then train/evaluate the best model; returns artifacts."""
 
@@ -144,10 +228,20 @@ def train_with_best_trial(
         device=device,
         entity_column=entity_column,
         timestamp_column=timestamp_column,
+        trial_epochs=trial_epochs,
+        early_stopping_patience=early_stopping_patience,
+        maximum_train_sequences=maximum_train_sequences,
+        maximum_validation_sequences=maximum_validation_sequences,
+        settings=settings,
+        artifact_dir=artifact_dir,
+        timeout=timeout,
     )
     best_params = study.best_params
+    loaders = prepare_dataset_splits(
+        frame, target_column, feature_columns, cfg, entity_column, timestamp_column
+    )
     model_cfg = ModelConfig(
-        n_features=len(feature_columns or [c for c in frame.columns if c != target_column]),
+        n_features=loaders.n_features,
         cnn_channels=best_params["cnn_channels"],
         kernel_size=best_params["kernel_size"],
         lstm_hidden=best_params["lstm_hidden"],
@@ -156,9 +250,8 @@ def train_with_best_trial(
         dropout=best_params["dropout"],
     )
 
-    train_loader, val_loader, test_loader, _ = prepare_datasets(
-        frame, target_column, feature_columns, cfg, entity_column, timestamp_column
-    )
+    train_loader = loaders.train
+    val_loader = loaders.validation
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_model(model_cfg, device=device)
     optimizer = torch.optim.Adam(
@@ -166,23 +259,32 @@ def train_with_best_trial(
     )
     criterion = nn.MSELoss()
 
-    best_state, best_val = None, float("inf")
-    for _ in range(50):
+    best_state, best_val, wait = None, float("inf"), 0
+    for _ in range(epochs):
         _train_one_epoch(model, train_loader, criterion, optimizer, device)
         metrics = _evaluate(model, val_loader, criterion, device)
-        if metrics["loss"] < best_val:
-            best_val = metrics["loss"]
-            best_state = model.state_dict()
+        if metrics["mae"] + 1e-6 < best_val:
+            best_val = float(metrics["mae"])
+            best_state = copy.deepcopy(model.state_dict())
+            wait = 0
+        else:
+            wait += 1
+        if wait >= early_stopping_patience:
+            break
     if best_state is not None:
         model.load_state_dict(best_state)
 
-    test_metrics = _evaluate(model, test_loader, criterion, device)
+    validation_metrics = _evaluate(model, loaders.validation, criterion, device)
+    calibration_metrics = _evaluate(model, loaders.calibration, criterion, device)
+    test_metrics = _evaluate(model, loaders.test, criterion, device)
     return {
         "study": study,
         "model": model,
         "model_config": model_cfg,
         "metrics": test_metrics,
         "best_params": best_params,
+        "validation_metrics": validation_metrics,
+        "calibration_metrics": calibration_metrics,
         "preprocessing": getattr(train_loader, "preprocessing_state", None),
     }
 
@@ -191,4 +293,15 @@ def save_study_results(study: optuna.Study, path: str) -> None:
     """Persist study results to disk."""
 
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"best_params": study.best_params, "best_value": study.best_value}, f, indent=2)
+        json.dump(
+            {
+                "selection_data": "validation_only",
+                "objective_metric": "validation_mae",
+                "best_params": study.best_params,
+                "best_value": study.best_value,
+                "best_trial_number": study.best_trial.number,
+                "test_usage": "none",
+            },
+            f,
+            indent=2,
+        )

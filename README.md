@@ -25,7 +25,8 @@
 명시한 파일을 사용하는 경우:
 
 ```bash
-python app.py pipeline "합산발전량(MWh)" --data file/merge_data/val.csv --no-optuna --epochs 10
+python app.py pipeline "합산발전량(MWh)" --data file/merge_data/val.csv \
+  --epochs 10 --n-trials 5 --optimizer-timeout-seconds 1800
 ```
 
 파일을 생략하면 `--input-dir` 아래의 최신 CSV 또는 Excel 파일을 자동으로 선택합니다.
@@ -272,12 +273,37 @@ python app.py status
 처음 실행하거나 원본을 갱신한 뒤에는 `python app.py prepare-data`를 먼저 실행해야 합니다.
 학습 job은 모든 파티션의 발전소에 같은 전역 시간 경계를 적용해 네 역할을 내부에서 나눕니다.
 
+두 독립 모델은 기본적으로 Optuna를 사용합니다. XGBoost는 최대 30 trial/2시간, CNN-BiLSTM은
+최대 20 trial/4시간이며 `artifacts/optimization/solar_models.db`의 모델별 study를 재개합니다.
+`max_trials`는 실행할 때마다 더하는 수가 아니라 해당 study의 **최대 누적 trial 수**입니다.
+
+- 탐색 입력: Train과 Validation만 사용
+- 목적함수: Validation MAE
+- XGBoost: boosting iteration별 pruning + early stopping
+- CNN-BiLSTM: epoch별 pruning + early stopping, lazy sequence 중 제한된 대표 표본으로 탐색
+- 최종 학습: 선택된 설정으로 전체 Train을 다시 사용
+- Calibration: 잔차 임계값·구간 보정용으로 예약
+- Test: 설정 선택이 끝난 뒤 마지막 성능 보고에만 1회 사용
+
+시간을 더 줄이거나 고정 설정을 재현할 때만 CLI에서 제한을 덮어씁니다.
+
+```bash
+python app.py train xgboost --max-trials 10 --optimizer-timeout-seconds 1800
+python app.py train cnn_bilstm --max-trials 5 --optimizer-timeout-seconds 3600
+python app.py train xgboost --no-optuna
+python app.py train cnn_bilstm --smoke
+```
+
+각 실행 폴더에는 `optimization_summary.json`, `optimization_trials.csv`, 최종 `best_params.json`과
+모델 manifest가 저장됩니다. 데이터·피처·분할 또는 탐색공간을 바꿀 때는 기존 trial을 섞지 않도록
+설정의 `study_name` 버전을 올립니다. `--smoke`는 배선 검사 목적이므로 Optuna를 자동 생략합니다.
+
 ## 포트폴리오 실험 구분
 
 실험 정의는 `config/experiments/` 아래에 분리되어 있습니다.
 
 - `controlled.json`: 동일 lookback, 동일 피처 정보, 동일 시간 분할의 구조 비교
-- `optimized.json`: 기존 XGBoost/CNN-BiLSTM 튜닝 설정을 보존한 실전 성능 비교
+- `optimized.json`: 같은 태양광 표본·피처·분할에서 Validation-only Optuna를 적용한 성능 비교
 - `hybrid.json`: Validation의 지역·시간대별 모델 신뢰도를 근거로 매 행의 결합비를 결정하는 동적 Hybrid
 
 Hybrid 입력 CSV는 두 모델의 예측이 같은 행에 정렬되어 있어야 합니다.

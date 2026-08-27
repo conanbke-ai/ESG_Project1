@@ -72,6 +72,10 @@ facade로만 유지합니다.
 - `DataPreparationService`: 전체 표준화와 `model_ready.csv.gz`/`model_ready_parts` 생성을 하나의
   재현 가능한 유스케이스로 묶음
 - `TrainingService`: 모델 전략 선택, 전역 학습 잠금, 성공/실패 manifest 관리
+- `OptunaStudyService`: 모델별 SQLite study의 최대 누적 trial·시간 예산·재개·Validation-only
+  선택 근거와 trial 표를 관리
+- `XGBoostHyperparameterOptimizer`: 제한된 Train/Validation 대표행에서 boosting-round pruning과
+  early stopping을 수행하고 선택된 설정을 전체 Train 학습에 전달
 - `ExplainableDynamicGate`: 발전소·지역·시간·출력 regime·모델 불일치별 Validation 근거와 행별 동적 결합
 - `HybridExperiment`: Hybrid 입력/평가/결과 파일의 유스케이스 경계
 
@@ -89,6 +93,8 @@ python app.py evaluate-features
 
 장시간 기본 모델 학습은 `artifacts/.training.lock`으로 직렬화합니다. Hybrid와 보고 작업은
 저장된 예측을 사용하므로 기본 모델 학습과 분리할 수 있습니다.
+Optuna study는 `artifacts/optimization/solar_models.db`에 별도 저장되며, Test는 목적함수나 pruning
+판단에 전달하지 않습니다.
 
 ## 데이터 계약
 

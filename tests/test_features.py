@@ -60,6 +60,9 @@ def test_model_configs_match_the_selected_generated_columns():
         assert values["input_dataset"] == "file/standardized/model_ready_parts"
         assert values["target_column"] == "generation_mwh"
         assert values["feature_columns"] == SELECTED_MODEL_FEATURES
+        assert values["energy_source_filter"] == "solar"
+        assert values["optimizer"]["enabled"] is True
+        assert values["optimizer"]["objective_metric"] == "validation_mae"
 
 
 def test_controlled_experiment_forbids_unavailable_subday_lags():

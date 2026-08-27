@@ -11,6 +11,8 @@ import pandas as pd
 import torch
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+from solar_forecast.models.optimization import OptimizationSettings
+
 from .data import SequenceConfig, prepare_dataset_splits, prepare_datasets
 from .model import ModelConfig, build_model
 from .optimization import _evaluate, _train_one_epoch, save_study_results, train_with_best_trial
@@ -37,6 +39,12 @@ def train_and_save(
     epochs: int = 50,
     entity_column: Optional[str] = None,
     timestamp_column: Optional[str] = None,
+    optimizer_settings: OptimizationSettings | None = None,
+    optimizer_trial_epochs: int = 20,
+    early_stopping_patience: int = 5,
+    optimizer_max_train_sequences: int | None = None,
+    optimizer_max_validation_sequences: int | None = None,
+    optimizer_timeout_seconds: int | None = None,
 ) -> Dict[str, object]:
     """Train the model with Optuna and/or reinforcement learning then persist artifacts.
 
@@ -55,10 +63,25 @@ def train_and_save(
             n_trials=n_trials,
             entity_column=entity_column,
             timestamp_column=timestamp_column,
+            epochs=epochs,
+            trial_epochs=optimizer_trial_epochs,
+            early_stopping_patience=early_stopping_patience,
+            maximum_train_sequences=optimizer_max_train_sequences,
+            maximum_validation_sequences=optimizer_max_validation_sequences,
+            settings=optimizer_settings,
+            artifact_dir=run_dir,
+            timeout=optimizer_timeout_seconds,
         )
         model, model_cfg = result["model"], result["model_config"]
         study = result["study"]
         save_study_results(study, str(run_dir / "optuna_best.json"))
+        if optimizer_settings is None:
+            save_study_results(study, str(run_dir / "optimization_summary.json"))
+            study.trials_dataframe().to_csv(
+                run_dir / "optimization_trials.csv",
+                index=False,
+                encoding="utf-8-sig",
+            )
     else:
         # Fallback to deterministic config
         loaders = prepare_dataset_splits(
@@ -114,6 +137,24 @@ def train_and_save(
     with open(run_dir / "best_params.json", "w", encoding="utf-8") as f:
         json.dump(result.get("best_params", {}), f, indent=2)
 
+    optimizer_artifact = (
+        {
+            "enabled": True,
+            "selection_data": "validation_only",
+            "objective_metric": "validation_mae",
+            "best_validation_mae": float(study.best_value),
+            "best_params": dict(study.best_params),
+            "summary_path": str(run_dir / "optimization_summary.json"),
+            "trials_path": str(run_dir / "optimization_trials.csv"),
+            "test_usage": "none",
+        }
+        if use_optuna
+        else {
+            "enabled": False,
+            "reason": "disabled_by_config",
+        }
+    )
+
     return {
         "model": model,
         "config": model_cfg,
@@ -121,6 +162,7 @@ def train_and_save(
         "output_dir": str(run_dir),
         "checkpoint_path": str(checkpoint_path),
         "temporal_split": temporal_split,
+        "optimizer": optimizer_artifact,
     }
 
 

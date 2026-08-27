@@ -21,6 +21,7 @@ class CnnTrainingAdapter:
             n_trials=config.n_trials,
             output_dir=str(run_dir / "model"),
             use_optuna=config.use_optuna,
+            optimizer_timeout_seconds=config.optimizer_timeout_seconds,
             use_reinforcement=config.use_reinforcement,
             epochs=config.epochs,
         )

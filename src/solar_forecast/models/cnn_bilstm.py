@@ -5,6 +5,7 @@ from pathlib import Path
 
 from solar_forecast.models.cnn.config import SequenceConfig
 from solar_forecast.models.cnn.workflow import train_and_save
+from solar_forecast.models.optimization import OptimizationSettings
 from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.pipeline.preprocessing import NumericPreprocessor
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT
@@ -61,24 +62,50 @@ class CnnBiLstmTrainer:
                 config.values.get("append_missing_indicators", True)
             ),
         )
+        optimization_settings = OptimizationSettings.from_values(
+            config.values,
+            model="cnn_bilstm",
+        )
+        optimizer_values = config.values.get("optimizer", {})
+        if not isinstance(optimizer_values, dict):
+            raise ValueError("optimizer configuration must be an object")
+        use_optuna = optimization_settings.enabled and not smoke
         artifacts = train_and_save(
             frame,
             target_column=target,
             feature_columns=prepared.feature_columns,
             sequence_config=sequence,
-            n_trials=1 if smoke else int(config.values.get("n_trials", 10)),
+            n_trials=1 if smoke else optimization_settings.max_trials,
             output_dir=str(run_dir),
-            use_optuna=False if smoke else bool(config.values.get("use_optuna", True)),
+            use_optuna=use_optuna,
             epochs=1 if smoke else int(config.values.get("epochs", 50)),
             entity_column=entity_column,
             timestamp_column=timestamp_column,
+            optimizer_settings=optimization_settings if use_optuna else None,
+            optimizer_trial_epochs=int(optimizer_values.get("trial_epochs", 20)),
+            early_stopping_patience=int(
+                optimizer_values.get(
+                    "early_stopping_patience",
+                    config.values.get("early_stopping_patience", 5),
+                )
+            ),
+            optimizer_max_train_sequences=optimizer_values.get(
+                "tuning_train_max_sequences", 250_000
+            ),
+            optimizer_max_validation_sequences=optimizer_values.get(
+                "tuning_validation_max_sequences", 100_000
+            ),
         )
+        optimizer_artifact = dict(artifacts.get("optimizer", {}))
+        if smoke:
+            optimizer_artifact = {"enabled": False, "reason": "smoke_mode"}
         return {
             "source": str(source), "checkpoint_path": str(artifacts["checkpoint_path"]),
             "features": prepared.feature_columns,
             "metrics": artifacts["metrics"],
             "n_rows": len(frame),
             "temporal_split": artifacts.get("temporal_split"),
+            "optimizer": optimizer_artifact,
             "memory_aware_loading": load_report.to_dict(),
         }
 

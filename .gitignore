@@ -8,6 +8,7 @@ output/
 artifacts/models/
 artifacts/predictions/
 artifacts/legacy/
+artifacts/optimization/
 cnn_bilstm/output/
 artifacts/.training.lock
 artifacts/alerts.db

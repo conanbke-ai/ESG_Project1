@@ -1,25 +1,39 @@
 {
-  "name": "optimized",
-  "description": "기존 튜닝 결과를 보존하고 모델별 장점을 허용하는 실험",
+  "name": "optimized_solar_model_comparison",
+  "description": "동일 태양광 Gold·피처·시간분할에서 모델별 Validation-only Optuna를 허용하는 실전 비교",
   "seed": 42,
-  "split": "predefined_time_split",
-  "forecast_horizon_hours": 24,
+  "scope": {
+    "energy_source": "solar",
+    "feature_contract": "selected_v3_physics_aware_day_ahead",
+    "split": "global_train_validation_calibration_test_with_168h_purge",
+    "forecast_horizon_hours": 24
+  },
+  "optimizer": {
+    "framework": "optuna_tpe_median_pruner",
+    "objective": "validation_mae",
+    "persistent_resume": true,
+    "calibration_usage": "none_during_model_selection",
+    "test_usage": "final_report_only"
+  },
   "xgboost": {
-    "feature_contract": "selected_v2_day_ahead",
-    "plant_first_training": true,
-    "region_warm_start": true,
-    "hourly_bias_calibration": true,
-    "tree_method": "hist"
+    "enabled": true,
+    "tree_method": "hist",
+    "early_stopping": true,
+    "max_total_trials": 30,
+    "timeout_seconds": 7200
   },
   "cnn_bilstm": {
-    "sequence_lengths": [168, 336],
-    "optuna": true,
+    "enabled": true,
+    "sequence_length": 168,
+    "lazy_windows": true,
     "early_stopping": true,
-    "plant_and_region_models": true
+    "max_total_trials": 20,
+    "timeout_seconds": 14400
   },
   "evaluation": {
     "levels": ["plant", "region", "national"],
-    "metrics": ["mae", "rmse", "r2"],
-    "weights": ["samples", "equal_plant"]
+    "metrics": ["mae", "rmse", "r2", "capacity_normalized_mae"],
+    "weights": ["samples", "equal_plant"],
+    "hybrid_order": "compare_and_freeze_base_models_before_dynamic_gate_training"
   }
 }
