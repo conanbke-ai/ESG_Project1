@@ -114,11 +114,13 @@ class XGBoostHyperparameterOptimizer:
                 "colsample_bytree": trial.suggest_float(
                     "colsample_bytree", 0.60, 1.0
                 ),
-                "reg_alpha": trial.suggest_float("reg_alpha", 0.0, 10.0),
+                "reg_alpha": trial.suggest_float(
+                    "reg_alpha", 1e-8, 10.0, log=True
+                ),
                 "reg_lambda": trial.suggest_float(
                     "reg_lambda", 1e-3, 100.0, log=True
                 ),
-                "gamma": trial.suggest_float("gamma", 0.0, 5.0),
+                "gamma": trial.suggest_float("gamma", 1e-8, 5.0, log=True),
                 "max_bin": trial.suggest_categorical("max_bin", [128, 256, 512]),
                 "tree_method": "hist",
                 "eval_metric": "mae",
@@ -154,32 +156,7 @@ class XGBoostHyperparameterOptimizer:
                 del model
                 gc.collect()
 
-        derived_baseline = {
-            "max_depth": int(self.values.get("max_depth", 8)),
-            "learning_rate": float(self.values.get("learning_rate", 0.05)),
-            "min_child_weight": max(
-                1.0, float(self.values.get("min_child_weight", 1.0))
-            ),
-            "subsample": float(self.values.get("subsample", 0.9)),
-            "colsample_bytree": float(
-                self.values.get("colsample_bytree", 0.9)
-            ),
-            "reg_alpha": max(0.0, float(self.values.get("reg_alpha", 0.0))),
-            "reg_lambda": max(1e-3, float(self.values.get("reg_lambda", 1.0))),
-            "gamma": max(0.0, float(self.values.get("gamma", 0.0))),
-            "max_bin": int(self.values.get("max_bin", 256)),
-        }
-        configured_baseline = self.raw.get("baseline_params")
-        if configured_baseline is not None and not isinstance(
-            configured_baseline, Mapping
-        ):
-            raise ValueError("optimizer baseline_params must be an object")
-        baseline_params = dict(configured_baseline or derived_baseline)
-        run = OptunaStudyService(self.settings).run(
-            objective,
-            artifact_dir,
-            baseline_params=baseline_params,
-        )
+        run = OptunaStudyService(self.settings).run(objective, artifact_dir)
         best_iteration = run.study.best_trial.user_attrs.get("best_iteration")
         return XGBoostOptimizationResult(
             best_params=dict(run.study.best_params),

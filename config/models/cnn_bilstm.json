@@ -58,17 +58,6 @@
     "study_name": "cnn_bilstm_selected_v3_solar_v2",
     "storage_path": "artifacts/optimization/solar_models.db",
     "objective_metric": "validation_mae",
-    "baseline_source": "previous_optuna_best_fixed_config",
-    "baseline_params": {
-      "cnn_channels": 32,
-      "kernel_size": 3,
-      "lstm_hidden": 64,
-      "lstm_layers": 1,
-      "dense_units": 64,
-      "dropout": 0.1,
-      "lr": 0.001,
-      "weight_decay": 0.0
-    },
     "max_trials": 20,
     "timeout_seconds": 14400,
     "startup_trials": 5,

@@ -73,7 +73,7 @@ facade로만 유지합니다.
   재현 가능한 유스케이스로 묶음
 - `TrainingService`: 모델 전략 선택, 전역 학습 잠금, 성공/실패 manifest 관리
 - `OptunaStudyService`: 모델별 SQLite study의 최대 누적 trial·시간 예산·재개·Validation-only
-  선택 근거와 trial 표를 관리하고, 기존 Optuna 최적 고정값을 첫 baseline trial로 enqueue
+  선택 근거와 trial 표를 관리하며 과거 데이터셋의 최적값을 새 study에 강제하지 않음
 - `XGBoostHyperparameterOptimizer`: 제한된 Train/Validation 대표행에서 boosting-round pruning과
   early stopping을 수행하고 선택된 설정을 전체 Train 학습에 전달
 - `ExplainableDynamicGate`: 발전소·지역·시간·출력 regime·모델 불일치별 Validation 근거와 행별 동적 결합

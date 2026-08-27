@@ -52,18 +52,6 @@
     "study_name": "xgboost_selected_v3_solar_v1",
     "storage_path": "artifacts/optimization/solar_models.db",
     "objective_metric": "validation_mae",
-    "baseline_source": "previous_optuna_best_fixed_config",
-    "baseline_params": {
-      "max_depth": 8,
-      "learning_rate": 0.05,
-      "min_child_weight": 1.0,
-      "subsample": 0.9,
-      "colsample_bytree": 0.9,
-      "reg_alpha": 0.0,
-      "reg_lambda": 1.0,
-      "gamma": 0.0,
-      "max_bin": 256
-    },
     "max_trials": 30,
     "timeout_seconds": 7200,
     "startup_trials": 5,

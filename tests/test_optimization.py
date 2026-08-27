@@ -39,22 +39,16 @@ def test_optuna_study_resumes_without_exceeding_max_total_trials(tmp_path: Path)
     first = OptunaStudyService(settings, project_root=tmp_path).run(
         objective,
         tmp_path / "first",
-        baseline_params={"value": 0.25},
     )
     second = OptunaStudyService(settings, project_root=tmp_path).run(
         objective,
         tmp_path / "second",
-        baseline_params={"value": 0.25},
     )
 
     assert first.existing_trials == 0
     assert first.executed_trials == 2
     assert second.existing_trials == 2
     assert second.executed_trials == 0
-    assert first.study.trials[0].params == {"value": 0.25}
-    assert first.study.trials[0].user_attrs["parameter_source"] == (
-        "previous_optuna_best_baseline"
-    )
     assert second.summary_path.exists()
     assert second.trials_path.exists()
 
@@ -86,9 +80,6 @@ def test_xgboost_optimizer_uses_validation_and_persists_artifacts(tmp_path: Path
     assert result.tuning_train_rows == 80
     assert result.tuning_validation_rows == 20
     assert result.run.study.best_value >= 0
-    assert result.run.study.trials[0].user_attrs["parameter_source"] == (
-        "previous_optuna_best_baseline"
-    )
     assert result.run.summary_path.exists()
 
 
@@ -123,16 +114,6 @@ def test_cnn_optimizer_handles_missing_mask_dimension_and_saves_study(tmp_path: 
         early_stopping_patience=1,
         optimizer_max_train_sequences=20,
         optimizer_max_validation_sequences=10,
-        optimizer_baseline_params={
-            "cnn_channels": 32,
-            "kernel_size": 3,
-            "lstm_hidden": 64,
-            "lstm_layers": 1,
-            "dense_units": 64,
-            "dropout": 0.1,
-            "lr": 1e-3,
-            "weight_decay": 0.0,
-        },
     )
 
     checkpoint = torch.load(artifacts["checkpoint_path"], map_location="cpu")
