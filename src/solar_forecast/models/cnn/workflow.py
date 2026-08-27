@@ -45,6 +45,7 @@ def train_and_save(
     optimizer_max_train_sequences: int | None = None,
     optimizer_max_validation_sequences: int | None = None,
     optimizer_timeout_seconds: int | None = None,
+    optimizer_baseline_params: dict[str, object] | None = None,
 ) -> Dict[str, object]:
     """Train the model with Optuna and/or reinforcement learning then persist artifacts.
 
@@ -71,6 +72,7 @@ def train_and_save(
             settings=optimizer_settings,
             artifact_dir=run_dir,
             timeout=optimizer_timeout_seconds,
+            baseline_params=optimizer_baseline_params,
         )
         model, model_cfg = result["model"], result["model_config"]
         study = result["study"]

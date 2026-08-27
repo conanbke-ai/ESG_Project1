@@ -276,6 +276,8 @@ python app.py status
 두 독립 모델은 기본적으로 Optuna를 사용합니다. XGBoost는 최대 30 trial/2시간, CNN-BiLSTM은
 최대 20 trial/4시간이며 `artifacts/optimization/solar_models.db`의 모델별 study를 재개합니다.
 `max_trials`는 실행할 때마다 더하는 수가 아니라 해당 study의 **최대 누적 trial 수**입니다.
+현재 고정 파라미터는 과거 Optuna 최적 결과이므로 새 study의 첫 baseline trial로 enqueue합니다.
+따라서 새 탐색 결과는 기존 최적 조합과 동일한 Validation 조건에서 직접 비교됩니다.
 
 - 탐색 입력: Train과 Validation만 사용
 - 목적함수: Validation MAE

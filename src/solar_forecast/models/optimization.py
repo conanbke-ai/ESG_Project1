@@ -107,6 +107,8 @@ class OptunaStudyService:
         self,
         objective: Callable[[Trial], float],
         artifact_dir: Path,
+        *,
+        baseline_params: Mapping[str, object] | None = None,
     ) -> OptimizationRun:
         storage_path = self.settings.storage_path
         if not storage_path.is_absolute():
@@ -131,6 +133,13 @@ class OptunaStudyService:
             sampler=sampler,
             pruner=pruner,
         )
+        baseline_enqueued = False
+        if not study.trials and baseline_params:
+            study.enqueue_trial(
+                dict(baseline_params),
+                user_attrs={"parameter_source": "previous_optuna_best_baseline"},
+            )
+            baseline_enqueued = True
         existing = self._finished_trials(study.trials)
         remaining = max(0, self.settings.max_trials - existing)
         if remaining:
@@ -166,6 +175,8 @@ class OptunaStudyService:
                 "objective_metric": self.settings.objective_metric,
                 "max_total_trials": self.settings.max_trials,
                 "existing_finished_trials": existing,
+                "baseline_enqueued": baseline_enqueued,
+                "baseline_params": dict(baseline_params or {}),
                 "executed_trials": executed,
                 "finished_trials": self._finished_trials(study.trials),
                 "completed_trials": len(completed),

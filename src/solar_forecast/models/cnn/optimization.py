@@ -124,6 +124,7 @@ def run_study(
     maximum_validation_sequences: int | None = None,
     settings: OptimizationSettings | None = None,
     artifact_dir: Path | None = None,
+    baseline_params: dict[str, object] | None = None,
 ) -> optuna.Study:
     """Select architecture and optimizer values from Validation only."""
 
@@ -153,7 +154,9 @@ def run_study(
         model_cfg = _suggest_model_config(trial, n_features)
         model = build_model(model_cfg, device=device)
         lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
-        weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True)
+        weight_decay = trial.suggest_categorical(
+            "weight_decay", [0.0, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2]
+        )
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         criterion = nn.MSELoss()
         best_mae, wait = float("inf"), 0
@@ -188,12 +191,21 @@ def run_study(
     if settings:
         if artifact_dir is None:
             raise ValueError("artifact_dir is required for a persistent Optuna study")
-        return OptunaStudyService(settings).run(objective, artifact_dir).study
+        return OptunaStudyService(settings).run(
+            objective,
+            artifact_dir,
+            baseline_params=baseline_params,
+        ).study
     study = optuna.create_study(
         direction="minimize",
         sampler=optuna.samplers.TPESampler(seed=42),
         pruner=optuna.pruners.MedianPruner(),
     )
+    if baseline_params:
+        study.enqueue_trial(
+            dict(baseline_params),
+            user_attrs={"parameter_source": "previous_optuna_best_baseline"},
+        )
     study.optimize(objective, n_trials=n_trials, timeout=timeout, gc_after_trial=True)
     return study
 
@@ -215,6 +227,7 @@ def train_with_best_trial(
     settings: OptimizationSettings | None = None,
     artifact_dir: Path | None = None,
     timeout: Optional[int] = None,
+    baseline_params: dict[str, object] | None = None,
 ) -> Dict[str, object]:
     """Run Optuna then train/evaluate the best model; returns artifacts."""
 
@@ -235,6 +248,7 @@ def train_with_best_trial(
         settings=settings,
         artifact_dir=artifact_dir,
         timeout=timeout,
+        baseline_params=baseline_params,
     )
     best_params = study.best_params
     loaders = prepare_dataset_splits(

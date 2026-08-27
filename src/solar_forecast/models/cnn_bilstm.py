@@ -95,6 +95,21 @@ class CnnBiLstmTrainer:
             optimizer_max_validation_sequences=optimizer_values.get(
                 "tuning_validation_max_sequences", 100_000
             ),
+            optimizer_baseline_params=dict(
+                optimizer_values.get(
+                    "baseline_params",
+                    {
+                        "cnn_channels": 32,
+                        "kernel_size": 3,
+                        "lstm_hidden": 64,
+                        "lstm_layers": 1,
+                        "dense_units": 64,
+                        "dropout": 0.1,
+                        "lr": 1e-3,
+                        "weight_decay": 0.0,
+                    },
+                )
+            ),
         )
         optimizer_artifact = dict(artifacts.get("optimizer", {}))
         if smoke:
