@@ -1,0 +1,11 @@
+{
+  "model": "hybrid",
+  "profile": "optimized",
+  "output_root": "artifacts/models/hybrid",
+  "prediction_root": "artifacts/predictions/hybrid",
+  "method": "explainable_dynamic_gate",
+  "weight_source": "validation_only",
+  "contexts": ["region", "hour"],
+  "fallback": "region_then_global_validation_mae",
+  "weight_rule": "inverse_validation_mae"
+}

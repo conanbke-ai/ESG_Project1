@@ -1,0 +1,66 @@
+{
+  "koen": {
+    "organization": "한국남동발전",
+    "homepage": "https://www.koenergy.kr/kosep/fr/main.do",
+    "generation_page": "https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do",
+    "mode": "homepage_automation",
+    "scope": "four_public_generation_companies"
+  },
+  "kospo": {
+    "organization": "한국남부발전",
+    "homepage": "https://www.kospo.co.kr/sites/kospo/index.do",
+    "catalog": "https://www.kospo.co.kr/kospo/507/subview.do",
+    "dataset_page": "https://www.data.go.kr/data/15156688/fileData.do",
+    "dataset_id": "15156688",
+    "detail_id": "uddi:1a7943f5-2f39-4a77-ab15-f6d2000b0e81",
+    "filename": "kospo_busanjrail2_solar_20251111.csv",
+    "mode": "data_go_official_attachment",
+    "scope": "four_public_generation_companies"
+  },
+  "ewp": {
+    "organization": "한국동서발전",
+    "homepage": "https://www.ewp.co.kr/kor/main/",
+    "catalog": "https://www.ewp.co.kr/kor/subpage/content.html?pc=SXUO23FN1OI5KD14AG7S7EJC5W71ZSO",
+    "dataset_page": "https://www.ewp.co.kr/kor/subpage/content.html?pc=12V5W1N4BPZD35P8P1W818Z0TS07PXA&state=view&idx=43582",
+    "download_url": "https://www.ewp.co.kr/kor/include/new_download.html",
+    "attachment_id": "43582",
+    "order_number": "1",
+    "page_code": "12V5W1N4BPZD35P8P1W818Z0TS07PXA",
+    "filename": "ewp_solar_training_2020_2024.csv",
+    "day_ahead_forecast_api": {
+      "catalog_page": "https://www.data.go.kr/data/15144541/openapi.do",
+      "base_url": "https://apis.data.go.kr/B552070/forecastService",
+      "operation": "/oamsFile31",
+      "mode": "optional_service_key_required",
+      "selected_covariates": ["기온", "습도", "풍속", "하늘상태", "일사량 예측값", "태양광 설비용량"],
+      "excluded_from_default_features": ["태양광 발전량 예측값"]
+    },
+    "mode": "official_board_attachment",
+    "scope": "four_public_generation_companies"
+  },
+  "iwest": {
+    "organization": "한국서부발전",
+    "homepage": "https://www.iwest.co.kr/sites/iwest/index.do",
+    "catalog": "https://www.iwest.co.kr/iwest/455/subview.do",
+    "portal_catalog": "https://www.data.go.kr/tcs/dss/selectDataSetList.do?keyword=%ED%95%9C%EA%B5%AD%EC%84%9C%EB%B6%80%EB%B0%9C%EC%A0%84&brm=&svcType=&extsn=&recmSe=N",
+    "dataset_page": "https://www.data.go.kr/data/15025486/fileData.do",
+    "dataset_id": "15025486",
+    "detail_id": "uddi:c1512dd7-16e6-4184-9408-a6474c3bcbd0",
+    "filename": "iwest_solar_status_20230630.csv",
+    "mode": "data_go_official_attachment",
+    "scope": "four_public_generation_companies"
+  },
+  "kma": {
+    "organization": "기상청",
+    "homepage": "https://data.kma.go.kr/data/grnd/selectAsosRltmList.do",
+    "page": "https://data.kma.go.kr/data/grnd/selectAsosRltmList.do?pgmNo=36",
+    "mode": "homepage_automation",
+    "optional_environment_variable": "KMA_CHROME_USER_DATA_DIR"
+  },
+  "kma_public_institutions": {
+    "organization": "기상청 기상자료개방포털",
+    "homepage": "https://data.kma.go.kr/data/grnd/selectAwosRltmList.do?pgmNo=638",
+    "mode": "optional_not_enabled",
+    "reason": "분 자료는 1회 최대 1일이며 기존 ASOS 시간자료가 학습 피처와 기간을 충족함"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "hybrid",
+  "description": "Validation의 발전소·시간·출력상황·모델 불일치 근거로 행별 결합비를 결정하는 설명 가능한 동적 Hybrid",
+  "base_experiment": "optimized",
+  "method": "hierarchical_explainable_dynamic_gate_v2",
+  "weight_source": "validation_only",
+  "contexts": ["plant", "region", "hour", "time_regime", "model_disagreement_band"],
+  "weight_bounds": [0.05, 0.95],
+  "fallback": "plant_hour_then_region_regime_disagreement_then_region_hour_then_plant_then_region_then_global",
+  "objective": "validation_optimal_convex_blend",
+  "evaluation": {
+    "levels": ["plant", "region", "national"],
+    "metrics": ["mae", "rmse", "r2"],
+    "weights": ["samples", "equal_plant"]
+  }
+}

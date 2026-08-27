@@ -1,0 +1,14 @@
+.env.local
+**/__pycache__/
+.pytest_cache/
+*.py[cod]
+file/raw/
+file/standardized/
+output/
+artifacts/models/
+artifacts/predictions/
+artifacts/legacy/
+cnn_bilstm/output/
+artifacts/.training.lock
+artifacts/alerts.db
+backups/*.zip

@@ -1,0 +1,21 @@
+{
+  "name": "controlled",
+  "description": "동일 정보량과 평가 조건에서 모델 구조를 비교하는 실험",
+  "seed": 42,
+  "split": "predefined_time_split",
+  "lookback_hours": 168,
+  "forecast_horizon_hours": 24,
+  "feature_mode": "shared",
+  "shared_feature_contract": "selected_v2_day_ahead",
+  "history_features": ["lag_24h", "lag_168h", "rolling_7d_shifted_24h"],
+  "forbidden_history_features": ["lag_1h", "lag_3h", "lag_6h"],
+  "tuning": {
+    "enabled": false,
+    "early_stopping": true
+  },
+  "evaluation": {
+    "levels": ["plant", "region", "national"],
+    "metrics": ["mae", "rmse", "r2"],
+    "weights": ["samples", "equal_plant"]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "optimized",
+  "description": "기존 튜닝 결과를 보존하고 모델별 장점을 허용하는 실험",
+  "seed": 42,
+  "split": "predefined_time_split",
+  "forecast_horizon_hours": 24,
+  "xgboost": {
+    "feature_contract": "selected_v2_day_ahead",
+    "plant_first_training": true,
+    "region_warm_start": true,
+    "hourly_bias_calibration": true,
+    "tree_method": "hist"
+  },
+  "cnn_bilstm": {
+    "sequence_lengths": [168, 336],
+    "optuna": true,
+    "early_stopping": true,
+    "plant_and_region_models": true
+  },
+  "evaluation": {
+    "levels": ["plant", "region", "national"],
+    "metrics": ["mae", "rmse", "r2"],
+    "weights": ["samples", "equal_plant"]
+  }
+}

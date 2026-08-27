@@ -1,0 +1,11 @@
+pandas
+numpy
+torch
+scikit-learn
+optuna
+openpyxl
+pytest
+requests
+selenium
+xgboost
+plotly

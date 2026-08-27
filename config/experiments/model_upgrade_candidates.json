@@ -1,0 +1,47 @@
+{
+  "name": "quality_aware_multi_site_candidates",
+  "status": "controlled_evaluation_required",
+  "target": "24_hour_direct_multi_horizon_generation",
+  "technology_policy": {
+    "raw_contract": ["solar", "wind"],
+    "solar_experiment_filter": "energy_source == 'solar'",
+    "portfolio_experiment": "technology_conditioned_separate_heads"
+  },
+  "shared_inputs": {
+    "endogenous": ["historical_capacity_factor", "quality_masks"],
+    "exogenous": ["weather_forecast_by_issue_time", "solar_position", "clear_sky_irradiance"],
+    "static": ["plant_id", "region", "company", "energy_source", "capacity_mw", "tilt_deg", "latitude", "longitude"]
+  },
+  "candidates": [
+    {
+      "name": "xgboost_quality_baseline",
+      "role": "mandatory_baseline"
+    },
+    {
+      "name": "timexer_revin",
+      "role": "primary_candidate",
+      "reason": "separates endogenous generation from exogenous weather and handles distribution shift"
+    },
+    {
+      "name": "patchtst_revin",
+      "role": "long_context_baseline",
+      "reason": "efficient weekly/monthly lookback through patching"
+    },
+    {
+      "name": "heterogeneous_spatiotemporal_graph",
+      "role": "multi_site_candidate_after_metadata_coverage",
+      "reason": "learns non-uniform spatial relations and keeps wind/PV technology heterogeneity explicit"
+    }
+  ],
+  "hybrid": {
+    "current": "auditable validation-only contextual router",
+    "next": "mixture_of_experts_router_after_controlled_ablation",
+    "never": "single_global_fixed_weight"
+  },
+  "evaluation": {
+    "split": "rolling_origin_with_purged_validation_and_untouched_test",
+    "metrics": ["mae", "rmse", "r2", "nmae_capacity", "ramp_mae", "interval_coverage"],
+    "slices": ["plant", "region", "season", "daylight", "sensor_quality", "weather_regime"],
+    "uncertainty": "quantile_loss_then_conformal_calibration"
+  }
+}

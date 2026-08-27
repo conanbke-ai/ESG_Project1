@@ -1,0 +1,93 @@
+{
+  "catalog_version": "2026-08-27",
+  "admission_contract": {
+    "model_topology": "one global model with one identical feature schema for every plant",
+    "generation_contract": "generation.hourly.v1",
+    "minimum_history_days": 1095,
+    "minimum_hourly_coverage": 0.95,
+    "maximum_gap_hours": 24,
+    "required_metadata": [
+      "stable plant_id",
+      "capacity_mw",
+      "location or reviewed KMA station mapping",
+      "source unit and interval semantics"
+    ],
+    "required_evaluation": [
+      "global Train/Validation/Calibration/Test temporal split",
+      "purge gap at least as long as maximum lookback",
+      "known-plant future holdout",
+      "leave-one-plant-out or grouped plant holdout for cold-start generalization"
+    ],
+    "missing_feature_rule": "retain the same columns; represent unavailable values as NaN plus a same-position missing indicator where the model requires it"
+  },
+  "sources": [
+    {
+      "id": "krc_yeongam_hourly",
+      "organization": "한국농어촌공사",
+      "official_url": "https://www.data.go.kr/dataset/15005796/fileData.do?lang=ko",
+      "access": "public CSV with periodic historical files",
+      "granularity": "three plants, daily wide with 24 hourly buckets",
+      "verified_files": "2020-2025 downloaded; entity-safe 2022-2025 accepted for generation audit",
+      "verified_plants": ["영암1차", "영암2차", "율치"],
+      "status": "generation_ready_weather_mapping_and_unit_review_required",
+      "role": "highest-priority new plant candidate",
+      "blockers": [
+        "2020-2021 files do not contain a plant identifier and remain quarantined",
+        "portal labels hourly buckets as kW although daily totals imply one-hour energy buckets",
+        "plant coordinates or an explicitly reviewed KMA ASOS mapping are still required"
+      ]
+    },
+    {
+      "id": "kdhc_daegu_shinan_hourly",
+      "organization": "한국지역난방공사",
+      "official_url": "https://www.data.go.kr/dataset/15003032/fileData.do",
+      "access": "public file data",
+      "granularity": "Daegu and Gwangju-Jeonnam Shinan solar, hourly kWh",
+      "status": "download_and_continuity_audit_required",
+      "role": "second-priority new plant candidate",
+      "blockers": [
+        "the current attachment and exact continuous coverage must be downloaded and profiled",
+        "plant-level capacity and KMA station mappings must be reconciled"
+      ]
+    },
+    {
+      "id": "komipo_169_solar_safe_zone",
+      "organization": "한국중부발전",
+      "official_url": "https://data.edmgr.kr/dataView.do?id=dsz-kdata-kom_001",
+      "access": "reviewed access in a data safe zone",
+      "granularity": "169 nationwide solar plants, hourly actual and forecast, 2022-present",
+      "status": "access_review_required",
+      "role": "largest plant-level expansion candidate",
+      "blockers": [
+        "KOMIPO approval is required",
+        "safe-zone export and model-artifact rules must be checked before integration"
+      ]
+    },
+    {
+      "id": "kpx_regional_hourly_solar_wind",
+      "organization": "한국전력거래소",
+      "official_url": "https://www.data.go.kr/data/15065269/fileData.do",
+      "access": "public file/API data",
+      "granularity": "regional hourly MWh for solar and wind",
+      "status": "auxiliary_only",
+      "role": "regional pretraining, external validation, and aggregate consistency checks",
+      "blockers": [
+        "regional aggregates are not plant rows and must never be appended with a fabricated plant_id",
+        "market data excludes KEPCO direct-trade and self-use facilities and may include ESS effects"
+      ]
+    },
+    {
+      "id": "kdhc_inverter_minute_2021",
+      "organization": "한국지역난방공사",
+      "official_url": "https://www.data.go.kr/data/15077751/fileData.do",
+      "access": "public periodic files/API",
+      "granularity": "inverter-level minute telemetry for 2021",
+      "status": "auxiliary_only",
+      "role": "sensor-fault and missing-data stress-test research",
+      "blockers": [
+        "coverage is limited to 2021 and is not aligned with the main forecast evaluation period",
+        "minute telemetry needs an explicit hour aggregation and data-collection-state policy"
+      ]
+    }
+  ]
+}
