@@ -4,7 +4,7 @@
     "homepage": "https://www.koenergy.kr/kosep/fr/main.do",
     "generation_page": "https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do",
     "mode": "homepage_automation",
-    "scope": "four_public_generation_companies"
+    "scope": "nationwide_public_multi_provider"
   },
   "kospo": {
     "organization": "한국남부발전",
@@ -15,7 +15,7 @@
     "detail_id": "uddi:1a7943f5-2f39-4a77-ab15-f6d2000b0e81",
     "filename": "kospo_busanjrail2_solar_20251111.csv",
     "mode": "data_go_official_attachment",
-    "scope": "four_public_generation_companies"
+    "scope": "nationwide_public_multi_provider"
   },
   "ewp": {
     "organization": "한국동서발전",
@@ -36,7 +36,7 @@
       "excluded_from_default_features": ["태양광 발전량 예측값"]
     },
     "mode": "official_board_attachment",
-    "scope": "four_public_generation_companies"
+    "scope": "nationwide_public_multi_provider"
   },
   "iwest": {
     "organization": "한국서부발전",
@@ -48,7 +48,7 @@
     "detail_id": "uddi:c1512dd7-16e6-4184-9408-a6474c3bcbd0",
     "filename": "iwest_solar_status_20230630.csv",
     "mode": "data_go_official_attachment",
-    "scope": "four_public_generation_companies"
+    "scope": "nationwide_public_multi_provider"
   },
   "kma": {
     "organization": "기상청",

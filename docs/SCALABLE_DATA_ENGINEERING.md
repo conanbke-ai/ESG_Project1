@@ -20,22 +20,33 @@
 |---|---|---|
 | 원본과 표준본 분리 | 원천 재현성과 재처리 가능성 | `file/raw`, `file/standardized` 경계 |
 | 스키마 registry/adapter | 회사별 컬럼 변경을 핵심 모델 코드에서 격리 | `collectors/normalization.py`, `archive.py` |
-| 파일 단위 처리 | 86개 파일 전체를 한 번에 원본 DataFrame으로 만들지 않음 | source-file bounded 표준화 |
-| 연도·회사 gzip 파티션 | 필요한 범위만 읽고 wide→long 반복값의 저장 팽창을 완화 | generation partition + manifest |
+| 파일 단위 처리 | 88개 파일 전체를 한 번에 원본 DataFrame으로 만들지 않음 | source-file bounded 표준화 |
+| Silver/Gold 파티션 | Silver는 원본 파일별, Gold는 회사×연도로 잘라 필요한 컬럼·행만 읽음 | generation/model-ready manifests |
 | SHA-256·byte lineage | 같은 이름의 수정 파일과 입력 변경 추적 | partition별 source/output hash |
 | atomic replace | 중간 실패 시 완성되지 않은 manifest/파티션 노출 방지 | `.tmp` 완성 후 replace |
 | quarantine | 식별자·단위가 불명확한 파일을 억지로 병합하지 않음 | 영암 2020~2021 격리 기록 |
 | 명시적 품질 flag | 보간값과 관측값, 물리 위반과 의심 패턴 분리 | `quality_*`, observation masks |
 | 누수 방지 분할 | 모든 발전소에 동일 날짜 경계와 168시간 purge 적용 | `TemporalSplitter` |
 | 메모리 제한 시퀀스 | `(행 × lookback)` 사전 복제를 피함 | `LazyWindowSequenceDataset` |
+| bounded 학습 로더 | 10만 행 chunk, 필터 pushdown, float32, 1.5GB hard limit | `DatasetLoadPolicy`/`DatasetLoadReport` |
+| 열 단위 CNN 통계 | Train 중앙값 계산 시 전체 훈련행×피처 행렬을 한 번 더 합치지 않음 | feature-wise median fitting |
 | 프레임워크별 결측 처리 | XGBoost는 native NaN, CNN은 Train 통계+mask | split별 preprocessing manifest |
 
-현재 검증 범위는 86개 공식 원본, 4,146,757개 표준 시간 행, 85개 표준 `plant_id`입니다. 태양광
-학습용 Gold 테이블은 현재 18개 발전소 314,496행입니다. 이 수치들은 분산 빅데이터를 의미하지는
-않지만, 파티셔닝·lineage·idempotent 재처리·품질 게이트를 실데이터로 설명하기에는 충분합니다.
-현재 원본 27,630,962 byte가 시간별 long gzip 파티션 31,951,557 byte가 됐습니다. gzip인데도
+현재 검증 범위는 88개 공식 원본, 4,236,565개 표준 시간 행, 85개 설비단위 `plant_id`입니다.
+발전소×발전원 registry 66개 중 행정·기상 매핑 근거를 통과한 Gold는 37개 발전소,
+2,230,839행이며 29개는 quarantine했습니다. 이 수치들은 분산 빅데이터를 의미하지는 않지만,
+파티셔닝·lineage·idempotent 재처리·품질 게이트를 실데이터로 설명하기에는 충분합니다.
+현재 원본 28,203,932 byte가 시간별 long gzip 파티션 32,752,403 byte가 됐습니다. gzip인데도
 원본보다 큰 이유는 일별 wide 행의 메타데이터가 24개 시간 행에 반복되기 때문이며, 이 측정은
 Parquet columnar encoding 전환의 구체적인 근거로 사용합니다.
+
+Gold 28개 회사×연도 gzip 파티션은 110,222,041 byte입니다. 실제 XGBoost 계약으로 전체
+2,230,839행을 스캔해 태양광·품질 게이트를 통과한 2,115,471행만 유지했을 때, 26개 피처와
+문맥 컬럼을 포함한 pandas DataFrame은 361.14MB였습니다. 모든 수치 피처·타깃은 `float32`이며
+설정된 1,536MB 상한을 넘으면 일부 행을 임의 샘플링하지 않고 실패합니다. 이 값은 DataFrame
+메모리 측정값이고 프로세스 peak RSS라고 과장하지 않습니다.
+최종 `prepare-data` 실행의 품질 프로파일링 구간에서 별도로 관측한 process working set은
+624.7MB였지만, 이것도 연속 계측한 peak RSS가 아니라 한 시점의 운영 확인값으로만 기록합니다.
 
 ## 확장 시 교체 순서
 
@@ -62,17 +73,18 @@ Parquet columnar encoding 전환의 구체적인 근거로 사용합니다.
 - lazy window의 원본 배열 크기와 eager materialization 대비 예상 메모리
 - Train/Validation/Calibration/Test 행 수와 경계
 
-현재 manifest는 입력·출력 byte와 SHA-256, 행 수, 기간, 품질 요약을 기록합니다. wall time과 peak
-RSS 자동 계측, Parquet predicate pushdown, 변경 파티션 skip은 다음 데이터 엔지니어링 실험으로
-분리합니다.
+현재 manifest는 입력·출력 byte와 SHA-256, 행 수, 기간, 품질 요약을 기록하고 학습 결과에는
+scanned/retained rows, 선택 컬럼, chunk 크기, dtype, DataFrame 메모리를 남깁니다. wall time과
+프로세스 peak RSS 자동 계측, Parquet predicate pushdown, 변경 파티션 skip은 다음 데이터
+엔지니어링 실험으로 분리합니다.
 
 ## 권장 포트폴리오 서술
 
-> 서로 다른 공공기관의 wide CSV를 버전 있는 시간별 MWh 계약으로 표준화하고, 415만 행을
-> 파일 단위 gzip 파티션으로 처리했습니다. 원본·산출물 SHA-256과 atomic write로 lineage와 실패
-> 안전성을 확보했으며, 식별자·단위가 불명확한 파일은 quarantine했습니다. 학습 단계에서는
-> 전역 시점 분할과 purge gap으로 누수를 막고, XGBoost native NaN 및 CNN lazy window/missing
-> mask로 결측과 메모리 사용을 모델 특성에 맞게 처리했습니다.
+> 서로 다른 공공기관의 wide CSV를 버전 있는 시간별 MWh 계약으로 표준화하고, 424만 원천행과
+> 223만 Gold 행을 Silver/Gold gzip 파티션으로 처리했습니다. 원본·산출물 SHA-256과 atomic write로
+> lineage와 실패 안전성을 확보하고, 불확실한 29개 발전소는 quarantine했습니다. 학습 시에는
+> 10만 행 chunk에서 컬럼·품질 필터를 먼저 적용하고 float32·1.5GB hard limit를 강제했으며,
+> XGBoost native NaN과 CNN lazy window/missing mask로 결측과 메모리를 모델 특성에 맞게 처리했습니다.
 
 이 문장은 현재 저장소에서 확인 가능한 구현만 포함합니다. 이후 Parquet/Polars/Spark를 도입하면
 반드시 실제 benchmark와 함께 별도 수치로 갱신합니다.

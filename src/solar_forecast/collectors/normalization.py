@@ -364,6 +364,16 @@ class DailyWideGenerationNormalizer:
             long[output] = (
                 pd.to_numeric(long[source_column], errors="coerce") if source_column else pd.NA
             )
+        if self.schema.latitude_column and self.schema.longitude_column:
+            # Some Korean public exports label longitude (126~129) as latitude
+            # and latitude (33~38) as longitude. Correct only the unambiguous
+            # Korea-range inversion and quarantine any remaining invalid pair.
+            swapped = long["latitude"].between(124, 132) & long["longitude"].between(32, 39)
+            original_latitude = long.loc[swapped, "latitude"].copy()
+            long.loc[swapped, "latitude"] = long.loc[swapped, "longitude"].to_numpy()
+            long.loc[swapped, "longitude"] = original_latitude.to_numpy()
+            valid = long["latitude"].between(32, 39) & long["longitude"].between(124, 132)
+            long.loc[~valid, ["latitude", "longitude"]] = pd.NA
         long["address"] = (
             long[self.schema.address_column].astype("string").str.strip()
             if self.schema.address_column

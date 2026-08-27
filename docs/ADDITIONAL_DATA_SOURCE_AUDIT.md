@@ -66,13 +66,29 @@ python app.py audit-candidate-data
 SHA-256, 발전소별 연속성, 공통 4구간 분할 행 수와 편입 차단 사유를
 `file/standardized/candidates/krc_yeongam/candidate_manifest.json`에 기록합니다.
 
+## 이번에 추가 확보한 실파일
+
+- [남부발전 용수리](https://www.data.go.kr/data/15095404/fileData.do): 2020-10-01~2026-02-28,
+  1,977일×24시간. Silver 표준화는 완료했으나 원본에 주소·좌표가 없어 ASOS 매핑 전 Gold 격리.
+- [남부발전 신풍리](https://www.data.go.kr/data/15109998/fileData.do): 2021-05-01~2026-02-28,
+  1,765일×24시간. 동일하게 장기 발전량은 확보했지만 위치 근거가 없어 Gold 격리.
+- [농어촌공사 진도](https://www.data.go.kr/data/15080933/fileData.do): 2019년 365개 유효 일행.
+  전남 표본이라는 장점은 있으나 1년으로는 공통 4구간 평가가 불가능해 staging만 수행.
+
+용수리·신풍리는 누적 snapshot이므로 기존 공개파일과 겹치는 시각을 더하지 않습니다. Gold
+reconciliation은 동일 `timestamp + company + plant_id`에서 파일명 `YYYYMMDD`가 최신인 값을
+선택하고, 날짜가 없는 파일끼리는 deterministic 입력 순서를 사용합니다.
+
 ## 추가 후보 우선순위
 
 | 우선순위 | 출처 | 기대 범위 | 사용 판단 |
 |---:|---|---|---|
-| 1 | 한국농어촌공사 영암 | 2022~2025, 3개소, 시간별 | 원문 확보·스키마 구현 완료. 기상 매핑·단위 검토 후 편입 |
-| 2 | [한국지역난방공사 대구·신안 시간별 운영현황](https://www.data.go.kr/dataset/15003032/fileData.do) | 대구·광주전남 신안, 시간별 kWh | 최신 첨부의 실제 기간·결측·용량을 내려받아 같은 게이트 적용 |
-| 3 | [한국중부발전 안심구역 데이터](https://data.edmgr.kr/dataView.do?id=dsz-kdata-kom_001) | 2022~현재, 전국 169개 태양광, 실측·예측 | 가장 큰 확대 후보지만 기관 심사와 반출 조건 확인 필요 |
+| 1 | [지역난방공사 인버터 실시간 API](https://www.data.go.kr/data/15157890/openapi.do) | 2026 신규, 인버터별 실시간 발전량 | 자동승인 API 키로 과거 조회범위·페이지·호출량을 먼저 계측한 뒤 plant-hour 집계 |
+| 2 | [한국중부발전 신재생 발전량 API](https://www.data.go.kr/data/15084511/openapi.do) | 발전소·설비·측정시각·발전량 | 5번째 발전공기업 후보. 이력·단위·수정 레코드와 설비 메타데이터를 감사 |
+| 3 | 한국농어촌공사 영암 | 2022~2025, 3개소, 시간별 | 원문 확보·스키마 구현 완료. 기상 매핑·단위 검토 후 편입 |
+| 4 | [한국지역난방공사 대구·신안 시간별 운영현황](https://www.data.go.kr/dataset/15003032/fileData.do) | 대구·광주전남 신안, 시간별 kWh | 최신 첨부의 실제 기간·결측·용량을 내려받아 같은 게이트 적용 |
+| 5 | [한국중부발전 안심구역 데이터](https://data.edmgr.kr/dataView.do?id=dsz-kdata-kom_001) | 2022~현재, 전국 169개 태양광, 실측·예측 | 가장 큰 확대 후보지만 기관 심사와 반출 조건 확인 필요 |
+| staging | 농어촌공사 진도 | 2019, 전남 진도, 시간별 wide | 기간 부족. 후속 연도 발견 전 학습 제외 |
 | 보조 | [전력거래소 지역별 시간별 태양광·풍력](https://www.data.go.kr/data/15065269/fileData.do) | 시도별/육지·제주 집계, 시간별 MWh | 발전소 행으로 합치지 않고 지역 사전학습·외부검증·합계 일관성에 사용 |
 | 보조 | [지역난방공사 인버터별 분단위 자료](https://www.data.go.kr/data/15077751/fileData.do) | 2021 분단위 센서 | 본 예측 Test가 아니라 결측·센서 고장 stress test 후보 |
 

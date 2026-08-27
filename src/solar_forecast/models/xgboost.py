@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import json
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from xgboost import XGBRegressor
 
 from solar_forecast.ensemble.dynamic_gate import normalize_prediction_columns
 from solar_forecast.evaluation.temporal import TemporalSplitConfig, TemporalSplitter
-from solar_forecast.pipeline.dataset import DatasetRepository
+from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.pipeline.preprocessing import NumericPreprocessor
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT
 
@@ -19,23 +20,25 @@ class XGBoostTrainer:
     """Concrete training strategy that owns XGBoost-specific persistence."""
 
     def train(self, config: ModelJobConfig, run_dir: Path, smoke: bool = False) -> dict[str, object]:
-        source, raw = self._load(config)
         target = str(config.values["target_column"])
         energy_source = config.values.get("energy_source_filter")
-        if energy_source:
-            if "energy_source" not in raw:
-                raise ValueError("Configured energy_source_filter but dataset has no energy_source column")
-            raw = raw.loc[raw["energy_source"].eq(str(energy_source))].copy()
-        passthrough = [
-            column for column in ("timestamp", "region", "plant", "plant_id") if column in raw
-        ]
+        feature_columns = list(config.values.get("feature_columns") or [])
+        passthrough = ["timestamp", "region", "plant", "plant_id"]
+        source, raw, load_report = self._load(
+            config,
+            columns=[*passthrough, *feature_columns, target],
+            numeric_columns=[*feature_columns, target],
+            energy_source=str(energy_source) if energy_source else None,
+            smoke=smoke,
+        )
         prepared = NumericPreprocessor(fill_missing=False).transform(
             raw,
             target,
-            config.values.get("feature_columns"),
+            feature_columns,
             passthrough_columns=passthrough,
-            quality_filter_column=config.values.get("quality_filter_column"),
         )
+        del raw
+        gc.collect()
         frame = prepared.frame
         if "timestamp" in frame:
             frame["timestamp"] = pd.to_datetime(frame["timestamp"], errors="coerce")
@@ -57,8 +60,9 @@ class XGBoostTrainer:
             "subsample": float(config.values.get("subsample", 0.9)),
             "colsample_bytree": float(config.values.get("colsample_bytree", 0.9)),
             "tree_method": "hist",
+            "max_bin": int(config.values.get("max_bin", 256)),
             "random_state": int(config.values.get("seed", 42)),
-            "n_jobs": -1,
+            "n_jobs": int(config.values.get("n_jobs", 4)),
         }
         if not smoke:
             params["early_stopping_rounds"] = int(config.values.get("early_stopping_rounds", 10))
@@ -94,6 +98,7 @@ class XGBoostTrainer:
                         }.items()
                     },
                     "quality_filter_column": config.values.get("quality_filter_column"),
+                    "memory_aware_loading": load_report.to_dict(),
                     "temporal_split": split_metadata,
                 },
                 ensure_ascii=False,
@@ -133,6 +138,7 @@ class XGBoostTrainer:
             "n_calibration": len(calibration_frame),
             "n_test": len(test_frame),
             "temporal_split": split_metadata,
+            "memory_aware_loading": load_report.to_dict(),
         }
 
     @staticmethod
@@ -175,10 +181,30 @@ class XGBoostTrainer:
         )
 
     @staticmethod
-    def _load(config: ModelJobConfig) -> tuple[Path, pd.DataFrame]:
+    def _load(
+        config: ModelJobConfig,
+        *,
+        columns: list[str],
+        numeric_columns: list[str],
+        energy_source: str | None,
+        smoke: bool,
+    ):
         source = Path(str(config.values["input_dataset"]))
         source = source if source.is_absolute() else PROJECT_ROOT / source
-        return DatasetRepository(source.parent).load(source)
+        policy = DatasetLoadPolicy(
+            chunk_rows=int(config.values.get("csv_chunk_rows", 100_000)),
+            memory_limit_mb=int(config.values.get("memory_limit_mb", 1536)),
+            numeric_dtype=str(config.values.get("numeric_dtype", "float32")),
+        )
+        return DatasetRepository(source.parent).load_training_frame(
+            source,
+            columns=columns,
+            numeric_columns=numeric_columns,
+            equals_filters={"energy_source": energy_source} if energy_source else None,
+            truthy_filter=config.values.get("quality_filter_column"),
+            row_limit=10_000 if smoke else None,
+            policy=policy,
+        )
 
     @staticmethod
     def _prediction_frame(context: pd.DataFrame, actual: np.ndarray, predicted: np.ndarray) -> pd.DataFrame:

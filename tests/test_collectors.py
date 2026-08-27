@@ -6,6 +6,7 @@ from solar_forecast.collectors.config import CollectionConfig, load_source_catal
 from solar_forecast.collectors.kma import KmaAsosHourlyCollector
 from solar_forecast.collectors.koen_browser import KoenBrowserDownloader
 from solar_forecast.collectors.normalization import (
+    EWP_POINT_SCHEMA,
     DailyWideGenerationNormalizer,
     EwpTrainingNormalizer,
     GENERATION_COLUMNS,
@@ -141,3 +142,18 @@ def test_iwest_renewable_standardization_retains_wind_with_energy_source():
     result = DailyWideGenerationNormalizer(IWEST_RENEWABLE_SCHEMA).transform(pandas.DataFrame(rows))
     assert len(result) == 72
     assert set(result["energy_source"]) == {"solar", "wind", "hydro"}
+
+
+def test_public_coordinate_columns_are_corrected_only_for_korea_range_inversion():
+    pandas = __import__("pandas")
+    row = {
+        "날짜": "2025-01-01",
+        "발전기명": "동해태양광",
+        "설비용량(메가와트)": 1.0,
+        "위도": 129.1453,
+        "경도": 37.48313,
+    }
+    row.update({column: 1_000 for column in EWP_POINT_SCHEMA.hour_columns})
+    result = DailyWideGenerationNormalizer(EWP_POINT_SCHEMA).transform(pandas.DataFrame([row]))
+    assert result.iloc[0]["latitude"] == pytest.approx(37.48313)
+    assert result.iloc[0]["longitude"] == pytest.approx(129.1453)

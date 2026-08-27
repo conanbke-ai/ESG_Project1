@@ -54,6 +54,9 @@ facade로만 유지합니다.
 - `DailyWideGenerationNormalizer`: 발전사별 wide CSV 스키마와 원본 단위를 주입받아 공통 시간별 MWh 계약으로 변환
 - `GenerationSchemaRegistry`: 파일 컬럼 집합으로 여섯 가지 보관 원본 스키마를 명시적으로 판별
 - `HistoricalGenerationStandardizationService`: 4개사 원본을 파일 단위 gzip 파티션과 검증 manifest로 변환
+- `NationwidePlantRegistryBuilder`: 기관·발전원별 안정 키, 행정구역, 기상 매핑 근거와 quarantine 사유를 관리
+- `NationwideModelDatasetBuilder`: 승인된 모든 기관·발전소를 공통 피처로 결합하고 누적 개정본을 최신
+  snapshot 우선으로 조정한 뒤 회사×연도 Gold 파티션 생성
 - `KrcYeongamCandidateIntakeService`: 추가 발전소 원본의 hash·스키마·연속성·4구간 분할을 검증하고
   개체 식별이 불가능한 과거파일을 quarantine
 - `PlantMetadataCatalog`: 공식 설비현황을 발전소/호기 단위로 매칭하되 불확실한 총용량 복제를 금지
@@ -64,7 +67,10 @@ facade로만 유지합니다.
 - `FeatureAblationService`: Calibration/Test를 예약한 purged rolling-origin 평균으로 후보 컬럼 승격 여부 결정
 - `TemporalSplitter`: 발전소별 관측률과 무관하게 공통 날짜 경계·purge gap·독립 Calibration을 적용
 - `LazyWindowSequenceDataset`: 발전소별 원본 배열을 한 번만 보관하고 batch에서 시퀀스를 절단
-- `DataPreparationService`: 전체 표준화와 `model_ready.csv` 생성을 하나의 재현 가능한 유스케이스로 묶음
+- `DatasetRepository.load_training_frame`: Gold 파티션에 컬럼 선택·발전원/품질 필터를 chunk 단계에서
+  적용하고 float32 변환·명시적 메모리 예산을 강제
+- `DataPreparationService`: 전체 표준화와 `model_ready.csv.gz`/`model_ready_parts` 생성을 하나의
+  재현 가능한 유스케이스로 묶음
 - `TrainingService`: 모델 전략 선택, 전역 학습 잠금, 성공/실패 manifest 관리
 - `ExplainableDynamicGate`: 발전소·지역·시간·출력 regime·모델 불일치별 Validation 근거와 행별 동적 결합
 - `HybridExperiment`: Hybrid 입력/평가/결과 파일의 유스케이스 경계
@@ -93,12 +99,19 @@ Hybrid 필수 컬럼은 `timestamp, region, plant, y_true, xgb_pred, cnn_pred`�
 
 수집 계층은 원본을 수정하지 않고 `file/raw/<회사>/normalized/`에 UTF-8 표준본을 추가합니다.
 보관 데이터 준비 계층은 `file/standardized/generation/<회사>/`에 gzip 파티션을 만듭니다.
-개별 설비의 공통 키는 `timestamp + company + plant_id`, 동서발전 전국 학습자료의 공통 키는
-`timestamp + region`이며 정규화기가 컬럼·단위·중복 키를 실행 중 검증합니다.
+개별 설비의 공통 키는 `timestamp + company + plant_id`, 동서발전 지역 집계 자료의 공통 키는
+`timestamp + region`이며 정규화기가 컬럼·단위·중복 키를 실행 중 검증합니다. 공개 포털의 누적
+snapshot끼리 같은 키가 겹치면 파일명의 `YYYYMMDD`가 최신인 값을 사용하고 합산하지 않습니다.
 
 개별 설비 계약에는 `energy_source`가 포함됩니다. 풍력·수력 행도 저장하지만 태양광 모델 설정은
-`energy_source_filter=solar`를 적용합니다. `model_ready.csv`에는 품질 flag와 관측 mask를 함께
+`energy_source_filter=solar`를 적용합니다. Gold 호환본과 파티션에는 품질 flag와 관측 mask를 함께
 보존하고, 모델 기본 피처는 Validation ablation에서 개선된 컬럼만 선택합니다.
+
+학습은 `model_ready_parts/company=<provider>/year=<YYYY>/part.csv.gz`를 100,000행 단위로 읽습니다.
+필요 컬럼과 태양광·품질 조건을 먼저 적용하고 숫자는 `float32`로 축소합니다. DataFrame 메모리가
+1,536MB를 넘으면 일부 행을 몰래 버리지 않고 즉시 실패해 운영자가 기간·기관 또는 실행 자원을
+명시적으로 조정하게 합니다. CNN window는 이 프레임을 다시 `(rows × lookback)`으로 복제하지 않고
+batch 시점에 lazy slicing합니다.
 
 CNN-BiLSTM 시퀀스는 `plant_id`별로 따로 만들지만 분할 경계는 발전소별 행 비율이 아니라 전체
 데이터의 같은 날짜를 사용합니다. Train/Validation/Calibration/Test 경계마다 168시간 purge

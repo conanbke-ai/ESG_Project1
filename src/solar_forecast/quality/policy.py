@@ -149,7 +149,7 @@ class GenerationQualityPolicy:
         working["_daylight"] = daylight
         working["_original_index"] = frame.index
         working = working.sort_values(["plant_id", "timestamp"], kind="stable")
-        for _, group in working.groupby("plant_id", sort=False):
+        for _, group in working.groupby("plant_id", sort=False, observed=True):
             consecutive = group["timestamp"].diff().eq(pd.Timedelta(hours=1))
             same_value = group["generation_mwh"].eq(group["generation_mwh"].shift())
             eligible = group["_daylight"] & group["generation_mwh"].gt(0)
@@ -190,7 +190,7 @@ class PlantQualityProfiler:
         temporal_consistency = self._temporal_profile_consistency(audited)
         peer_consistency = self._peer_pattern_consistency(audited)
         rows: list[dict[str, object]] = []
-        for plant_id, group in audited.groupby("plant_id", sort=True):
+        for plant_id, group in audited.groupby("plant_id", sort=True, observed=True):
             start, end = group["timestamp"].min(), group["timestamp"].max()
             expected = max(1, int((end - start) / pd.Timedelta(hours=1)) + 1)
             row: dict[str, object] = {
@@ -241,8 +241,14 @@ class PlantQualityProfiler:
     def _temporal_profile_consistency(frame: pd.DataFrame) -> dict[str, float]:
         scores: dict[str, float] = {}
         working = frame.assign(date=frame["timestamp"].dt.date, hour=frame["timestamp"].dt.hour)
-        for plant_id, group in working.groupby("plant_id", sort=False):
-            pivot = group.pivot_table(index="date", columns="hour", values="generation_mwh", aggfunc="mean")
+        for plant_id, group in working.groupby("plant_id", sort=False, observed=True):
+            pivot = group.pivot_table(
+                index="date",
+                columns="hour",
+                values="generation_mwh",
+                aggfunc="mean",
+                observed=True,
+            )
             if len(pivot) < 7:
                 scores[str(plant_id)] = float("nan")
                 continue
@@ -261,17 +267,21 @@ class PlantQualityProfiler:
         if "region" not in frame:
             return scores
         peer_group_columns = ["region", "energy_source"] if "energy_source" in frame else ["region"]
-        for _, group in frame.groupby(peer_group_columns, sort=False):
+        for _, group in frame.groupby(peer_group_columns, sort=False, observed=True):
             if group["plant_id"].nunique() < 2:
                 continue
             values = group["capacity_factor"].copy()
-            fallback_scale = group.groupby("plant_id")["generation_mwh"].transform(
+            fallback_scale = group.groupby("plant_id", observed=True)["generation_mwh"].transform(
                 lambda series: series.quantile(0.95)
             ).replace(0, np.nan)
             values = values.where(values.notna(), group["generation_mwh"].div(fallback_scale))
             normalized = group.assign(_normalized_generation=values)
             pivot = normalized.pivot_table(
-                index="timestamp", columns="plant_id", values="_normalized_generation", aggfunc="mean"
+                index="timestamp",
+                columns="plant_id",
+                values="_normalized_generation",
+                aggfunc="mean",
+                observed=True,
             )
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)

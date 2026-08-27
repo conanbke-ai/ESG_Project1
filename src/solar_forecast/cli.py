@@ -203,7 +203,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     prepare = commands.add_parser(
         "prepare-data",
-        help="Standardize retained four-company files and build leakage-safe model features",
+        help="Standardize retained public-provider files and build leakage-safe model features",
     )
     prepare.add_argument("--input-root", default="file/solar_data_file")
     prepare.add_argument("--weather-root", default="file/KMA_data_file")
@@ -238,7 +238,7 @@ def build_parser() -> argparse.ArgumentParser:
         "evaluate-features",
         help="Compare feature contracts with purged rolling-origin validation",
     )
-    evaluate_features.add_argument("--data", default="file/standardized/model_ready.csv")
+    evaluate_features.add_argument("--data", default="file/standardized/model_ready.csv.gz")
     evaluate_features.add_argument("--output-dir", default="output/evaluation/features")
     evaluate_features.add_argument("--folds", type=int, default=3)
     evaluate_features.add_argument("--validation-window-hours", type=int, default=2160)

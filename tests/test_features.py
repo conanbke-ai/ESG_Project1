@@ -57,7 +57,7 @@ def test_history_engineering_rejects_duplicate_entity_timestamps():
 def test_model_configs_match_the_selected_generated_columns():
     for name in ("xgboost", "cnn_bilstm"):
         values = json.loads(Path(f"config/models/{name}.json").read_text(encoding="utf-8"))
-        assert values["input_dataset"] == "file/standardized/model_ready.csv"
+        assert values["input_dataset"] == "file/standardized/model_ready_parts"
         assert values["target_column"] == "generation_mwh"
         assert values["feature_columns"] == SELECTED_MODEL_FEATURES
 

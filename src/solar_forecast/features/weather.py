@@ -35,8 +35,28 @@ class KmaAsosNormalizer:
     def __init__(self, station_metadata_path: Path):
         self.station_metadata_path = Path(station_metadata_path)
 
-    def read(self, paths: Iterable[Path]) -> pd.DataFrame:
-        frames = [read_csv_with_fallback(Path(path)) for path in paths]
+    def read(
+        self,
+        paths: Iterable[Path],
+        *,
+        station_ids: Iterable[int] | None = None,
+    ) -> pd.DataFrame:
+        selected = (
+            {int(station_id) for station_id in station_ids}
+            if station_ids is not None
+            else None
+        )
+        frames: list[pd.DataFrame] = []
+        for path in paths:
+            frame = read_csv_with_fallback(Path(path))
+            frame.columns = [str(column).strip() for column in frame.columns]
+            if selected is not None:
+                if "지점" not in frame:
+                    raise ValueError(f"KMA station column is missing: {path}")
+                station = pd.to_numeric(frame["지점"], errors="coerce")
+                frame = frame.loc[station.isin(selected)]
+            if not frame.empty:
+                frames.append(frame)
         if not frames:
             raise ValueError("At least one KMA hourly file is required")
         return self.transform(pd.concat(frames, ignore_index=True))

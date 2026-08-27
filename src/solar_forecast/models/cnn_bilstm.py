@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import gc
 from pathlib import Path
 
 from solar_forecast.models.cnn.config import SequenceConfig
 from solar_forecast.models.cnn.workflow import train_and_save
-from solar_forecast.pipeline.dataset import DatasetRepository
+from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.pipeline.preprocessing import NumericPreprocessor
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT
 
@@ -15,23 +16,34 @@ class CnnBiLstmTrainer:
     def train(self, config: ModelJobConfig, run_dir: Path, smoke: bool = False) -> dict[str, object]:
         source = Path(str(config.values["input_dataset"]))
         source = source if source.is_absolute() else PROJECT_ROOT / source
-        source, raw = DatasetRepository(source.parent).load(source)
         target = str(config.values["target_column"])
         energy_source = config.values.get("energy_source_filter")
-        if energy_source:
-            if "energy_source" not in raw:
-                raise ValueError("Configured energy_source_filter but dataset has no energy_source column")
-            raw = raw.loc[raw["energy_source"].eq(str(energy_source))].copy()
         entity_column = config.values.get("entity_column")
         timestamp_column = config.values.get("timestamp_column")
         passthrough = [column for column in (entity_column, timestamp_column) if column]
+        feature_columns = list(config.values.get("feature_columns") or [])
+        policy = DatasetLoadPolicy(
+            chunk_rows=int(config.values.get("csv_chunk_rows", 100_000)),
+            memory_limit_mb=int(config.values.get("memory_limit_mb", 1536)),
+            numeric_dtype=str(config.values.get("numeric_dtype", "float32")),
+        )
+        source, raw, load_report = DatasetRepository(source.parent).load_training_frame(
+            source,
+            columns=[*passthrough, *feature_columns, target],
+            numeric_columns=[*feature_columns, target],
+            equals_filters={"energy_source": str(energy_source)} if energy_source else None,
+            truthy_filter=config.values.get("quality_filter_column"),
+            row_limit=10_000 if smoke else None,
+            policy=policy,
+        )
         prepared = NumericPreprocessor(fill_missing=False).transform(
             raw,
             target,
-            config.values.get("feature_columns"),
+            feature_columns,
             passthrough_columns=passthrough,
-            quality_filter_column=config.values.get("quality_filter_column"),
         )
+        del raw
+        gc.collect()
         if smoke and entity_column:
             first_entity = prepared.frame[entity_column].iloc[0]
             frame = prepared.frame[prepared.frame[entity_column] == first_entity].head(512)
@@ -67,6 +79,7 @@ class CnnBiLstmTrainer:
             "metrics": artifacts["metrics"],
             "n_rows": len(frame),
             "temporal_split": artifacts.get("temporal_split"),
+            "memory_aware_loading": load_report.to_dict(),
         }
 
 

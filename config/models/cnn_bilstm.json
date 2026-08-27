@@ -2,7 +2,7 @@
   "model": "cnn_bilstm",
   "profile": "optimized",
   "seed": 42,
-  "input_dataset": "file/standardized/model_ready.csv",
+  "input_dataset": "file/standardized/model_ready_parts",
   "target_column": "generation_mwh",
   "energy_source_filter": "solar",
   "feature_columns": [
@@ -36,6 +36,9 @@
   "feature_contract": "selected_v3_physics_aware_day_ahead",
   "quality_filter_column": "quality_train_eligible",
   "missing_value_policy": "training_split_median_with_missing_indicators",
+  "csv_chunk_rows": 100000,
+  "memory_limit_mb": 1536,
+  "numeric_dtype": "float32",
   "entity_column": "plant_id",
   "timestamp_column": "timestamp",
   "output_root": "artifacts/models/cnn_bilstm",

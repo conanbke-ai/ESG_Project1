@@ -62,6 +62,8 @@ class PlantMetadataCatalog:
     """Normalize and match the four companies' public plant metadata tables."""
 
     aliases = {
+        ("koen", "구미태양광"): "구미정수장",
+        ("koen", "탑선태양광"): "탑선옥상형",
         ("kospo", "하동본부"): "하동화력",
         ("kospo", "부산본부"): "부산발전본부1400kw",
         ("kospo", "부산수처리장"): "부산수처리건물",
@@ -69,6 +71,10 @@ class PlantMetadataCatalog:
         ("kospo", "신인천전망대"): "신인천법사면전망대",
         ("kospo", "신인천해수구취수구"): "신인천해수취수구",
         ("kospo", "하동보건소"): "하동군보건소",
+        ("iwest", "(군산)삼랑진태양광"): "삼랑진 태양광 (FIT)",
+        ("iwest", "영암에프원태양광b"): "영암F1 태양광",
+        ("iwest", "안산연성정수장태양광"): "경기도 안산연성 태양광",
+        ("iwest", "태안#9,10 수상태양광"): "태안수상태양광",
     }
 
     def __init__(self, records: Iterable[PlantMetadata]):

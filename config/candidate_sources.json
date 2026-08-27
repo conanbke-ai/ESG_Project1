@@ -22,6 +22,74 @@
   },
   "sources": [
     {
+      "id": "kospo_yongsuri_20260228",
+      "organization": "한국남부발전",
+      "official_url": "https://www.data.go.kr/data/15095404/fileData.do",
+      "access": "public CSV attachment downloaded",
+      "granularity": "용수리 태양광, daily wide with 24 hourly buckets",
+      "verified_files": "2020-10-01 through 2026-02-28, 1,977 daily rows",
+      "status": "standardized_but_weather_mapping_quarantined",
+      "role": "extend a long-running Jeolla-area public plant series",
+      "blockers": [
+        "the generation file does not carry a defensible address or coordinate",
+        "capacity and a reviewed KMA station mapping must be joined from an official facility source"
+      ]
+    },
+    {
+      "id": "kospo_sinpungri_20260228",
+      "organization": "한국남부발전",
+      "official_url": "https://www.data.go.kr/data/15109998/fileData.do",
+      "access": "public CSV attachment downloaded",
+      "granularity": "신풍리 태양광, daily wide with 24 hourly buckets",
+      "verified_files": "2021-05-01 through 2026-02-28, 1,765 daily rows",
+      "status": "standardized_but_weather_mapping_quarantined",
+      "role": "extend a long-running public plant series",
+      "blockers": [
+        "the generation file does not carry a defensible address or coordinate",
+        "capacity and a reviewed KMA station mapping must be joined from an official facility source"
+      ]
+    },
+    {
+      "id": "krc_jindo_hourly_2019",
+      "organization": "한국농어촌공사",
+      "official_url": "https://www.data.go.kr/data/15080933/fileData.do",
+      "access": "public CSV attachment downloaded",
+      "granularity": "진도 태양광, daily wide with 24 hourly buckets",
+      "verified_files": "2019 only; 365 valid daily rows after dropping the blank footer row",
+      "status": "staged_history_too_short",
+      "role": "Jeollanam-do coverage and schema adapter candidate",
+      "blockers": [
+        "one year cannot support the required global Train/Validation/Calibration/Test evaluation",
+        "unit semantics, official capacity, stable identity, and KMA station mapping need intake review"
+      ]
+    },
+    {
+      "id": "kdhc_inverter_realtime_api_2026",
+      "organization": "한국지역난방공사",
+      "official_url": "https://www.data.go.kr/data/15157890/openapi.do",
+      "access": "public automatic-approval API; service key required",
+      "granularity": "inverter-level real-time solar generation telemetry",
+      "status": "service_key_and_history_audit_required",
+      "role": "highest-priority new continuously collectible source",
+      "blockers": [
+        "the available historical lookback and pagination must be measured with an issued service key",
+        "inverter rows require an explicit plant aggregation and duplicate-revision policy"
+      ]
+    },
+    {
+      "id": "komipo_renewable_generation_api",
+      "organization": "한국중부발전",
+      "official_url": "https://www.data.go.kr/data/15084511/openapi.do",
+      "access": "public automatic-approval REST API; service key required",
+      "granularity": "headquarters, plant, equipment, measurement time, and generation",
+      "status": "service_key_and_continuity_audit_required",
+      "role": "high-priority fifth generation-company source",
+      "blockers": [
+        "response history, unit, pagination, and revision behavior must be profiled",
+        "capacity and reviewed KMA mappings are required before model admission"
+      ]
+    },
+    {
       "id": "krc_yeongam_hourly",
       "organization": "한국농어촌공사",
       "official_url": "https://www.data.go.kr/dataset/15005796/fileData.do?lang=ko",

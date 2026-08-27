@@ -1,10 +1,19 @@
 {
   "display_name": "전국 태양광 발전량 예측·이상징후 알림 시스템",
-  "scope_id": "four_public_generation_companies",
-  "companies": ["koen", "kospo", "ewp", "iwest"],
-  "nationwide_definition": "4개 발전공기업이 공개한 태양광 발전소의 전국 분포",
+  "scope_id": "nationwide_public_multi_provider",
+  "current_generation_providers": ["koen", "kospo", "ewp", "iwest"],
+  "expansion_providers": ["krc", "kdhc", "komipo", "kpx"],
+  "nationwide_definition": "기관 수를 고정하지 않고, 공통 계약·기상 매핑·품질 게이트를 통과한 국내 공개 발전소를 지속적으로 확장하는 전국 표본",
+  "current_validated_snapshot": {
+    "as_of": "2026-08-27",
+    "source_files": 88,
+    "standardized_hourly_rows": 4236565,
+    "model_ready_rows": 2230839,
+    "model_ready_plants": 37,
+    "quarantined_plants": 29
+  },
   "excludes": [
-    "국내 모든 민간·공공 태양광 설비의 전수자료",
+    "국내 모든 민간·공공 태양광 설비의 전수자료라는 주장",
     "설비 또는 인버터 고장 판정",
     "정비 및 출력제어 확정 원인 분석"
   ],

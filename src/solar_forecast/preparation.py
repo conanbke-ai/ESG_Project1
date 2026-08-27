@@ -8,9 +8,10 @@ from solar_forecast.collectors.archive import (
     StandardizationRun,
 )
 from solar_forecast.collectors.metadata import PlantMetadataCatalog
-from solar_forecast.features.service import LegacyModelDatasetBuilder, ModelDatasetResult
-from solar_forecast.pipeline.dataset import DatasetRepository
+from solar_forecast.features.service import ModelDatasetResult, NationwideModelDatasetBuilder
+from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.quality import QualityAuditResult, QualityAuditService
+from solar_forecast.quality.policy import WEATHER_RANGES
 
 
 @dataclass(frozen=True)
@@ -46,9 +47,8 @@ class DataPreparationService:
         generation_paths = tuple(
             Path(partition.destination)
             for partition in generation.partitions
-            if partition.company == "kospo"
         )
-        builder = LegacyModelDatasetBuilder(self.weather_root, metadata)
+        builder = NationwideModelDatasetBuilder(self.weather_root, metadata)
         legacy_generation = builder.read_legacy_generation(self.merged_source)
         legacy_quality = QualityAuditService().run(
             legacy_generation,
@@ -58,10 +58,26 @@ class DataPreparationService:
         )
         model_dataset = builder.build(
             self.merged_source,
-            self.output_dir / "model_ready.csv",
+            self.output_dir / "model_ready.csv.gz",
             generation_paths=generation_paths,
         )
-        _, model_frame = DatasetRepository(model_dataset.path.parent).load(model_dataset.path)
+        quality_context = [
+            "timestamp",
+            "company",
+            "plant_id",
+            "plant",
+            "region",
+            "energy_source",
+            "generation_mwh",
+            "capacity_mw",
+            *WEATHER_RANGES,
+        ]
+        _, model_frame, _ = DatasetRepository(model_dataset.path.parent).load_training_frame(
+            model_dataset.partitions_dir or model_dataset.path,
+            columns=quality_context,
+            numeric_columns=["generation_mwh", "capacity_mw", *WEATHER_RANGES],
+            policy=DatasetLoadPolicy(chunk_rows=100_000, memory_limit_mb=1536),
+        )
         quality = QualityAuditService().run(
             model_frame,
             self.output_dir,

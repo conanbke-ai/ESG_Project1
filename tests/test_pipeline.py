@@ -5,7 +5,7 @@ import pandas as pd
 
 from solar_forecast.models.cnn.config import SequenceConfig
 from solar_forecast.pipeline import PipelineConfig, run_pipeline
-from solar_forecast.pipeline.dataset import discover_latest_file
+from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository, discover_latest_file
 from solar_forecast.pipeline.preprocessing import TrainFittedMedianImputer, preprocess_dataset
 
 
@@ -33,6 +33,34 @@ def test_latest_file_discovery(tmp_path):
     old.touch()
     new.touch()
     assert discover_latest_file(tmp_path) in {old, new}
+
+
+def test_training_loader_pushes_filters_and_float32_conversion_into_chunks(tmp_path):
+    source = tmp_path / "model_ready.csv.gz"
+    pd.DataFrame(
+        {
+            "timestamp": ["2025-01-01", "2025-01-02", "2025-01-03"],
+            "plant_id": ["a", "b", "c"],
+            "energy_source": ["solar", "wind", "solar"],
+            "quality_train_eligible": [True, True, False],
+            "feature": [1.0, 2.0, 3.0],
+            "target": [4.0, 5.0, 6.0],
+            "unused_large_column": ["x" * 1000] * 3,
+        }
+    ).to_csv(source, index=False, compression="gzip")
+    _, frame, report = DatasetRepository(tmp_path).load_training_frame(
+        source,
+        columns=["timestamp", "plant_id", "feature", "target"],
+        numeric_columns=["feature", "target"],
+        equals_filters={"energy_source": "solar"},
+        truthy_filter="quality_train_eligible",
+        policy=DatasetLoadPolicy(chunk_rows=1, memory_limit_mb=32),
+    )
+    assert len(frame) == 1
+    assert "unused_large_column" not in frame
+    assert frame["feature"].dtype == np.float32
+    assert report.scanned_rows == 3
+    assert report.retained_rows == 1
 
 
 def test_full_pipeline_creates_report(tmp_path):

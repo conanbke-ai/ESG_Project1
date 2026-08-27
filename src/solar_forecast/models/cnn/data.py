@@ -120,15 +120,24 @@ def _fit_and_transform_training_medians(
     *,
     append_missing_indicators: bool,
 ) -> dict[str, object]:
-    training_rows = np.concatenate(
-        [item.features[item.train_feature_rows] for item in series], axis=0
-    )
-    training_rows = np.where(np.isfinite(training_rows), training_rows, np.nan)
-    all_missing_mask = np.isnan(training_rows).all(axis=0)
-    medians = np.zeros(training_rows.shape[1], dtype=np.float32)
-    medians[~all_missing_mask] = np.nanmedian(
-        training_rows[:, ~all_missing_mask], axis=0
-    )
+    # Compute one feature at a time. Concatenating every entity's full Train
+    # matrix duplicates O(rows * features) memory before lazy windows even run.
+    feature_count = len(feature_columns)
+    medians = np.zeros(feature_count, dtype=np.float32)
+    all_missing_mask = np.ones(feature_count, dtype=bool)
+    for feature_index in range(feature_count):
+        feature_parts = [
+            item.features[item.train_feature_rows, feature_index]
+            for item in series
+            if item.train_feature_rows.any()
+        ]
+        if not feature_parts:
+            continue
+        values = np.concatenate(feature_parts).astype(np.float32, copy=False)
+        values = values[np.isfinite(values)]
+        if values.size:
+            medians[feature_index] = np.median(values)
+            all_missing_mask[feature_index] = False
     all_missing = [
         feature_columns[index]
         for index, is_missing in enumerate(all_missing_mask)
@@ -141,15 +150,19 @@ def _fit_and_transform_training_medians(
         )
     medians = np.nan_to_num(medians, nan=0.0).astype(np.float32)
     for item in series:
-        numeric = np.where(np.isfinite(item.features), item.features, np.nan).astype(np.float32)
-        indicator = np.isnan(numeric).astype(np.float32)
-        missing_row, missing_feature = np.where(np.isnan(numeric))
+        numeric = item.features.astype(np.float32, copy=False)
+        missing = ~np.isfinite(numeric)
+        missing_row, missing_feature = np.where(missing)
         numeric[missing_row, missing_feature] = medians[missing_feature]
-        item.features = (
-            np.concatenate([numeric, indicator], axis=-1)
-            if append_missing_indicators
-            else numeric
-        )
+        if append_missing_indicators:
+            transformed = np.empty(
+                (len(numeric), numeric.shape[1] * 2), dtype=np.float32
+            )
+            transformed[:, : numeric.shape[1]] = numeric
+            transformed[:, numeric.shape[1] :] = missing
+            item.features = transformed
+        else:
+            item.features = numeric
     return {
         "strategy": "training_split_median_with_missing_indicators",
         "feature_medians": {
@@ -208,7 +221,11 @@ def prepare_dataset_splits(
         column for column in (entity_column, timestamp_column) if column is not None
     ]
     prepared = frame.sort_values(sort_columns, kind="stable") if sort_columns else frame.copy()
-    grouped = prepared.groupby(entity_column, sort=False) if entity_column else [(None, prepared)]
+    grouped = (
+        prepared.groupby(entity_column, sort=False, observed=True)
+        if entity_column
+        else [(None, prepared)]
+    )
     series: list[_EntitySeries] = []
     for _, group in grouped:
         if len(group) <= cfg.sequence_length:
