@@ -71,6 +71,25 @@ def test_serve_dashboard_defaults_to_expected_local_url():
     assert args.no_refresh is False
 
 
+def test_national_dashboard_keeps_audit_details_offscreen_and_uses_choropleth():
+    script = (
+        Path(__file__).resolve().parents[1] / "dashboard/assets/dashboard.js"
+    ).read_text(encoding="utf-8")
+    coverage_view = script.split("function coverageView", 1)[1].split(
+        "function qualityView", 1
+    )[0]
+    national_map = script.split("function drawNationalMap", 1)[1].split(
+        "function drawTrainingMap", 1
+    )[0]
+
+    assert "수집 범위와 출처" not in coverage_view
+    assert "원천 품질 점검" not in coverage_view
+    assert 'data-map-metric="capacity"' in coverage_view
+    assert "L.tileLayer" not in national_map
+    assert "L.circleMarker" not in national_map
+    assert "L.geoJSON" in national_map
+
+
 def test_dashboard_builder_separates_plant_and_weather_proxy_coordinates(tmp_path):
     _write_national_inventory_fixture(tmp_path)
     standardized = tmp_path / "file/standardized"
