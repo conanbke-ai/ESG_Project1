@@ -6,6 +6,7 @@ from solar_forecast.ensemble.dynamic_gate import (
     predict_dynamic_hybrid, predict_region_blend,
 )
 from solar_forecast.ensemble.metrics import aggregate_metrics
+from solar_forecast.models.xgboost import XGBoostTrainer
 
 
 def _predictions():
@@ -49,3 +50,25 @@ def test_korean_source_columns_are_normalized():
     })
     result = normalize_prediction_columns(source)
     assert {"timestamp", "region", "plant", "y_true", "hour"}.issubset(result.columns)
+
+
+def test_xgboost_prediction_artifact_keeps_stable_alignment_key():
+    context = pd.DataFrame(
+        {
+            "timestamp": ["2025-01-01T00:00:00"],
+            "plant_id": ["company:plant"],
+            "region": ["전라남도"],
+            "plant": ["영암태양광"],
+        }
+    )
+
+    predictions = XGBoostTrainer._prediction_frame(
+        context,
+        actual=np.asarray([1.0]),
+        predicted=np.asarray([0.9]),
+        split="test",
+    )
+
+    assert predictions.loc[0, "plant_id"] == "company:plant"
+    assert predictions.loc[0, "split"] == "test"
+    assert predictions.loc[0, "y_pred"] == predictions.loc[0, "xgb_pred"]

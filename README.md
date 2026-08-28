@@ -151,10 +151,12 @@ python app.py collect --sources komipo --start-date 2026-08-01 --end-date 2026-0
 ## 로컬 대시보드
 
 기존 루트별 정적 HTML과 모델 체크포인트 폴더를 분리했습니다. 웹 산출물의 단일 위치는
-`dashboard/`이며, 두 화면은 같은 생성 JSON과 CSS/JS를 공유하되 모집단을 명확히 분리합니다.
+`dashboard/`이며, 두 화면은 같은 사용자용 JSON과 CSS/JS를 공유하되 역할을 명확히 분리합니다.
 
 - `solar_dashboard.html`: 학습 데이터 보유 여부와 무관한 전국 태양광 발전설비 현황
-- `plant_region_report_perm.html`: 발전량 학습 표본의 발전소–행정구역–ASOS 매핑과 품질
+- `model_analysis.html`: 모델 비교, 지역·발전소별 오차, 예측 잔차와 데이터 이상 신호
+
+과거 `plant_region_report_perm.html` 주소는 새 분석 화면으로 이동하는 호환 진입점만 유지합니다.
 
 ```powershell
 python app.py build-dashboard
@@ -167,19 +169,31 @@ EPSIS에서 `발전원=태양에너지`로 직접 다시 내려받은 2026-08-05
 해시·필수 컬럼뿐 아니라 모든 데이터 행의 `발전원=태양에너지` 계약을 검사하므로, 필터가
 풀린 혼합 원본은 다른 발전원이 합산되기 전에 즉시 실패합니다.
 원본의 320개 세부지역 표기는 구·신 행정구역명을 통합해 272개 표준 지역으로 보존합니다.
-메인 지도는 이 점들을 한꺼번에 찍지 않고 17개 시도 단계구분도만 보여주며, 시도 클릭 시
-상위 세부지역을 확인할 수 있습니다.
+메인 지도는 이 점들을 한꺼번에 찍지 않고 17개 시도 단계구분도만 보여줍니다. 지도·선택 상자·
+순위에서 시도를 고르면 해당 시도의 **모든 세부지역**을 검색·정렬할 수 있습니다. EPSIS 원천의
+광역지역과 세부지역이 다른 17개 집계 행은 임의로 재배정하지 않고 `지역 확인 필요`로 표시합니다.
 이 행은 물리적 발전소 고유 식별자가 아닌 발전기·등록 레코드이므로 화면에서
 `발전소 개소`라고 과장하지 않습니다. CP949 Bronze 원본, 다운로드 시각, 기준일, SHA-256,
 제외 범위는 `config/national_solar_inventory.json`에서 버전 관리합니다.
 
-`학습 매핑·품질` 화면은 기존 registry의 태양광 65개(학습 가능 43, 격리 22),
-Gold 32개 파티션·2,525,434행과 파일 인코딩 감사를 따로 보여줍니다. 발전소 실좌표와
-ASOS 관측소 대리좌표도 서로 다른 개념으로 표시합니다.
+`예측 성능 분석` 화면은 XGBoost와 CNN-BiLSTM의 `timestamp + plant_id` 공통 Test 행을 다시
+정렬한 경우에만 모델 우열과 지역·발전소 순위를 표시합니다. 모든 정식 실행을 평가 계약별로 묶어
+가장 최신의 호환 XGBoost·CNN-BiLSTM 쌍을 고르며, 스모크 실행, 실패 실행, 서로 다른 평가기간,
+구형·혼합 발전원 결과는 제외합니다. NMAE는 설비용량이 확인된 공통 표본으로 계산하고 적용률을
+함께 표시합니다. 정식 공통 결과가 없으면 가상 수치나 0점 차트를 만들지 않고 빈 상태를 표시합니다.
+
+예측 이상 신호의 기준은 Test와 분리된 Calibration에서 고정합니다. 발전소별 168개 이상 표본이
+있으면 용량 정규화 잔차 기준을 사용하고, 표본이 부족하면 전역 용량 정규화 기준으로 후퇴합니다.
+용량이 없는 발전소는 충분한 자체 Calibration 표본이 있을 때만 절대오차 기준을 사용합니다. 전체
+신호 건수·지역·발전소 집계와 화면에 보관하는 모델별 상위 250개 대표 이벤트를 분리하며, 시계열은
+발전소별 최근 연속 168시간만 제공합니다. 현재 데이터 품질표의 태양광 점검 대상 4개는 모델 잔차와
+구분한 `데이터 패턴 신호`로 제공하며, 이를 센서 고장으로 단정하지 않습니다.
 
 `serve-dashboard`는 `dashboard/`를 문서 루트로 지정하므로 어느 디렉터리에서 실행해도 같은 URL이
 동작합니다. VS Code Live Server처럼 프로젝트 루트를 제공하는 기존 서버도 지원하도록 루트의
 `solar_dashboard.html`과 과거 `map/html/solar_dashboard.html`에는 호환 이동 페이지를 둡니다.
+루트 `model_analysis.html`과 과거 `plant_region_report_perm.html`도 같은 방식으로 현재 분석 화면에
+연결합니다.
 `--output-dir`을 별도로 지정하면 HTML·CSS·JavaScript·JSON·GeoJSON을 함께 게시합니다.
 
 루트의 빈 `xgboost/`와 `cnn_bilstm/`를 제품 구조로 사용하지 않습니다. 모든 모델 구현은
@@ -363,8 +377,12 @@ python app.py train cnn_bilstm --smoke
 ```
 
 각 실행 폴더에는 `optimization_summary.json`, `optimization_trials.csv`, 최종 `best_params.json`과
-모델 manifest가 저장됩니다. 데이터·피처·분할 또는 탐색공간을 바꿀 때는 기존 trial을 섞지 않도록
-설정의 `study_name` 버전을 올립니다. `--smoke`는 배선 검사 목적이므로 Optuna를 자동 생략합니다.
+모델 manifest가 저장됩니다. 두 모델 모두 Validation/Calibration/Test 예측에
+`timestamp, plant_id, region, plant, y_true, y_pred` 공통 문맥을 보존하므로 대시보드가 전체 파일을
+RAM에 올리지 않고 임시 SQLite에서 같은 Test 행만 정렬할 수 있습니다. 데이터·피처·분할 또는
+탐색공간을 바꿀 때는 기존 trial을 섞지 않도록 설정의 `study_name` 버전을 올립니다. `--smoke`는
+배선 검사 목적이므로 Optuna를 자동 생략하며 완료 manifest에도 `execution_mode=smoke`를 보존해
+정식 성능 화면에서 자동 제외합니다.
 
 ## 포트폴리오 실험 구분
 

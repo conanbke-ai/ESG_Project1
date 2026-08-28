@@ -203,7 +203,8 @@ file/standardized/quality_manifest.json
 file/standardized/candidates/krc_yeongam/candidate_generation.csv.gz
 file/standardized/candidates/krc_yeongam/candidate_manifest.json
 dashboard/solar_dashboard.html
-dashboard/plant_region_report_perm.html
+dashboard/model_analysis.html
+dashboard/plant_region_report_perm.html  # 과거 주소 호환 이동
 dashboard/data/dashboard_data.json
 ```
 

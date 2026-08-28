@@ -49,8 +49,29 @@ def test_train_and_save_creates_timestamped_dir(tmp_path):
     run_dir = Path(artifacts["output_dir"])
     assert run_dir.parent == base_output
     assert re.match(r"\d{8}_\d{6}", run_dir.name)
-    for fname in ["cnn_bilstm.pt", "metrics.json", "best_params.json"]:
+    for fname in [
+        "cnn_bilstm.pt",
+        "metrics.json",
+        "best_params.json",
+        "validation_predictions.csv",
+        "calibration_predictions.csv",
+        "test_predictions.csv",
+    ]:
         assert (run_dir / fname).exists()
+    predictions = pd.read_csv(run_dir / "test_predictions.csv")
+    assert set(
+        [
+            "timestamp",
+            "plant_id",
+            "region",
+            "plant",
+            "split",
+            "y_true",
+            "y_pred",
+            "cnn_pred",
+        ]
+    ).issubset(predictions.columns)
+    assert predictions["split"].eq("test").all()
 
 
 def test_compare_checkpoints_reads_nested_runs(tmp_path):

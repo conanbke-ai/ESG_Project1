@@ -38,6 +38,10 @@ class _EntitySeries:
     targets: np.ndarray
     target_positions: dict[str, np.ndarray]
     train_feature_rows: np.ndarray
+    plant_id: str
+    region: str
+    plant: str
+    timestamps: np.ndarray
 
 
 class LazyWindowSequenceDataset(Dataset):
@@ -67,6 +71,25 @@ class LazyWindowSequenceDataset(Dataset):
         item = self.series[series_index]
         window = item.features[target_position - self.sequence_length : target_position]
         return torch.from_numpy(window).float(), torch.tensor(item.targets[target_position]).float()
+
+    def context_frame(self, start: int, stop: int) -> pd.DataFrame:
+        """Materialize metadata only for one sequential prediction batch."""
+
+        records: list[dict[str, object]] = []
+        for idx in range(start, min(stop, len(self))):
+            series_index = int(np.searchsorted(self.cumulative, idx, side="right"))
+            previous = int(self.cumulative[series_index - 1]) if series_index else 0
+            target_position = int(self.positions[series_index][idx - previous])
+            item = self.series[series_index]
+            records.append(
+                {
+                    "timestamp": item.timestamps[target_position],
+                    "plant_id": item.plant_id,
+                    "region": item.region,
+                    "plant": item.plant,
+                }
+            )
+        return pd.DataFrame.from_records(records)
 
 
 def _build_sequences(
@@ -227,7 +250,7 @@ def prepare_dataset_splits(
         else [(None, prepared)]
     )
     series: list[_EntitySeries] = []
-    for _, group in grouped:
+    for entity_value, group in grouped:
         if len(group) <= cfg.sequence_length:
             continue
         features = group[feature_columns].to_numpy(dtype=np.float32)
@@ -259,6 +282,26 @@ def prepare_dataset_splits(
                 targets=targets,
                 target_positions=target_positions,
                 train_feature_rows=train_rows,
+                plant_id=(
+                    str(entity_value)
+                    if entity_column and entity_value is not None
+                    else "global"
+                ),
+                region=(
+                    str(group["region"].iloc[0])
+                    if "region" in group and pd.notna(group["region"].iloc[0])
+                    else "unknown"
+                ),
+                plant=(
+                    str(group["plant"].iloc[0])
+                    if "plant" in group and pd.notna(group["plant"].iloc[0])
+                    else str(entity_value) if entity_value is not None else "global"
+                ),
+                timestamps=(
+                    pd.to_datetime(group[timestamp_column], errors="coerce").to_numpy()
+                    if timestamp_column
+                    else np.arange(len(group), dtype=np.int64)
+                ),
             )
         )
     if not series:
@@ -302,6 +345,32 @@ def prepare_dataset_splits(
         },
         "counts": {name: len(dataset) for name, dataset in datasets.items()},
         "boundaries": boundaries.to_dict() if boundaries else None,
+        "test_period": (
+            {
+                "start": pd.to_datetime(
+                    prepared.loc[
+                        pd.to_datetime(prepared[timestamp_column], errors="coerce").gt(
+                            boundaries.calibration_end
+                            + pd.Timedelta(hours=boundaries.gap_hours)
+                        ),
+                        timestamp_column,
+                    ],
+                    errors="coerce",
+                ).min().isoformat(),
+                "end": pd.to_datetime(
+                    prepared.loc[
+                        pd.to_datetime(prepared[timestamp_column], errors="coerce").gt(
+                            boundaries.calibration_end
+                            + pd.Timedelta(hours=boundaries.gap_hours)
+                        ),
+                        timestamp_column,
+                    ],
+                    errors="coerce",
+                ).max().isoformat(),
+            }
+            if timestamp_column and boundaries
+            else None
+        ),
         "window_materialization": "lazy_per_batch",
     }
     preprocessing_state["temporal_split"] = split_metadata

@@ -470,6 +470,7 @@ def train_with_best_trial(
         "validation_metrics": validation_metrics,
         "calibration_metrics": calibration_metrics,
         "preprocessing": getattr(train_loader, "preprocessing_state", None),
+        "loaders": loaders,
         "checkpoint_stage": checkpoint_stage,
         "checkpoint_resumed": resumed,
     }

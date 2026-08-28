@@ -5,7 +5,10 @@ from pathlib import Path
 
 from solar_forecast.models.cnn.config import SequenceConfig
 from solar_forecast.models.cnn.workflow import train_and_save
-from solar_forecast.models.checkpointing import TrainingCheckpointStore
+from solar_forecast.models.checkpointing import (
+    TrainingCheckpointStore,
+    dataset_signature,
+)
 from solar_forecast.models.optimization import OptimizationSettings
 from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.pipeline.preprocessing import NumericPreprocessor
@@ -22,7 +25,13 @@ class CnnBiLstmTrainer:
         energy_source = config.values.get("energy_source_filter")
         entity_column = config.values.get("entity_column")
         timestamp_column = config.values.get("timestamp_column")
-        passthrough = [column for column in (entity_column, timestamp_column) if column]
+        passthrough = list(
+            dict.fromkeys(
+                column
+                for column in (entity_column, timestamp_column, "region", "plant")
+                if column
+            )
+        )
         feature_columns = list(config.values.get("feature_columns") or [])
         policy = DatasetLoadPolicy(
             chunk_rows=int(config.values.get("csv_chunk_rows", 100_000)),
@@ -105,12 +114,27 @@ class CnnBiLstmTrainer:
         optimizer_artifact = dict(artifacts.get("optimizer", {}))
         if smoke:
             optimizer_artifact = {"enabled": False, "reason": "smoke_mode"}
+        temporal_split = artifacts.get("temporal_split") or {}
+        test_period = temporal_split.get("test_period") or {}
         return {
             "source": str(source), "checkpoint_path": str(artifacts["checkpoint_path"]),
+            "validation_predictions": str(artifacts["validation_predictions"]),
+            "calibration_predictions": str(artifacts["calibration_predictions"]),
+            "test_predictions": str(artifacts["test_predictions"]),
             "features": prepared.feature_columns,
             "metrics": artifacts["metrics"],
             "n_rows": len(frame),
-            "temporal_split": artifacts.get("temporal_split"),
+            "temporal_split": temporal_split,
+            "evaluation_contract": {
+                "dataset_fingerprint": dataset_signature(source),
+                "target": target,
+                "target_unit": "MWh",
+                "horizon_hours": int(config.values.get("forecast_horizon_hours", 24)),
+                "test_start": test_period.get("start"),
+                "test_end": test_period.get("end"),
+                "prediction_key": ["timestamp", "plant_id"],
+                "prediction_schema": "solar-forecast-prediction.v1",
+            },
             "optimizer": optimizer_artifact,
             "memory_aware_loading": load_report.to_dict(),
             "checkpoint": artifacts.get("checkpoint", checkpoint_store.describe()),

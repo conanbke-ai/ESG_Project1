@@ -12,6 +12,7 @@ from solar_forecast.reporting.national_inventory import (
     InventorySchemaError,
     NationalInventoryService,
     REQUIRED_COLUMNS,
+    source_region_conflict,
 )
 
 
@@ -143,7 +144,14 @@ def test_cp949_inventory_keeps_duplicates_and_validates_footer_and_coordinates(t
     assert locations["전북특별자치도 익산시"]["coordinate_basis"] == "exact"
     assert locations["강원특별자치도 춘천시"]["coordinate_basis"] == "normalized"
     assert locations["서울특별시"]["coordinate_basis"] == "province_centroid"
+    assert not any(item["source_region_conflict"] for item in inventory["locations"])
     json.dumps(payload, ensure_ascii=False, allow_nan=False)
+
+
+def test_source_region_conflict_is_flagged_without_silent_reassignment():
+    assert source_region_conflict("강원특별자치도 강릉시", "경기도") is True
+    assert source_region_conflict("전남 영암군", "전라남도") is False
+    assert source_region_conflict("영암군", "전라남도") is False
 
 
 def test_utf8_replacement_character_metric_and_sha256_failure(tmp_path):

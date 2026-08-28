@@ -29,16 +29,42 @@ class TrainingService:
         run_dir = PROJECT_ROOT / config.values["output_root"] / run_id
         manifest_path = run_dir / "manifest.json"
         lock_path = PROJECT_ROOT / "artifacts" / ".training.lock"
-        write_manifest(manifest_path, status="running", model=config.model, run_id=run_id, details={"smoke": smoke})
+        run_context = {
+            "execution_mode": "smoke" if smoke else "full",
+            "energy_source": config.values.get("energy_source_filter"),
+            "target": config.values.get("target_column"),
+            "target_unit": "MWh",
+            "horizon_hours": config.values.get("forecast_horizon_hours"),
+            "evaluation_protocol": config.values.get("evaluation_protocol"),
+        }
+        write_manifest(
+            manifest_path,
+            status="running",
+            model=config.model,
+            run_id=run_id,
+            details={"run_context": run_context},
+        )
         try:
             with exclusive_training_lock(lock_path, config.model):
                 module_name, function_name = self.trainers[config.model]
                 trainer: Callable = getattr(importlib.import_module(module_name), function_name)
                 result = trainer(config, run_dir=run_dir, smoke=smoke)
-            write_manifest(manifest_path, status="completed", model=config.model, run_id=run_id, details=result)
+            write_manifest(
+                manifest_path,
+                status="completed",
+                model=config.model,
+                run_id=run_id,
+                details={**result, "run_context": run_context},
+            )
             return run_dir
         except Exception as exc:
-            write_manifest(manifest_path, status="failed", model=config.model, run_id=run_id, details={"error": str(exc)})
+            write_manifest(
+                manifest_path,
+                status="failed",
+                model=config.model,
+                run_id=run_id,
+                details={"error": str(exc), "run_context": run_context},
+            )
             raise
 
 

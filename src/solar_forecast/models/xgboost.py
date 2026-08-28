@@ -15,7 +15,7 @@ from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.pipeline.preprocessing import NumericPreprocessor
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT
 
-from .checkpointing import TrainingCheckpointStore, stable_signature
+from .checkpointing import TrainingCheckpointStore, dataset_signature, stable_signature
 from .optimization import OptimizationSettings
 from .xgboost_checkpoint import fit_xgboost_resumable
 from .xgboost_optimization import XGBoostHyperparameterOptimizer
@@ -179,15 +179,22 @@ class XGBoostTrainer:
             validation_frame,
             validation_frame[target].to_numpy(),
             validation_predicted,
+            split="validation",
         ).to_csv(validation_path, index=False, encoding="utf-8-sig")
         calibration_path = run_dir / "calibration_predictions.csv"
         self._prediction_frame(
             calibration_frame,
             calibration_frame[target].to_numpy(),
             calibration_predicted,
+            split="calibration",
         ).to_csv(calibration_path, index=False, encoding="utf-8-sig")
         prediction_path = run_dir / "test_predictions.csv"
-        predictions = self._prediction_frame(test_frame, test_frame[target].to_numpy(), predicted)
+        predictions = self._prediction_frame(
+            test_frame,
+            test_frame[target].to_numpy(),
+            predicted,
+            split="test",
+        )
         predictions.to_csv(prediction_path, index=False, encoding="utf-8-sig")
         metrics = {
             "mae": float(mean_absolute_error(test_frame[target], predicted)),
@@ -214,6 +221,16 @@ class XGBoostTrainer:
             "n_calibration": len(calibration_frame),
             "n_test": len(test_frame),
             "temporal_split": split_metadata,
+            "evaluation_contract": {
+                "dataset_fingerprint": dataset_signature(source),
+                "target": target,
+                "target_unit": "MWh",
+                "horizon_hours": int(config.values.get("forecast_horizon_hours", 24)),
+                "test_start": split_metadata["test_period"]["start"],
+                "test_end": split_metadata["test_period"]["end"],
+                "prediction_key": ["timestamp", "plant_id"],
+                "prediction_schema": "solar-forecast-prediction.v1",
+            },
             "optimizer": (
                 optimization_result.to_dict()
                 if optimization_result
@@ -256,6 +273,10 @@ class XGBoostTrainer:
                 "calibration": len(splits.calibration),
                 "test": len(splits.test),
             },
+            "test_period": {
+                "start": splits.test["timestamp"].min().isoformat(),
+                "end": splits.test["timestamp"].max().isoformat(),
+            },
         }
         return (
             splits.train,
@@ -292,13 +313,22 @@ class XGBoostTrainer:
         )
 
     @staticmethod
-    def _prediction_frame(context: pd.DataFrame, actual: np.ndarray, predicted: np.ndarray) -> pd.DataFrame:
+    def _prediction_frame(
+        context: pd.DataFrame,
+        actual: np.ndarray,
+        predicted: np.ndarray,
+        *,
+        split: str,
+    ) -> pd.DataFrame:
         normalized = normalize_prediction_columns(context.reset_index(drop=True))
         result = pd.DataFrame({
             "timestamp": normalized.get("timestamp", pd.Series(range(len(actual)))),
+            "plant_id": normalized.get("plant_id", "unknown"),
             "region": normalized.get("region", "unknown"),
             "plant": normalized.get("plant", "unknown"),
+            "split": split,
             "y_true": actual,
+            "y_pred": predicted,
             "xgb_pred": predicted,
         })
         return result

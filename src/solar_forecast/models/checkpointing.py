@@ -56,7 +56,9 @@ def dataframe_signature(
     return digest.hexdigest()
 
 
-def _dataset_signature(source: Path) -> str:
+def dataset_signature(source: Path) -> str:
+    """Fingerprint one file or partitioned dataset independently of the model."""
+
     source = Path(source)
     if source.is_file():
         return sha256_file(source)
@@ -100,7 +102,7 @@ def training_fingerprint(config: ModelJobConfig) -> str:
             "model": config.model,
             "profile": config.profile,
             "model_values": values,
-            "dataset": _dataset_signature(source),
+            "dataset": dataset_signature(source),
         }
     )
 

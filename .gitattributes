@@ -2,5 +2,6 @@
 dashboard/*.html -filter diff merge text eol=lf
 /solar_dashboard.html -filter diff merge text eol=lf
 /plant_region_report_perm.html -filter diff merge text eol=lf
+/model_analysis.html -filter diff merge text eol=lf
 map/html/*.html -filter diff merge text eol=lf
 /file/generator_file/*.csv -text

@@ -36,6 +36,48 @@ def _timestamped_dir(base_dir: Path) -> Path:
     return run_dir
 
 
+def _write_prediction_artifact(
+    model: torch.nn.Module,
+    loader,
+    path: Path,
+    *,
+    split: str,
+    device: torch.device,
+) -> Path:
+    """Stream row-aligned CNN predictions without materializing a full table."""
+
+    dataset = loader.dataset
+    if not hasattr(dataset, "context_frame"):
+        raise TypeError("CNN prediction dataset does not expose row context")
+    temporary = path.with_name(path.name + ".part")
+    temporary.unlink(missing_ok=True)
+    offset = 0
+    model.eval()
+    with torch.no_grad():
+        for features, targets in loader:
+            predicted = model(features.to(device)).detach().cpu().numpy().reshape(-1)
+            actual = targets.detach().cpu().numpy().reshape(-1)
+            context = dataset.context_frame(offset, offset + len(actual))
+            if len(context) != len(actual):
+                raise ValueError("CNN prediction context is not aligned with model output")
+            context["split"] = split
+            context["y_true"] = actual
+            context["y_pred"] = predicted
+            context["cnn_pred"] = predicted
+            context.to_csv(
+                temporary,
+                mode="w" if offset == 0 else "a",
+                header=offset == 0,
+                index=False,
+                encoding="utf-8-sig" if offset == 0 else "utf-8",
+            )
+            offset += len(actual)
+    if offset != len(dataset):
+        raise ValueError("CNN prediction artifact row count does not match Test dataset")
+    replace_file_atomic(temporary, path)
+    return path
+
+
 def train_and_save(
     frame: pd.DataFrame,
     target_column: str,
@@ -148,6 +190,7 @@ def train_and_save(
         study = result["study"]
         checkpoint_stage = result["checkpoint_stage"]
         checkpoint_resumed = bool(result["checkpoint_resumed"])
+        evaluation_loaders = result.pop("loaders")
         save_study_results(study, str(run_dir / "optuna_best.json"))
         if optimizer_settings is None:
             save_study_results(study, str(run_dir / "optimization_summary.json"))
@@ -232,6 +275,7 @@ def train_and_save(
             )
         metrics = _evaluate(model, test_loader, criterion, device)
         result = {"model": model, "model_config": model_cfg, "metrics": metrics, "best_params": {}}
+        evaluation_loaders = loaders
 
     preprocessing_state = (
         result.get("preprocessing")
@@ -306,6 +350,18 @@ def train_and_save(
     with open(run_dir / "best_params.json", "w", encoding="utf-8") as f:
         json.dump(result.get("best_params", {}), f, indent=2)
 
+    prediction_device = next(model.parameters()).device
+    prediction_paths = {
+        split: _write_prediction_artifact(
+            model,
+            getattr(evaluation_loaders, split),
+            run_dir / f"{split}_predictions.csv",
+            split=split,
+            device=prediction_device,
+        )
+        for split in ("validation", "calibration", "test")
+    }
+
     optimizer_artifact = (
         {
             "enabled": True,
@@ -348,6 +404,9 @@ def train_and_save(
         "metrics": result.get("metrics", {}),
         "output_dir": str(run_dir),
         "checkpoint_path": str(checkpoint_path),
+        "validation_predictions": str(prediction_paths["validation"]),
+        "calibration_predictions": str(prediction_paths["calibration"]),
+        "test_predictions": str(prediction_paths["test"]),
         "temporal_split": temporal_split,
         "optimizer": optimizer_artifact,
         "checkpoint": checkpoint_artifact,

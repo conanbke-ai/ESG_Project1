@@ -340,6 +340,7 @@ class _Aggregate:
 @dataclass
 class _LocationAggregate(_Aggregate):
     source_locations: set[str] = field(default_factory=set)
+    source_region_conflict: bool = False
 
 
 class _DiskDuplicateTracker:
@@ -584,6 +585,10 @@ class NationalInventoryService:
         location.add(capacity)
         if source_subregion:
             location.source_locations.add(source_subregion)
+            location.source_region_conflict = (
+                location.source_region_conflict
+                or source_region_conflict(source_subregion, region)
+            )
 
         for column in REQUIRED_COLUMNS:
             if not _clean(values.get(column, "")):
@@ -734,6 +739,7 @@ class NationalInventoryService:
                     "longitude": longitude,
                     "coordinate_basis": basis,
                     "coordinate_key": coordinate_key,
+                    "source_region_conflict": aggregate.source_region_conflict,
                 }
             )
         return records, bases, invalid_entries
@@ -778,6 +784,13 @@ def normalize_location_key(value: object, region: str | None = None) -> str:
         value, region if region is not None else canonical_region(_first_token(value))
     )
     return re.sub(r"\s+", "", text)
+
+
+def source_region_conflict(value: object, region: str) -> bool:
+    """Return true only when both source fields name different provinces."""
+
+    first = _first_token(value)
+    return first in REGION_ALIASES and canonical_region(first) != region
 
 
 def _first_token(value: object) -> str:
@@ -839,4 +852,5 @@ __all__ = [
     "InventorySchemaError",
     "build_national_inventory",
     "canonical_region",
+    "source_region_conflict",
 ]

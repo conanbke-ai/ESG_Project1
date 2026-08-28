@@ -31,7 +31,7 @@ src/solar_forecast/
 ├─ features/                # ASOS 표준화와 누수 없는 시간·이력 피처
 ├─ quality/                 # 물리 규칙, 품질 flag, 발전소별 센서 위험 진단
 ├─ evaluation/              # 공통 TemporalSplitter와 rolling-origin 피처 ablation
-├─ reporting/               # registry/품질/lineage 기반 정적 대시보드 데이터 빌더
+├─ reporting/               # 전국 설비 projection과 정식 모델 분석 데이터 빌더
 ├─ preparation.py           # 보관 원본 전체 표준화/학습파일 application service
 ├─ models/
 │  ├─ cnn/                  # CNN-BiLSTM 학습 엔진
@@ -81,8 +81,13 @@ facade로만 유지합니다.
   early stopping을 수행하고 선택된 설정을 전체 Train 학습에 전달
 - `ExplainableDynamicGate`: 발전소·지역·시간·출력 regime·모델 불일치별 Validation 근거와 행별 동적 결합
 - `HybridExperiment`: Hybrid 입력/평가/결과 파일의 유스케이스 경계
-- `DashboardBuilder`: registry·품질·Gold manifest를 결합하고 파티션 단위 매핑 정합성과 원본
-  인코딩/명명 상태를 감사해 `dashboard/data/dashboard_data.json`을 갱신
+- `DashboardBuilder`: 전국 설비 사용자 projection과 모델 분석 projection을 조합해
+  `dashboard/data/dashboard_data.json`을 원자적으로 갱신
+- `ModelAnalyticsService`: completed/full 실행만 선택하고 XGBoost·CNN-BiLSTM의
+  `timestamp + plant_id` 공통 Test 행을 임시 SQLite에서 정렬해 모델·지역·발전소 지표와
+  독립 Calibration의 발전소별 용량 정규화 임계값 기반 이상 신호를 메모리 제한 방식으로 계산.
+  평가 계약별 최신 호환 실행 쌍, 용량 적용률, 전체 신호 집계와 대표 이벤트, 발전소별 최근 연속
+  168시간을 별도 계약으로 제공
 
 ## 실행 및 산출물
 
@@ -111,6 +116,11 @@ Hybrid 필수 컬럼은 `timestamp, region, plant, y_true, xgb_pred, cnn_pred`�
 `일시, 지역, 발전구분, 합산발전량(MWh)`는 자동 변환하지만 두 예측 컬럼은 모델이 실제로
 생성한 값이어야 합니다. 판단 결과에는 사용한 범위, 모델별 예상 MAE, 선택 모델, 결합비와
 문장형 근거가 함께 저장됩니다.
+
+독립 모델이 저장하는 평가 예측 계약은
+`timestamp, plant_id, region, plant, split, y_true, y_pred`입니다. 모델 비교는 데이터 fingerprint,
+목표 단위, 예측 horizon, Test 시작·종료가 같고 `timestamp + plant_id` 교집합에서 실제값이 일치할
+때만 활성화합니다. 스모크·실패·구형 결과는 fail-closed 방식으로 제외합니다.
 
 수집 계층은 원본을 수정하지 않고 `file/raw/<회사>/`에 Bronze를 보존하며,
 `file/standardized/downloads/<회사>/`에 UTF-8-SIG Silver 표준본을 만듭니다.
@@ -142,7 +152,8 @@ holdout을 둘 다 개선할 때만 공통 입력 계약의 한 구성요소로 
 단일 노드에서 검증한 현재 처리 규모와 Parquet/Polars/분산 처리 전환 기준은
 [`SCALABLE_DATA_ENGINEERING.md`](SCALABLE_DATA_ENGINEERING.md)에 정리합니다.
 
-웹 계층은 `dashboard/solar_dashboard.html`과 `dashboard/plant_region_report_perm.html`이
+웹 계층은 `dashboard/solar_dashboard.html`과 `dashboard/model_analysis.html`이
 `dashboard/assets/`를 공유하는 정적 구조입니다. 수치와 표는 HTML에 복사하지 않고
 `DashboardBuilder`가 생성한 JSON에서 읽으므로 데이터 갱신 시 화면 코드와 통계가 분리됩니다.
-실좌표와 ASOS 대리좌표는 `location_basis`로 구분합니다.
+공개 JSON에는 로컬 경로, SHA-256, 인코딩, registry 검사명 같은 운영자 정보를 넣지 않습니다.
+과거 `plant_region_report_perm.html`은 새 분석 화면으로 이동하는 호환 경로입니다.

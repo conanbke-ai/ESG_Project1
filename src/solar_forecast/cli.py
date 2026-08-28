@@ -200,11 +200,11 @@ def _run_build_dashboard(args: argparse.Namespace) -> None:
         f"{result.national_capacity_mw:,.2f} MW"
     )
     print(
-        f"Training portfolio refreshed: {result.solar_assets} solar assets, "
-        f"{result.eligible_solar_assets} eligible"
+        f"Model analytics: {result.model_analysis_status}, "
+        f"{result.data_quality_signals} solar data signals"
     )
     print(f"Solar dashboard: {result.solar_dashboard}")
-    print(f"Plant/region report: {result.mapping_report}")
+    print(f"Model analytics dashboard: {result.analytics_dashboard}")
 
 
 def _run_serve_dashboard(args: argparse.Namespace) -> None:
