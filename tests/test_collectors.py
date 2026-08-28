@@ -6,6 +6,11 @@ import pytest
 from solar_forecast.collectors.config import CollectionConfig, load_source_catalog
 from solar_forecast.collectors.kma import KmaAsosHourlyCollector
 from solar_forecast.collectors.koen_browser import KoenBrowserDownloader
+from solar_forecast.collectors.csv_artifacts import inspect_csv_artifact, write_standardized_csv
+from solar_forecast.collectors.naming import (
+    build_solar_download_filename,
+    is_canonical_solar_download_name,
+)
 from solar_forecast.collectors.normalization import (
     EWP_POINT_SCHEMA,
     DailyWideGenerationNormalizer,
@@ -30,6 +35,53 @@ def test_source_catalog_uses_the_four_given_official_homepages():
     assert catalog["kospo"]["homepage"] == "https://www.kospo.co.kr/sites/kospo/index.do"
     assert catalog["iwest"]["homepage"] == "https://www.iwest.co.kr/sites/iwest/index.do"
     assert catalog["koen"]["homepage"] == "https://www.koenergy.kr/kosep/fr/main.do"
+    assert catalog["kospo"]["organization"] == "한국남부발전(주)"
+    assert catalog["iwest"]["detail_name"] == "태양광통합"
+
+
+def test_download_filename_uses_canonical_korean_rule():
+    filename = build_solar_download_filename(
+        "한국남부발전(주)",
+        "남제주소내",
+        date(2025, 2, 28),
+    )
+    assert filename == "한국남부발전(주)_[남제주소내] 태양광발전실적_20250228.csv"
+    assert is_canonical_solar_download_name(filename)
+
+
+def test_download_filename_sanitizes_path_characters():
+    filename = build_solar_download_filename(
+        "한국남동발전(주)",
+        "월간/통합[202501]",
+        date(2026, 8, 28),
+    )
+    assert filename == "한국남동발전(주)_[월간_통합_202501_] 태양광발전실적_20260828.csv"
+    assert is_canonical_solar_download_name(filename)
+
+
+def test_standardized_csv_is_atomic_utf8_sig(tmp_path):
+    pandas = __import__("pandas")
+    destination = tmp_path / "표준화.csv"
+    write_standardized_csv(pandas.DataFrame({"발전소": ["남제주소내"]}), destination)
+
+    audit = inspect_csv_artifact(destination)
+    assert audit.encoding == "utf-8-sig"
+    assert audit.byte_order_mark is True
+    assert not destination.with_suffix(".csv.part").exists()
+    assert pandas.read_csv(destination, encoding="utf-8-sig").iloc[0, 0] == "남제주소내"
+
+
+def test_koen_bronze_move_preserves_provider_bytes(tmp_path):
+    source = tmp_path / "provider.csv"
+    original = "발전구분,호기\n해창만,1\n".encode("cp949")
+    source.write_bytes(original)
+    destination = tmp_path / "raw" / "download.csv"
+
+    downloader = KoenBrowserDownloader(tmp_path, downloaded_on=date(2026, 8, 28))
+    downloader._move_original(source, destination)
+
+    assert destination.read_bytes() == original
+    assert not source.exists()
 
 
 def test_kma_hourly_chunks_never_exceed_one_year():

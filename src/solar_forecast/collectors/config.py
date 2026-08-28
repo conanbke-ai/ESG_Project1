@@ -15,10 +15,12 @@ class CollectionConfig:
     station_ids: Sequence[str] = field(default_factory=tuple)
     sources: Sequence[str] = ("koen", "kospo", "ewp", "iwest", "kma")
     output_dir: Path = Path("file/raw")
+    standardized_output_dir: Path = Path("file/standardized/downloads")
     existing_weather_dir: Path = Path("file/KMA_data_file")
     overwrite: bool = False
     komipo_station_codes: Sequence[str] = field(default_factory=tuple)
     api_max_calls: int = 900
+    download_date: date = field(default_factory=date.today)
 
     def __post_init__(self) -> None:
         if self.end_date < self.start_date:

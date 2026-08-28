@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>발전소·지역 매핑 및 데이터 품질 리포트</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="assets/dashboard.css">
+</head>
+<body data-view="quality">
+  <header class="topbar">
+    <a class="brand" href="solar_dashboard.html">Solar Forecast Monitor</a>
+    <nav aria-label="대시보드 메뉴">
+      <a href="solar_dashboard.html">전국 현황</a>
+      <a aria-current="page" href="plant_region_report_perm.html">매핑·품질</a>
+    </nav>
+  </header>
+  <main id="app" class="page" aria-live="polite">
+    <p class="loading">최신 표준화 데이터를 불러오는 중입니다.</p>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="assets/dashboard.js"></script>
+</body>
+</html>

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from .csv_artifacts import write_standardized_csv
+
 
 GENERATION_COLUMNS = [
     "timestamp",
@@ -129,9 +131,7 @@ class KoenGenerationNormalizer:
 
     def write(self, source: Path, destination: Path) -> Path:
         normalized = self.read(source)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        normalized.to_csv(destination, index=False, encoding="utf-8-sig")
-        return destination
+        return write_standardized_csv(normalized, destination)
 
 
 class EwpTrainingNormalizer:
@@ -170,7 +170,7 @@ class EwpTrainingNormalizer:
     ]
 
     def read(self, path: Path) -> pd.DataFrame:
-        return self.transform(pd.read_csv(path, encoding="cp949"))
+        return self.transform(read_csv_with_fallback(path))
 
     def transform(self, frame: pd.DataFrame) -> pd.DataFrame:
         source = frame.copy()
@@ -222,9 +222,7 @@ class EwpTrainingNormalizer:
 
     def write(self, source: Path, destination: Path) -> Path:
         normalized = self.read(source)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        normalized.to_csv(destination, index=False, encoding="utf-8-sig")
-        return destination
+        return write_standardized_csv(normalized, destination)
 
 
 @dataclass(frozen=True)
@@ -390,9 +388,7 @@ class DailyWideGenerationNormalizer:
 
     def write(self, source: Path, destination: Path) -> Path:
         normalized = self.read(source)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        normalized.to_csv(destination, index=False, encoding="utf-8-sig")
-        return destination
+        return write_standardized_csv(normalized, destination)
 
 
 KRC_YEONGAM_SCHEMA = DailyWideSchema(

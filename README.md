@@ -58,6 +58,12 @@ python app.py collect --start-date 2024-01-01 \
   --sources koen,kospo,ewp,iwest,kma
 ```
 
+새 발전사 CSV는 다운로드 시점 기준으로
+`발전소명_[세부발전소명] 태양광발전실적_YYYYMMDD.csv`를 사용합니다. 예를 들어
+`한국남부발전(주)_[남제주소내] 태양광발전실적_20250228.csv`입니다. 월별 통합 파일처럼 단일
+발전소가 아닌 원본은 세부명에 `월간통합_YYYYMM`을 기록합니다. 재현 실행에서는
+`--download-date 2025-02-28`로 명명 날짜를 고정할 수 있습니다.
+
 보관한 모든 지원 발전사 원본을 공통 스키마로 바꾸고 학습 파일까지 만들려면 다음을 실행합니다.
 
 ```bash
@@ -101,7 +107,13 @@ Silver에는 보존하고 Gold에서만 보류합니다.
 - 요청 기간이 `file/KMA_data_file/OBS_ASOS_TIM_<연도>.csv`에 이미 포함되면 API를 호출하거나 파일을 복제하지 않고 기존 자료를 그대로 등록합니다. 현재 Gold 결합 가능 연도는 2013~2025입니다.
 - 공공기관 기상관측 분 자료는 기관별 요소 차이와 1회 최대 1일 제한 때문에 기본 수집에서 제외했습니다.
 - 기상청 로그인이 필요한 경우 `KMA_CHROME_USER_DATA_DIR`에 로그인 전용 Chrome 프로필을 지정합니다. 실행 중인 일반 Chrome 프로필과 같은 경로를 동시에 사용하지 않는 것을 권장합니다.
-- 발전사 원본은 `file/raw/<회사>/`에 그대로 보존하고, UTF-8 표준본은 각 `normalized/`에 저장합니다.
+- 발전사 원본은 `file/raw/<회사>/`에 공급기관 byte 그대로 보존하고, 표준본은
+  `file/standardized/downloads/<회사>/`에 Excel 호환 `UTF-8-SIG`로 원자 저장합니다.
+- 공급기관 원본은 CP949와 UTF-8이 섞여 있는 것이 정상입니다. 원본을 일괄 재인코딩하면 hash와
+  출처 재현성이 깨지므로 변경하지 않습니다. 새 collection manifest에는 파일별 인코딩·BOM·byte·
+  SHA-256과 Bronze/Silver 역할을 기록합니다. 기존 `file/raw/**/normalized/`는 이전 실행의 파생본입니다.
+- 과거 보관 원본은 당시 파일명과 hash를 유지합니다. 새 수집분부터 표준 명명 규칙을 강제하며,
+  기존 파일을 보기 좋게 만들기 위한 일괄 rename은 lineage를 훼손하므로 수행하지 않습니다.
 - 네 발전사 개별 설비 시간 발전량의 표준 계약은
   `timestamp, company, plant_id, plant, unit, energy_source, generation_mwh, capacity_mw, tilt_deg, latitude, longitude, address, source_file`입니다.
 - `plant_id`에는 회사 코드를 접두사로 넣어 회사 간 같은 발전소명이 충돌하지 않게 했습니다.
@@ -118,7 +130,8 @@ Silver에는 보존하고 Gold에서만 보류합니다.
   발전원 필터를 적용합니다.
 - 동일 일자·발전기 파일 행이 완전히 같으면 공식 파일의 단순 중복으로 제거하지만, 값이 다른 중복 키는
   임의로 선택하지 않고 오류로 중단합니다.
-- 기상청 기존 파일 재사용 여부는 요청 기간과 `--overwrite`로 제어합니다. 발전사 공식 첨부는 최신 내용을 확인하기 위해 실행할 때마다 갱신합니다.
+- 기상청 기존 파일 재사용 여부는 요청 기간과 `--overwrite`로 제어합니다. 같은 다운로드 날짜의
+  발전사 원본이 이미 있으면 재사용하고, 공급기관 최신 첨부를 강제로 다시 받으려면 `--overwrite`를 사용합니다.
 - 출처 하나가 실패해도 나머지 수집은 계속되며, 실패 출처에는 `error.log`가 생성됩니다.
 
 중부발전 API 키를 발급받은 뒤에는 본부코드를 명시하고 호출 예산 안에서 탐색 수집합니다.
@@ -133,6 +146,30 @@ python app.py collect --sources komipo --start-date 2026-08-01 --end-date 2026-0
 
 현재 확보 파일의 행 수·기간·결측·중복 검증 결과는
 [`docs/DATA_COLLECTION_AUDIT.md`](docs/DATA_COLLECTION_AUDIT.md)에 기록했습니다.
+
+## 로컬 대시보드
+
+기존 루트별 정적 HTML과 모델 체크포인트 폴더를 분리했습니다. 웹 산출물의 단일 위치는
+`dashboard/`이며, `solar_dashboard.html`과 기존 호환 이름인 `plant_region_report_perm.html`이
+같은 최신 JSON 계약과 CSS/JS를 공유합니다. 전자는 전국 공개 학습 포트폴리오, 후자는
+발전소–행정구역–ASOS 매핑과 품질을 보여줍니다.
+
+```powershell
+python app.py build-dashboard
+python -m http.server 5500 --directory dashboard
+```
+
+그다음 `http://127.0.0.1:5500/solar_dashboard.html`을 엽니다. 대시보드는 현재 registry의 태양광
+65개(학습 가능 43, 격리 22), Gold 32개 파티션·2,525,434행과 파일 인코딩 감사를 다시 읽습니다.
+발전소 실좌표 5개와 ASOS 관측소 대리좌표 38개를 서로 다른 색으로 표시하며, 대리좌표를 실제
+발전소 위치로 표현하지 않습니다. 과거 화면에 보이던 전국 인허가 설비 3만여 개 통계는 해당 원천
+데이터와 갱신 경로가 현재 저장소에 없어 최신 발전실적 표본과 섞지 않았습니다.
+
+루트의 빈 `xgboost/`와 `cnn_bilstm/`를 제품 구조로 사용하지 않습니다. 모든 모델 구현은
+`src/solar_forecast/models/`, 새 모델·체크포인트는 `artifacts/models/`와
+`artifacts/checkpoints/`에 둡니다. 2025년 구형 발전소별 CNN 체크포인트는 삭제하지 않고
+`artifacts/legacy/cnn_bilstm/`로 이동했습니다. 자세한 판단은
+[`docs/DATA_FORMAT_AND_DASHBOARD_AUDIT.md`](docs/DATA_FORMAT_AND_DASHBOARD_AUDIT.md)에 있습니다.
 
 ### 추가 발전소 후보
 

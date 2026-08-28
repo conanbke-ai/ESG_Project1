@@ -42,7 +42,7 @@ def train_and_save(
     feature_columns: Optional[Sequence[str]] = None,
     sequence_config: Optional[SequenceConfig] = None,
     n_trials: int = 10,
-    output_dir: str = "cnn_bilstm/output/checkpoints",
+    output_dir: str = "artifacts/models/cnn_bilstm",
     use_optuna: bool = True,
     use_reinforcement: bool = False,
     epochs: int = 50,

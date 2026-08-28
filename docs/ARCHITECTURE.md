@@ -31,6 +31,7 @@ src/solar_forecast/
 ├─ features/                # ASOS 표준화와 누수 없는 시간·이력 피처
 ├─ quality/                 # 물리 규칙, 품질 flag, 발전소별 센서 위험 진단
 ├─ evaluation/              # 공통 TemporalSplitter와 rolling-origin 피처 ablation
+├─ reporting/               # registry/품질/lineage 기반 정적 대시보드 데이터 빌더
 ├─ preparation.py           # 보관 원본 전체 표준화/학습파일 application service
 ├─ models/
 │  ├─ cnn/                  # CNN-BiLSTM 학습 엔진
@@ -80,6 +81,8 @@ facade로만 유지합니다.
   early stopping을 수행하고 선택된 설정을 전체 Train 학습에 전달
 - `ExplainableDynamicGate`: 발전소·지역·시간·출력 regime·모델 불일치별 Validation 근거와 행별 동적 결합
 - `HybridExperiment`: Hybrid 입력/평가/결과 파일의 유스케이스 경계
+- `DashboardBuilder`: registry·품질·Gold manifest를 결합하고 파티션 단위 매핑 정합성과 원본
+  인코딩/명명 상태를 감사해 `dashboard/data/dashboard_data.json`을 갱신
 
 ## 실행 및 산출물
 
@@ -91,6 +94,7 @@ python app.py hybrid validation_predictions.csv test_predictions.csv
 python app.py collect --start-date 2024-01-01
 python app.py prepare-data
 python app.py evaluate-features
+python app.py build-dashboard
 ```
 
 장시간 기본 모델 학습은 `artifacts/.training.lock`으로 직렬화합니다. Hybrid와 보고 작업은
@@ -108,7 +112,8 @@ Hybrid 필수 컬럼은 `timestamp, region, plant, y_true, xgb_pred, cnn_pred`�
 생성한 값이어야 합니다. 판단 결과에는 사용한 범위, 모델별 예상 MAE, 선택 모델, 결합비와
 문장형 근거가 함께 저장됩니다.
 
-수집 계층은 원본을 수정하지 않고 `file/raw/<회사>/normalized/`에 UTF-8 표준본을 추가합니다.
+수집 계층은 원본을 수정하지 않고 `file/raw/<회사>/`에 Bronze를 보존하며,
+`file/standardized/downloads/<회사>/`에 UTF-8-SIG Silver 표준본을 만듭니다.
 보관 데이터 준비 계층은 `file/standardized/generation/<회사>/`에 gzip 파티션을 만듭니다.
 개별 설비의 공통 키는 `timestamp + company + plant_id`, 동서발전 지역 집계 자료의 공통 키는
 `timestamp + region`이며 정규화기가 컬럼·단위·중복 키를 실행 중 검증합니다. 공개 포털의 누적
@@ -136,3 +141,8 @@ holdout을 둘 다 개선할 때만 공통 입력 계약의 한 구성요소로 
 
 단일 노드에서 검증한 현재 처리 규모와 Parquet/Polars/분산 처리 전환 기준은
 [`SCALABLE_DATA_ENGINEERING.md`](SCALABLE_DATA_ENGINEERING.md)에 정리합니다.
+
+웹 계층은 `dashboard/solar_dashboard.html`과 `dashboard/plant_region_report_perm.html`이
+`dashboard/assets/`를 공유하는 정적 구조입니다. 수치와 표는 HTML에 복사하지 않고
+`DashboardBuilder`가 생성한 JSON에서 읽으므로 데이터 갱신 시 화면 코드와 통계가 분리됩니다.
+실좌표와 ASOS 대리좌표는 `location_basis`로 구분합니다.

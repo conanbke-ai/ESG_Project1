@@ -187,14 +187,11 @@ flatline이 사라졌고, peer 비교도 같은 지역이 아니라 `같은 지�
 ## 생성 파일
 
 ```text
-file/raw/koen/한국남동발전/2025/남동발전량_2025_10.csv
-file/raw/koen/normalized/koen_generation_2025_10.csv
-file/raw/kospo/kospo_busanjrail2_solar_20251111.csv
-file/raw/kospo/normalized/kospo_busanjrail2_solar_20251111_normalized.csv
-file/raw/ewp/ewp_solar_training_2020_2024.csv
-file/raw/ewp/normalized/ewp_solar_training_2020_2024_utf8.csv
-file/raw/iwest/iwest_solar_status_20230630.csv
-file/raw/iwest/normalized/iwest_solar_status_20230630_normalized.csv
+file/raw/koen/한국남동발전/<year>/한국남동발전(주)_[월간통합_YYYYMM] 태양광발전실적_<다운로드일>.csv
+file/raw/kospo/한국남부발전(주)_[부산철도태양광2호기] 태양광발전실적_<다운로드일>.csv
+file/raw/ewp/한국동서발전(주)_[전국통합] 태양광발전실적_<다운로드일>.csv
+file/raw/iwest/한국서부발전(주)_[태양광통합] 태양광발전실적_<다운로드일>.csv
+file/standardized/downloads/<company>/*_표준화.csv
 file/standardized/generation/<company>/*_standardized.csv.gz
 file/standardized/generation_manifest.json
 file/standardized/model_ready.csv.gz
@@ -205,4 +202,11 @@ file/standardized/plant_quality_report.csv
 file/standardized/quality_manifest.json
 file/standardized/candidates/krc_yeongam/candidate_generation.csv.gz
 file/standardized/candidates/krc_yeongam/candidate_manifest.json
+dashboard/solar_dashboard.html
+dashboard/plant_region_report_perm.html
+dashboard/data/dashboard_data.json
 ```
+
+위 한글 명명 규칙은 새 다운로드부터 적용합니다. 이미 검증한 과거 원본은 파일명 변경으로 hash
+lineage가 끊기지 않도록 당시 이름을 유지합니다. 원본 CP949/UTF-8 혼재도 공급기관 형식으로
+기록하고, 표준화 파일만 UTF-8-SIG로 변환합니다.

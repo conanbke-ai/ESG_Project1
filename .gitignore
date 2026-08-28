@@ -10,7 +10,6 @@ artifacts/predictions/
 artifacts/legacy/
 artifacts/optimization/
 artifacts/checkpoints/
-cnn_bilstm/output/
 artifacts/.training.lock
 artifacts/alerts.db
 backups/*.zip

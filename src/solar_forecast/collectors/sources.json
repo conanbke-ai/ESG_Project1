@@ -1,24 +1,25 @@
 {
   "koen": {
-    "organization": "한국남동발전",
+    "organization": "한국남동발전(주)",
     "homepage": "https://www.koenergy.kr/kosep/fr/main.do",
     "generation_page": "https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do",
     "mode": "homepage_automation",
     "scope": "nationwide_public_multi_provider"
   },
   "kospo": {
-    "organization": "한국남부발전",
+    "organization": "한국남부발전(주)",
+    "detail_name": "부산철도태양광2호기",
     "homepage": "https://www.kospo.co.kr/sites/kospo/index.do",
     "catalog": "https://www.kospo.co.kr/kospo/507/subview.do",
     "dataset_page": "https://www.data.go.kr/data/15156688/fileData.do",
     "dataset_id": "15156688",
     "detail_id": "uddi:1a7943f5-2f39-4a77-ab15-f6d2000b0e81",
-    "filename": "kospo_busanjrail2_solar_20251111.csv",
     "mode": "data_go_official_attachment",
     "scope": "nationwide_public_multi_provider"
   },
   "ewp": {
-    "organization": "한국동서발전",
+    "organization": "한국동서발전(주)",
+    "detail_name": "전국통합",
     "homepage": "https://www.ewp.co.kr/kor/main/",
     "catalog": "https://www.ewp.co.kr/kor/subpage/content.html?pc=SXUO23FN1OI5KD14AG7S7EJC5W71ZSO",
     "dataset_page": "https://www.ewp.co.kr/kor/subpage/content.html?pc=12V5W1N4BPZD35P8P1W818Z0TS07PXA&state=view&idx=43582",
@@ -26,7 +27,6 @@
     "attachment_id": "43582",
     "order_number": "1",
     "page_code": "12V5W1N4BPZD35P8P1W818Z0TS07PXA",
-    "filename": "ewp_solar_training_2020_2024.csv",
     "day_ahead_forecast_api": {
       "catalog_page": "https://www.data.go.kr/data/15144541/openapi.do",
       "base_url": "https://apis.data.go.kr/B552070/forecastService",
@@ -39,14 +39,14 @@
     "scope": "nationwide_public_multi_provider"
   },
   "iwest": {
-    "organization": "한국서부발전",
+    "organization": "한국서부발전(주)",
+    "detail_name": "태양광통합",
     "homepage": "https://www.iwest.co.kr/sites/iwest/index.do",
     "catalog": "https://www.iwest.co.kr/iwest/455/subview.do",
     "portal_catalog": "https://www.data.go.kr/tcs/dss/selectDataSetList.do?keyword=%ED%95%9C%EA%B5%AD%EC%84%9C%EB%B6%80%EB%B0%9C%EC%A0%84&brm=&svcType=&extsn=&recmSe=N",
     "dataset_page": "https://www.data.go.kr/data/15025486/fileData.do",
     "dataset_id": "15025486",
     "detail_id": "uddi:c1512dd7-16e6-4184-9408-a6474c3bcbd0",
-    "filename": "iwest_solar_status_20230630.csv",
     "mode": "data_go_official_attachment",
     "scope": "nationwide_public_multi_provider"
   },

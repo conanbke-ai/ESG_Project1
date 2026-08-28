@@ -90,9 +90,11 @@ def _run_collect(args: argparse.Namespace) -> None:
         end_date=date.fromisoformat(args.end_date) if args.end_date else date.today(),
         sources=_csv_list(args.sources) or [],
         output_dir=Path(args.output_dir),
+        standardized_output_dir=Path(args.standardized_output_dir),
         overwrite=args.overwrite,
         komipo_station_codes=_csv_list(args.komipo_station_codes) or [],
         api_max_calls=args.api_max_calls,
+        download_date=date.fromisoformat(args.download_date) if args.download_date else date.today(),
     )
     results = CollectionService(config).run()
     for result in results:
@@ -187,6 +189,18 @@ def _run_evaluate_features(args: argparse.Namespace) -> None:
     print(f"Selected contract: {result.selected_contract} ({len(result.selected_features)} features)")
 
 
+def _run_build_dashboard(args: argparse.Namespace) -> None:
+    from solar_forecast.reporting import DashboardBuilder
+
+    result = DashboardBuilder(PROJECT_ROOT, Path(args.output_dir)).build()
+    print(
+        f"Dashboard data refreshed: {result.solar_assets} solar assets, "
+        f"{result.eligible_solar_assets} eligible"
+    )
+    print(f"Solar dashboard: {result.solar_dashboard}")
+    print(f"Plant/region report: {result.mapping_report}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Solar forecast and anomaly monitoring")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -219,6 +233,11 @@ def build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--end-date")
     collect.add_argument("--sources", default="koen,kospo,ewp,iwest,kma")
     collect.add_argument("--output-dir", default="file/raw")
+    collect.add_argument("--standardized-output-dir", default="file/standardized/downloads")
+    collect.add_argument(
+        "--download-date",
+        help="Override the YYYY-MM-DD collection date embedded in canonical filenames",
+    )
     collect.add_argument("--overwrite", action="store_true")
     collect.add_argument("--komipo-station-codes")
     collect.add_argument("--api-max-calls", type=int, default=900)
@@ -285,6 +304,13 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_features.add_argument("--gap-hours", type=int, default=168)
     evaluate_features.add_argument("--n-estimators", type=int, default=300)
     evaluate_features.set_defaults(func=_run_evaluate_features)
+
+    dashboard = commands.add_parser(
+        "build-dashboard",
+        help="Refresh dashboard data from current registry, quality, and model manifests",
+    )
+    dashboard.add_argument("--output-dir", default="dashboard")
+    dashboard.set_defaults(func=_run_build_dashboard)
     return parser
 
 

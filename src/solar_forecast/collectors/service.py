@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .base import CollectionResult
 from .config import CollectionConfig, load_source_catalog
+from .csv_artifacts import inspect_csv_artifact
 from .generation import (
     DataGoFileCollector,
     DataGoDatasetSpec,
@@ -38,10 +39,18 @@ class CollectionService:
         ewp = catalog["ewp"]
         iwest = catalog["iwest"]
         kospo_spec = DataGoDatasetSpec(
-            "kospo", kospo["dataset_id"], kospo["detail_id"], kospo["filename"]
+            "kospo",
+            kospo["dataset_id"],
+            kospo["detail_id"],
+            kospo["organization"],
+            kospo["detail_name"],
         )
         iwest_spec = DataGoDatasetSpec(
-            "iwest", iwest["dataset_id"], iwest["detail_id"], iwest["filename"]
+            "iwest",
+            iwest["dataset_id"],
+            iwest["detail_id"],
+            iwest["organization"],
+            iwest["detail_name"],
         )
         ewp_spec = EwpAttachmentSpec(
             detail_url=ewp["dataset_page"],
@@ -49,7 +58,8 @@ class CollectionService:
             attachment_id=ewp["attachment_id"],
             order_number=ewp["order_number"],
             page_code=ewp["page_code"],
-            filename=ewp["filename"],
+            organization=ewp["organization"],
+            detail_name=ewp["detail_name"],
         )
         self._factories = {
             "koen": lambda: KoenHomepageCollector(config),
@@ -76,6 +86,19 @@ class CollectionService:
             "results": [
                 {"source": r.source, "status": r.status, "rows": r.rows, "files": [str(p) for p in r.files], "message": r.message}
                 for r in results
+            ],
+            "file_artifacts": [
+                {
+                    **inspect_csv_artifact(path).as_dict(),
+                    "role": (
+                        "standardized_silver"
+                        if self.config.standardized_output_dir in path.parents
+                        else "provider_original_bronze"
+                    ),
+                }
+                for result in results
+                for path in result.files
+                if path.suffix.lower() == ".csv" and path.exists()
             ],
         }
         (run_dir / "collection_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import calendar
+from datetime import date
 import os
 from pathlib import Path
 import time
+
+from .naming import build_solar_download_filename
 
 
 class KoenBrowserDownloader:
@@ -11,8 +14,16 @@ class KoenBrowserDownloader:
 
     page_url = "https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do"
 
-    def __init__(self, output_root: Path):
+    def __init__(
+        self,
+        output_root: Path,
+        *,
+        downloaded_on: date | None = None,
+        overwrite: bool = False,
+    ):
         self.output_root = output_root / "한국남동발전"
+        self.downloaded_on = downloaded_on or date.today()
+        self.overwrite = overwrite
 
     def download_year(
         self, year: int, *, start_month: int = 1, end_month: int = 12, max_retry: int = 3
@@ -61,7 +72,11 @@ class KoenBrowserDownloader:
 
         start_date = f"{year}{month:02d}01"
         end_date = f"{year}{month:02d}{calendar.monthrange(year, month)[1]:02d}"
-        destination = year_dir / f"남동발전량_{year}_{month:02d}.csv"
+        destination = year_dir / build_solar_download_filename(
+            "한국남동발전(주)",
+            f"월간통합_{year}{month:02d}",
+            self.downloaded_on,
+        )
         for _ in range(max_retry):
             try:
                 driver.execute_script("document.getElementById('strDateS').value=arguments[0]", start_date)
@@ -72,7 +87,7 @@ class KoenBrowserDownloader:
                 driver.execute_script("goCsvDown();")
                 downloaded = self._wait_for_csv(before)
                 if downloaded is not None:
-                    return self._move_as_utf8(downloaded, destination)
+                    return self._move_original(downloaded, destination)
             except Exception:
                 time.sleep(2)
         return None
@@ -86,20 +101,14 @@ class KoenBrowserDownloader:
             time.sleep(1)
         return None
 
-    @staticmethod
-    def _move_as_utf8(source: Path, destination: Path) -> Path:
-        raw = source.read_bytes()
-        text = None
-        for encoding in ("utf-8-sig", "cp949"):
-            try:
-                text = raw.decode(encoding)
-                break
-            except UnicodeDecodeError:
-                continue
-        if text is None:
-            raise ValueError(f"Unable to decode KOEN CSV: {source}")
-        destination.write_text(text, encoding="utf-8-sig")
-        source.unlink(missing_ok=True)
+    def _move_original(self, source: Path, destination: Path) -> Path:
+        """Move provider bytes unchanged; encoding conversion belongs to Silver."""
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.exists() and not self.overwrite:
+            source.unlink(missing_ok=True)
+            return destination
+        source.replace(destination)
         return destination
 
 
