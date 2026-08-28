@@ -649,6 +649,9 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert "openstreetmap.org" in script
     assert "tile.openstreetmap.org" in coverage
     assert "province-hover-tooltip" in script
+    assert "map-tooltip-metrics" in script
+    assert "설비 등록</small>" in script
+    assert "설비용량</small>" in script
     assert "permanent: true" not in script
 
     assert "전국 세부지역 검색" in script

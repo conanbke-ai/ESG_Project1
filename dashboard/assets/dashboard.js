@@ -318,7 +318,7 @@
       onEachFeature: (feature, shape) => {
         const name = featureName(feature);
         const row = byName.get(name) || {};
-        shape.bindTooltip(() => `<strong>${esc(name)}</strong><span>${esc(nationalText(row, metric))}</span>`, { sticky: true, direction: "top", className: "province-hover-tooltip", opacity: 1 });
+        shape.bindTooltip(() => `<strong>${esc(name)}</strong><div class="map-tooltip-metrics"><span><small>설비 등록</small><b>${esc(`${int.format(Number(row.generator_records) || 0)}건`)}</b></span><span><small>설비용량</small><b>${esc(`${number(row.capacity_mw, 2)} MW`)}</b></span></div>`, { sticky: true, direction: "top", className: "province-hover-tooltip", opacity: 1 });
         shape.on({
           mouseover: (event) => event.target.setStyle({ color: "#0a5b48", weight: 2, fillOpacity: .64 }),
           mouseout: () => layer.setStyle(style),
