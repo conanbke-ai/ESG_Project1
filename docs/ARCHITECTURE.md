@@ -74,6 +74,8 @@ facade로만 유지합니다.
 - `TrainingService`: 모델 전략 선택, 전역 학습 잠금, 성공/실패 manifest 관리
 - `OptunaStudyService`: 모델별 SQLite study의 최대 누적 trial·시간 예산·재개·Validation-only
   선택 근거와 trial 표를 관리하며 과거 데이터셋의 최적값을 새 study에 강제하지 않음
+- `TrainingCheckpointStore`: 데이터·학습 설정 fingerprint별로 PyTorch/XGBoost 상태를 격리하고
+  atomic replace, 호환성 검증, 완료 상태의 멱등 재개를 공통 제공
 - `XGBoostHyperparameterOptimizer`: 제한된 Train/Validation 대표행에서 boosting-round pruning과
   early stopping을 수행하고 선택된 설정을 전체 Train 학습에 전달
 - `ExplainableDynamicGate`: 발전소·지역·시간·출력 regime·모델 불일치별 Validation 근거와 행별 동적 결합
@@ -95,6 +97,9 @@ python app.py evaluate-features
 저장된 예측을 사용하므로 기본 모델 학습과 분리할 수 있습니다.
 Optuna study는 `artifacts/optimization/solar_models.db`에 별도 저장되며, Test는 목적함수나 pruning
 판단에 전달하지 않습니다.
+실제 모델 상태는 `artifacts/checkpoints/<model>/<fingerprint>/`에 분리합니다. CNN은 모델·optimizer·
+early stopping·난수 상태를 epoch 경계에서, XGBoost는 Booster를 boosting-round 경계에서 저장합니다.
+따라서 재개 단위가 명확하며 데이터 또는 의미 있는 학습 설정이 바뀐 상태를 이어 붙이지 않습니다.
 
 ## 데이터 계약
 

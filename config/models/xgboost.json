@@ -57,6 +57,9 @@
     "startup_trials": 5,
     "pruner_startup_trials": 5,
     "pruner_warmup_steps": 30,
+    "heartbeat_interval_seconds": 60,
+    "grace_period_seconds": 180,
+    "max_failed_trial_retries": 1,
     "trial_max_estimators": 1500,
     "early_stopping_rounds": 50,
     "tuning_train_max_rows": 750000,
@@ -70,5 +73,11 @@
   "learning_rate": 0.05,
   "subsample": 0.9,
   "colsample_bytree": 0.9,
-  "resume": true
+  "checkpoint": {
+    "enabled": true,
+    "resume": true,
+    "root": "artifacts/checkpoints",
+    "xgboost_every_rounds": 50,
+    "cnn_every_epochs": 1
+  }
 }

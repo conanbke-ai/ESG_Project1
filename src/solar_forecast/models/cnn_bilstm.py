@@ -5,6 +5,7 @@ from pathlib import Path
 
 from solar_forecast.models.cnn.config import SequenceConfig
 from solar_forecast.models.cnn.workflow import train_and_save
+from solar_forecast.models.checkpointing import TrainingCheckpointStore
 from solar_forecast.models.optimization import OptimizationSettings
 from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.pipeline.preprocessing import NumericPreprocessor
@@ -70,6 +71,10 @@ class CnnBiLstmTrainer:
         if not isinstance(optimizer_values, dict):
             raise ValueError("optimizer configuration must be an object")
         use_optuna = optimization_settings.enabled and not smoke
+        checkpoint_store = TrainingCheckpointStore.from_config(config)
+        optimization_settings = optimization_settings.scoped(
+            checkpoint_store.fingerprint
+        )
         artifacts = train_and_save(
             frame,
             target_column=target,
@@ -95,6 +100,7 @@ class CnnBiLstmTrainer:
             optimizer_max_validation_sequences=optimizer_values.get(
                 "tuning_validation_max_sequences", 100_000
             ),
+            checkpoint_store=checkpoint_store,
         )
         optimizer_artifact = dict(artifacts.get("optimizer", {}))
         if smoke:
@@ -107,6 +113,7 @@ class CnnBiLstmTrainer:
             "temporal_split": artifacts.get("temporal_split"),
             "optimizer": optimizer_artifact,
             "memory_aware_loading": load_report.to_dict(),
+            "checkpoint": artifacts.get("checkpoint", checkpoint_store.describe()),
         }
 
 

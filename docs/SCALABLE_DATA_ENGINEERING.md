@@ -30,6 +30,7 @@
 | 메모리 제한 시퀀스 | `(행 × lookback)` 사전 복제를 피함 | `LazyWindowSequenceDataset` |
 | bounded 학습 로더 | 10만 행 chunk, 필터 pushdown, float32, 1.5GB hard limit | `DatasetLoadPolicy`/`DatasetLoadReport` |
 | bounded 하이퍼파라미터 탐색 | XGBoost 대표행·CNN lazy sequence 상한, trial/시간 예산, pruning 후 전체 Train 재학습 | 모델별 `optimizer` 설정·SQLite study |
+| fingerprint 체크포인트 | 데이터/설정별 상태 격리, CNN epoch·XGBoost boosting round 재개, atomic replace | `TrainingCheckpointStore`와 실행 manifest |
 | API 호출 예산 | 중부발전 요청 전 최소 호출 수를 계산하고 station/day로 원자 저장·재개 | `KomipoRenewableCollector` |
 | 열 단위 CNN 통계 | Train 중앙값 계산 시 전체 훈련행×피처 행렬을 한 번 더 합치지 않음 | feature-wise median fitting |
 | 프레임워크별 결측 처리 | XGBoost는 native NaN, CNN은 Train 통계+mask | split별 preprocessing manifest |
@@ -83,6 +84,12 @@ Optuna는 모델별 study를 SQLite에 저장하고 중단 후 남은 trial만 �
 Train 750,000/Validation 250,000행, CNN Train 250,000/Validation 100,000 lazy sequence를 기본
 상한으로 사용하지만, 최종 선택 모델은 전체 Train으로 다시 학습합니다. Calibration/Test를 탐색
 표본으로 사용하지 않으므로 계산량 제한이 평가 누수로 이어지지 않습니다.
+
+Optuna study 재개와 실제 모델 학습 재개는 분리했습니다. 전자는 trial 목록과 heartbeat를 SQLite에,
+후자는 CNN 모델·optimizer·early stopping·RNG 또는 XGBoost Booster를 fingerprint 디렉터리에
+저장합니다. 임시 파일을 완성한 뒤 atomic replace하며 Windows에서 백신·인덱서가 순간적으로 파일을
+점유하는 경우에는 제한된 재시도를 적용합니다. 장애 시 손실되는 최대 작업량은 설정상 CNN 1 epoch,
+XGBoost 50 boosting round입니다.
 
 ## 권장 포트폴리오 서술
 

@@ -12,6 +12,15 @@ import torch
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from solar_forecast.models.optimization import OptimizationSettings
+from solar_forecast.artifacts.manifest import replace_file_atomic
+from solar_forecast.models.checkpointing import (
+    CHECKPOINT_CONTRACT,
+    TrainingCheckpointStore,
+    capture_rng_state,
+    dataframe_signature,
+    restore_rng_state,
+    stable_signature,
+)
 
 from .data import SequenceConfig, prepare_dataset_splits, prepare_datasets
 from .model import ModelConfig, build_model
@@ -21,7 +30,7 @@ from .adaptive import BanditConfig, run_adaptive_training
 
 def _timestamped_dir(base_dir: Path) -> Path:
     base_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     run_dir = base_dir / stamp
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
@@ -45,6 +54,9 @@ def train_and_save(
     optimizer_max_train_sequences: int | None = None,
     optimizer_max_validation_sequences: int | None = None,
     optimizer_timeout_seconds: int | None = None,
+    checkpoint_store: TrainingCheckpointStore | None = None,
+    checkpoint_root: str | Path | None = None,
+    optimizer_storage_path: str | Path | None = None,
 ) -> Dict[str, object]:
     """Train the model with Optuna and/or reinforcement learning then persist artifacts.
 
@@ -52,6 +64,65 @@ def train_and_save(
     """
 
     cfg = sequence_config or SequenceConfig()
+    if checkpoint_store is None:
+        selected_features = list(feature_columns) if feature_columns is not None else [
+            column
+            for column in frame.columns
+            if column not in {target_column, entity_column, timestamp_column}
+        ]
+        resolved_checkpoint_root = (
+            Path(checkpoint_root)
+            if checkpoint_root is not None
+            else Path(output_dir) / ".checkpoints"
+        )
+        checkpoint_store = TrainingCheckpointStore(
+            resolved_checkpoint_root,
+            model="cnn_bilstm",
+            fingerprint=stable_signature(
+                {
+                    "checkpoint_contract": CHECKPOINT_CONTRACT,
+                    "data": dataframe_signature(
+                        frame,
+                        [
+                            *(
+                                [entity_column]
+                                if entity_column and entity_column in frame
+                                else []
+                            ),
+                            *(
+                                [timestamp_column]
+                                if timestamp_column and timestamp_column in frame
+                                else []
+                            ),
+                            *selected_features,
+                            target_column,
+                        ],
+                    ),
+                    "target_column": target_column,
+                    "feature_columns": selected_features,
+                    "sequence_config": cfg.__dict__,
+                    "epochs": epochs,
+                    "use_optuna": use_optuna,
+                    "use_reinforcement": use_reinforcement,
+                    "optimizer_trial_epochs": optimizer_trial_epochs,
+                    "early_stopping_patience": early_stopping_patience,
+                    "optimizer_max_train_sequences": optimizer_max_train_sequences,
+                    "optimizer_max_validation_sequences": optimizer_max_validation_sequences,
+                }
+            ),
+        )
+    if use_optuna and optimizer_settings is None and optimizer_storage_path is not None:
+        optimizer_settings = OptimizationSettings(
+            enabled=True,
+            study_name="cnn_pipeline_v1",
+            storage_path=Path(optimizer_storage_path),
+            max_trials=n_trials,
+            timeout_seconds=optimizer_timeout_seconds,
+            seed=42,
+            startup_trials=min(5, n_trials),
+            pruner_startup_trials=min(5, n_trials),
+            pruner_warmup_steps=5,
+        ).scoped(checkpoint_store.fingerprint)
     run_dir = _timestamped_dir(Path(output_dir))
 
     if use_optuna:
@@ -71,9 +142,12 @@ def train_and_save(
             settings=optimizer_settings,
             artifact_dir=run_dir,
             timeout=optimizer_timeout_seconds,
+            checkpoint_store=checkpoint_store,
         )
         model, model_cfg = result["model"], result["model_config"]
         study = result["study"]
+        checkpoint_stage = result["checkpoint_stage"]
+        checkpoint_resumed = bool(result["checkpoint_resumed"])
         save_study_results(study, str(run_dir / "optuna_best.json"))
         if optimizer_settings is None:
             save_study_results(study, str(run_dir / "optimization_summary.json"))
@@ -93,8 +167,69 @@ def train_and_save(
         model = build_model(model_cfg, device=device)
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-        for _ in range(epochs):
+        checkpoint_signature = stable_signature(
+            {
+                "model_config": model_cfg.__dict__,
+                "epochs": epochs,
+                "train_sequences": len(train_loader.dataset),
+                "validation_sequences": len(val_loader.dataset),
+                "mode": "fixed_without_optuna",
+            }
+        )
+        checkpoint_stage = f"final_fit_{checkpoint_signature[:20]}"
+        start_epoch = 0
+        checkpoint_resumed = False
+        checkpoint_completed = False
+        if checkpoint_store is not None:
+            state = checkpoint_store.load_torch(
+                checkpoint_stage,
+                signature=checkpoint_signature,
+                map_location=device,
+            )
+            if state is not None:
+                model.load_state_dict(state["model_state"])
+                optimizer.load_state_dict(state["optimizer_state"])
+                start_epoch = int(state["next_epoch"])
+                restore_rng_state(state.get("rng_state"))
+                checkpoint_resumed = True
+                checkpoint_completed = bool(state.get("completed", False))
+        completed_epoch = start_epoch
+        loop_end = start_epoch if checkpoint_completed else epochs
+        for epoch in range(start_epoch, loop_end):
             _train_one_epoch(model, train_loader, criterion, optimizer, device)
+            completed_epoch = epoch + 1
+            if checkpoint_store is not None and (
+                completed_epoch % checkpoint_store.cnn_every_epochs == 0
+                or completed_epoch == epochs
+            ):
+                checkpoint_store.save_torch(
+                    checkpoint_stage,
+                    {
+                        "model_state": model.state_dict(),
+                        "optimizer_state": optimizer.state_dict(),
+                        "next_epoch": completed_epoch,
+                        "rng_state": capture_rng_state(),
+                    },
+                    signature=checkpoint_signature,
+                    progress={
+                        "next_epoch": completed_epoch,
+                        "total_epochs": epochs,
+                    },
+                    completed=False,
+                )
+        if checkpoint_store is not None:
+            checkpoint_store.save_torch(
+                checkpoint_stage,
+                {
+                    "model_state": model.state_dict(),
+                    "optimizer_state": optimizer.state_dict(),
+                    "next_epoch": completed_epoch,
+                    "rng_state": capture_rng_state(),
+                },
+                signature=checkpoint_signature,
+                progress={"next_epoch": completed_epoch, "total_epochs": epochs},
+                completed=True,
+            )
         metrics = _evaluate(model, test_loader, criterion, device)
         result = {"model": model, "model_config": model_cfg, "metrics": metrics, "best_params": {}}
 
@@ -110,19 +245,52 @@ def train_and_save(
     )
 
     if use_reinforcement:
-        train_loader, val_loader, _, _ = prepare_datasets(
+        train_loader, val_loader, adaptive_test_loader, _ = prepare_datasets(
             frame, target_column, feature_columns, cfg, entity_column, timestamp_column
         )
+        base_checkpoint_stage = checkpoint_stage
+        base_checkpoint_resumed = checkpoint_resumed
+        adaptive_config = BanditConfig(actions=[1e-4, 5e-4, 1e-3, 5e-3])
+        adaptive_signature = stable_signature(
+            {
+                "model_config": model_cfg.__dict__,
+                "bandit_config": adaptive_config.__dict__,
+                "epochs": 30,
+                "train_sequences": len(train_loader.dataset),
+                "validation_sequences": len(val_loader.dataset),
+                "upstream_stage": base_checkpoint_stage,
+            }
+        )
+        checkpoint_stage = f"adaptive_fit_{adaptive_signature[:20]}"
         reinforcement = run_adaptive_training(
-            model_cfg, train_loader, val_loader, epochs=30, bandit_cfg=BanditConfig(actions=[1e-4, 5e-4, 1e-3, 5e-3])
+            model_cfg,
+            train_loader,
+            val_loader,
+            epochs=30,
+            bandit_cfg=adaptive_config,
+            checkpoint_store=checkpoint_store,
+            checkpoint_stage=checkpoint_stage,
+            checkpoint_signature=adaptive_signature,
+            initial_model=model,
         )
         model = reinforcement.model
+        checkpoint_resumed = reinforcement.checkpoint_resumed
+        adaptive_device = next(model.parameters()).device
+        result["metrics"] = _evaluate(
+            model,
+            adaptive_test_loader,
+            torch.nn.MSELoss(),
+            adaptive_device,
+        )
         with open(run_dir / "reinforcement_history.json", "w", encoding="utf-8") as f:
             json.dump(reinforcement.history, f, indent=2)
         with open(run_dir / "bandit_q_values.json", "w", encoding="utf-8") as f:
             json.dump(reinforcement.q_values, f, indent=2)
 
     checkpoint_path = run_dir / "cnn_bilstm.pt"
+    temporary_checkpoint = checkpoint_path.with_name(
+        f"{checkpoint_path.stem}.tmp{checkpoint_path.suffix}"
+    )
     torch.save(
         {
             "model_state": model.state_dict(),
@@ -130,8 +298,9 @@ def train_and_save(
             "feature_columns": list(feature_columns or []),
             "preprocessing": preprocessing_state,
         },
-        checkpoint_path,
+        temporary_checkpoint,
     )
+    replace_file_atomic(temporary_checkpoint, checkpoint_path)
     with open(run_dir / "metrics.json", "w", encoding="utf-8") as f:
         json.dump(result.get("metrics", {}), f, indent=2)
     with open(run_dir / "best_params.json", "w", encoding="utf-8") as f:
@@ -155,6 +324,24 @@ def train_and_save(
         }
     )
 
+    checkpoint_artifact = (
+        {
+            **checkpoint_store.describe(),
+            "stage": checkpoint_stage,
+            "upstream_stage": base_checkpoint_stage if use_reinforcement else None,
+            "upstream_resumed": (
+                base_checkpoint_resumed if use_reinforcement else None
+            ),
+            "resumed": checkpoint_resumed,
+            "retained_for_idempotent_resume": True,
+        }
+        if checkpoint_store is not None
+        else {
+            "enabled": False,
+            "resume": False,
+            "reason": "checkpoint_store_not_configured",
+        }
+    )
     return {
         "model": model,
         "config": model_cfg,
@@ -163,11 +350,12 @@ def train_and_save(
         "checkpoint_path": str(checkpoint_path),
         "temporal_split": temporal_split,
         "optimizer": optimizer_artifact,
+        "checkpoint": checkpoint_artifact,
     }
 
 
 def load_checkpoint(path: str, device: Optional[torch.device] = None):
-    data = torch.load(path, map_location=device or "cpu")
+    data = torch.load(path, map_location=device or "cpu", weights_only=False)
     cfg = ModelConfig(**data["config"])
     model = build_model(cfg, device=device or torch.device("cpu"))
     model.load_state_dict(data["model_state"])
@@ -200,7 +388,9 @@ def compare_checkpoints(
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     rows: List[Dict[str, object]] = []
-    for checkpoint in Path(checkpoint_dir).rglob("*.pt"):
+    # Internal resumable states are also .pt files but do not implement the
+    # deployable model artifact contract below.
+    for checkpoint in Path(checkpoint_dir).rglob("cnn_bilstm.pt"):
         model, model_cfg = load_checkpoint(str(checkpoint), device=device)
         metrics = evaluate_model(model, test_loader, device=device)
         rows.append({"checkpoint": checkpoint.name, **metrics, **model_cfg.__dict__})

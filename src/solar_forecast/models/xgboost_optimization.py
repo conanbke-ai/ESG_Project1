@@ -9,10 +9,11 @@ import numpy as np
 import optuna
 import pandas as pd
 from sklearn.metrics import mean_absolute_error
-from xgboost import XGBRegressor
 from xgboost.callback import TrainingCallback
 
+from .checkpointing import TrainingCheckpointStore, stable_signature
 from .optimization import OptimizationRun, OptimizationSettings, OptunaStudyService
+from .xgboost_checkpoint import fit_xgboost_resumable
 
 
 class OptunaPruningCallback(TrainingCallback):
@@ -26,7 +27,8 @@ class OptunaPruningCallback(TrainingCallback):
         values = validation.get("mae")
         if not values:
             return False
-        self.trial.report(float(values[-1]), step=epoch)
+        completed_round = max(epoch, int(model.num_boosted_rounds()) - 1)
+        self.trial.report(float(values[-1]), step=completed_round)
         if self.trial.should_prune():
             raise optuna.TrialPruned()
         return False
@@ -65,6 +67,7 @@ class XGBoostHyperparameterOptimizer:
         self,
         settings: OptimizationSettings,
         values: Mapping[str, object],
+        checkpoint_store: TrainingCheckpointStore | None = None,
     ):
         self.settings = settings
         raw = values.get("optimizer", {})
@@ -72,6 +75,7 @@ class XGBoostHyperparameterOptimizer:
             raise ValueError("optimizer configuration must be an object")
         self.values = values
         self.raw = raw
+        self.checkpoint_store = checkpoint_store
 
     def optimize(
         self,
@@ -127,36 +131,69 @@ class XGBoostHyperparameterOptimizer:
                 "early_stopping_rounds": early_stopping_rounds,
                 "random_state": self.settings.seed,
                 "n_jobs": int(self.values.get("n_jobs", 4)),
-                "callbacks": [OptunaPruningCallback(trial)],
             }
-            model = XGBRegressor(**params)
+            checkpoint_stage = "optuna_trial_" + stable_signature(
+                {"study_name": self.settings.study_name, "params": trial.params}
+            )[:20]
+            checkpoint_signature = stable_signature(
+                {
+                    "feature_columns": list(feature_columns),
+                    "target_column": target_column,
+                    "params": {
+                        key: value for key, value in params.items() if key != "n_jobs"
+                    },
+                }
+            )
+            if self.checkpoint_store is not None:
+                trial.set_user_attr("checkpoint_stage", checkpoint_stage)
+            model = None
             try:
-                model.fit(
+                fit = fit_xgboost_resumable(
+                    params,
                     train[list(feature_columns)],
                     train[target_column],
-                    eval_set=[
-                        (
-                            validation[list(feature_columns)],
-                            validation[target_column],
-                        )
-                    ],
+                    validation[list(feature_columns)],
+                    validation[target_column],
+                    store=self.checkpoint_store,
+                    stage=checkpoint_stage,
+                    signature=checkpoint_signature,
                     verbose=False,
+                    callbacks=[OptunaPruningCallback(trial)],
                 )
+                model = fit.model
                 prediction = model.predict(validation[list(feature_columns)])
                 score = float(
                     mean_absolute_error(validation[target_column], prediction)
                 )
-                best_iteration = getattr(model, "best_iteration", None)
-                if best_iteration is not None:
-                    trial.set_user_attr("best_iteration", int(best_iteration))
+                try:
+                    best_iteration = int(model.best_iteration)
+                except (AttributeError, ValueError):
+                    best_iteration = fit.completed_rounds - 1
+                trial.set_user_attr("best_iteration", best_iteration)
+                trial.set_user_attr("checkpoint_resumed", fit.resumed)
                 trial.set_user_attr("tuning_train_rows", len(train))
                 trial.set_user_attr("tuning_validation_rows", len(validation))
                 return score
             finally:
-                del model
+                if model is not None:
+                    del model
                 gc.collect()
 
-        run = OptunaStudyService(self.settings).run(objective, artifact_dir)
+        def cleanup_checkpoint(_study: optuna.Study, frozen_trial) -> None:
+            if self.checkpoint_store is None:
+                return
+            stage = frozen_trial.user_attrs.get("checkpoint_stage")
+            if stage and frozen_trial.state in {
+                optuna.trial.TrialState.COMPLETE,
+                optuna.trial.TrialState.PRUNED,
+            }:
+                self.checkpoint_store.remove(str(stage), kind="xgboost")
+
+        run = OptunaStudyService(self.settings).run(
+            objective,
+            artifact_dir,
+            callbacks=[cleanup_checkpoint],
+        )
         best_iteration = run.study.best_trial.user_attrs.get("best_iteration")
         return XGBoostOptimizationResult(
             best_params=dict(run.study.best_params),

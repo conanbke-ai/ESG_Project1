@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 
 from solar_forecast.models.cnn.config import SequenceConfig
@@ -51,6 +52,45 @@ def test_optuna_study_resumes_without_exceeding_max_total_trials(tmp_path: Path)
     assert second.executed_trials == 0
     assert second.summary_path.exists()
     assert second.trials_path.exists()
+
+
+def test_optimizer_study_name_is_scoped_to_training_fingerprint(tmp_path: Path):
+    settings = _settings(tmp_path, "solar")
+
+    scoped = settings.scoped("abcdef1234567890")
+
+    assert settings.study_name == "solar"
+    assert scoped.study_name == "solar_abcdef123456"
+    assert scoped.max_trials == settings.max_trials
+
+
+def test_failed_checkpointed_trial_is_retried_with_the_same_parameters(tmp_path: Path):
+    settings = _settings(tmp_path, "failed_retry", max_trials=1)
+    attempts = 0
+
+    def objective(trial):
+        nonlocal attempts
+        attempts += 1
+        value = trial.suggest_float("value", -1.0, 1.0)
+        trial.set_user_attr("checkpoint_stage", "retryable-stage")
+        if attempts == 1:
+            raise RuntimeError("simulated trial failure")
+        return value**2
+
+    with pytest.raises(RuntimeError, match="simulated trial failure"):
+        OptunaStudyService(settings, project_root=tmp_path).run(
+            objective,
+            tmp_path / "failed",
+        )
+    resumed = OptunaStudyService(settings, project_root=tmp_path).run(
+        objective,
+        tmp_path / "resumed",
+    )
+
+    failed, completed = resumed.study.trials
+    assert completed.params == failed.params
+    assert completed.state.name == "COMPLETE"
+    assert completed.system_attrs["checkpoint_retry_count"] == 1
 
 
 def test_xgboost_optimizer_uses_validation_and_persists_artifacts(tmp_path: Path):

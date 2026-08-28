@@ -19,6 +19,12 @@ from solar_forecast.models.optimization import (
     OptimizationSettings,
     OptunaStudyService,
 )
+from solar_forecast.models.checkpointing import (
+    TrainingCheckpointStore,
+    capture_rng_state,
+    restore_rng_state,
+    stable_signature,
+)
 
 from .data import SequenceConfig, prepare_dataset_splits
 from .model import CNNBiLSTM, ModelConfig, build_model
@@ -124,6 +130,7 @@ def run_study(
     maximum_validation_sequences: int | None = None,
     settings: OptimizationSettings | None = None,
     artifact_dir: Path | None = None,
+    checkpoint_store: TrainingCheckpointStore | None = None,
 ) -> optuna.Study:
     """Select architecture and optimizer values from Validation only."""
 
@@ -158,24 +165,103 @@ def run_study(
         )
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         criterion = nn.MSELoss()
-        best_mae, wait = float("inf"), 0
+        checkpoint_stage = "optuna_trial_" + stable_signature(
+            {
+                "study_name": settings.study_name if settings else "in_memory",
+                "params": trial.params,
+            }
+        )[:20]
+        checkpoint_signature = stable_signature(
+            {
+                "model_config": model_cfg.__dict__,
+                "lr": lr,
+                "weight_decay": weight_decay,
+                "trial_epochs": trial_epochs,
+                "train_sequences": len(train_loader.dataset),
+                "validation_sequences": len(val_loader.dataset),
+            }
+        )
+        start_epoch, best_mae, wait = 0, float("inf"), 0
+        resumed = False
+        if checkpoint_store is not None:
+            trial.set_user_attr("checkpoint_stage", checkpoint_stage)
+            state = checkpoint_store.load_torch(
+                checkpoint_stage,
+                signature=checkpoint_signature,
+                map_location=device,
+            )
+            if state is not None:
+                model.load_state_dict(state["model_state"])
+                optimizer.load_state_dict(state["optimizer_state"])
+                start_epoch = int(state["next_epoch"])
+                best_mae = float(state["best_validation_mae"])
+                wait = int(state["early_stopping_wait"])
+                restore_rng_state(state.get("rng_state"))
+                resumed = True
+                if state.get("completed"):
+                    trial.set_user_attr("checkpoint_resumed", True)
+                    return best_mae
 
         try:
-            for epoch in range(trial_epochs):
+            completed_epoch = start_epoch
+            for epoch in range(start_epoch, trial_epochs):
                 _train_one_epoch(model, train_loader, criterion, optimizer, device)
                 metrics = _evaluate(model, val_loader, criterion, device)
                 validation_mae = float(metrics["mae"])
                 trial.report(validation_mae, step=epoch)
-                if trial.should_prune():
-                    raise optuna.TrialPruned()
 
                 if validation_mae + 1e-6 < best_mae:
                     best_mae = validation_mae
                     wait = 0
                 else:
                     wait += 1
+                completed_epoch = epoch + 1
+                if checkpoint_store is not None and (
+                    (epoch + 1) % checkpoint_store.cnn_every_epochs == 0
+                    or epoch + 1 == trial_epochs
+                ):
+                    checkpoint_store.save_torch(
+                        checkpoint_stage,
+                        {
+                            "model_state": model.state_dict(),
+                            "optimizer_state": optimizer.state_dict(),
+                            "next_epoch": epoch + 1,
+                            "best_validation_mae": best_mae,
+                            "early_stopping_wait": wait,
+                            "rng_state": capture_rng_state(),
+                        },
+                        signature=checkpoint_signature,
+                        progress={
+                            "next_epoch": epoch + 1,
+                            "total_epochs": trial_epochs,
+                            "best_validation_mae": best_mae,
+                        },
+                        completed=False,
+                    )
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
                 if wait >= early_stopping_patience:
                     break
+            if checkpoint_store is not None:
+                checkpoint_store.save_torch(
+                    checkpoint_stage,
+                    {
+                        "model_state": model.state_dict(),
+                        "optimizer_state": optimizer.state_dict(),
+                        "next_epoch": completed_epoch,
+                        "best_validation_mae": best_mae,
+                        "early_stopping_wait": wait,
+                        "rng_state": capture_rng_state(),
+                    },
+                    signature=checkpoint_signature,
+                    progress={
+                        "next_epoch": completed_epoch,
+                        "total_epochs": trial_epochs,
+                        "best_validation_mae": best_mae,
+                    },
+                    completed=True,
+                )
+            trial.set_user_attr("checkpoint_resumed", resumed)
             trial.set_user_attr("tuning_train_sequences", len(train_loader.dataset))
             trial.set_user_attr(
                 "tuning_validation_sequences", len(val_loader.dataset)
@@ -187,16 +273,36 @@ def run_study(
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
+    def cleanup_checkpoint(_study: optuna.Study, frozen_trial) -> None:
+        if checkpoint_store is None:
+            return
+        stage = frozen_trial.user_attrs.get("checkpoint_stage")
+        if stage and frozen_trial.state in {
+            optuna.trial.TrialState.COMPLETE,
+            optuna.trial.TrialState.PRUNED,
+        }:
+            checkpoint_store.remove(str(stage), kind="torch")
+
     if settings:
         if artifact_dir is None:
             raise ValueError("artifact_dir is required for a persistent Optuna study")
-        return OptunaStudyService(settings).run(objective, artifact_dir).study
+        return OptunaStudyService(settings).run(
+            objective,
+            artifact_dir,
+            callbacks=[cleanup_checkpoint],
+        ).study
     study = optuna.create_study(
         direction="minimize",
         sampler=optuna.samplers.TPESampler(seed=42),
         pruner=optuna.pruners.MedianPruner(),
     )
-    study.optimize(objective, n_trials=n_trials, timeout=timeout, gc_after_trial=True)
+    study.optimize(
+        objective,
+        n_trials=n_trials,
+        timeout=timeout,
+        gc_after_trial=True,
+        callbacks=[cleanup_checkpoint],
+    )
     return study
 
 
@@ -217,6 +323,7 @@ def train_with_best_trial(
     settings: OptimizationSettings | None = None,
     artifact_dir: Path | None = None,
     timeout: Optional[int] = None,
+    checkpoint_store: TrainingCheckpointStore | None = None,
 ) -> Dict[str, object]:
     """Run Optuna then train/evaluate the best model; returns artifacts."""
 
@@ -237,6 +344,7 @@ def train_with_best_trial(
         settings=settings,
         artifact_dir=artifact_dir,
         timeout=timeout,
+        checkpoint_store=checkpoint_store,
     )
     best_params = study.best_params
     loaders = prepare_dataset_splits(
@@ -261,8 +369,38 @@ def train_with_best_trial(
     )
     criterion = nn.MSELoss()
 
-    best_state, best_val, wait = None, float("inf"), 0
-    for _ in range(epochs):
+    checkpoint_signature = stable_signature(
+        {
+            "model_config": model_cfg.__dict__,
+            "best_params": best_params,
+            "epochs": epochs,
+            "train_sequences": len(train_loader.dataset),
+            "validation_sequences": len(val_loader.dataset),
+        }
+    )
+    checkpoint_stage = f"final_fit_{checkpoint_signature[:20]}"
+    start_epoch, best_state, best_val, wait = 0, None, float("inf"), 0
+    resumed = False
+    checkpoint_completed = False
+    if checkpoint_store is not None:
+        state = checkpoint_store.load_torch(
+            checkpoint_stage,
+            signature=checkpoint_signature,
+            map_location=device,
+        )
+        if state is not None:
+            model.load_state_dict(state["model_state"])
+            optimizer.load_state_dict(state["optimizer_state"])
+            start_epoch = int(state["next_epoch"])
+            best_state = state.get("best_model_state")
+            best_val = float(state["best_validation_mae"])
+            wait = int(state["early_stopping_wait"])
+            restore_rng_state(state.get("rng_state"))
+            resumed = True
+            checkpoint_completed = bool(state.get("completed", False))
+    completed_epoch = start_epoch
+    loop_end = start_epoch if checkpoint_completed else epochs
+    for epoch in range(start_epoch, loop_end):
         _train_one_epoch(model, train_loader, criterion, optimizer, device)
         metrics = _evaluate(model, val_loader, criterion, device)
         if metrics["mae"] + 1e-6 < best_val:
@@ -271,8 +409,52 @@ def train_with_best_trial(
             wait = 0
         else:
             wait += 1
+        completed_epoch = epoch + 1
+        if checkpoint_store is not None and (
+            completed_epoch % checkpoint_store.cnn_every_epochs == 0
+            or completed_epoch == epochs
+        ):
+            checkpoint_store.save_torch(
+                checkpoint_stage,
+                {
+                    "model_state": model.state_dict(),
+                    "optimizer_state": optimizer.state_dict(),
+                    "best_model_state": best_state,
+                    "next_epoch": completed_epoch,
+                    "best_validation_mae": best_val,
+                    "early_stopping_wait": wait,
+                    "rng_state": capture_rng_state(),
+                },
+                signature=checkpoint_signature,
+                progress={
+                    "next_epoch": completed_epoch,
+                    "total_epochs": epochs,
+                    "best_validation_mae": best_val,
+                },
+                completed=False,
+            )
         if wait >= early_stopping_patience:
             break
+    if checkpoint_store is not None:
+        checkpoint_store.save_torch(
+            checkpoint_stage,
+            {
+                "model_state": model.state_dict(),
+                "optimizer_state": optimizer.state_dict(),
+                "best_model_state": best_state,
+                "next_epoch": completed_epoch,
+                "best_validation_mae": best_val,
+                "early_stopping_wait": wait,
+                "rng_state": capture_rng_state(),
+            },
+            signature=checkpoint_signature,
+            progress={
+                "next_epoch": completed_epoch,
+                "total_epochs": epochs,
+                "best_validation_mae": best_val,
+            },
+            completed=True,
+        )
     if best_state is not None:
         model.load_state_dict(best_state)
 
@@ -288,6 +470,8 @@ def train_with_best_trial(
         "validation_metrics": validation_metrics,
         "calibration_metrics": calibration_metrics,
         "preprocessing": getattr(train_loader, "preprocessing_state", None),
+        "checkpoint_stage": checkpoint_stage,
+        "checkpoint_resumed": resumed,
     }
 
 

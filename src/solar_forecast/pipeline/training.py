@@ -24,6 +24,8 @@ class CnnTrainingAdapter:
             optimizer_timeout_seconds=config.optimizer_timeout_seconds,
             use_reinforcement=config.use_reinforcement,
             epochs=config.epochs,
+            checkpoint_root=config.output_dir / ".checkpoints",
+            optimizer_storage_path=config.output_dir / "optimization.db",
         )
         analysis = evaluate_and_analyze(
             str(artifacts["checkpoint_path"]),

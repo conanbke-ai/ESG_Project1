@@ -275,9 +275,21 @@ python app.py status
 
 두 독립 모델은 기본적으로 Optuna를 사용합니다. XGBoost는 최대 30 trial/2시간, CNN-BiLSTM은
 최대 20 trial/4시간이며 `artifacts/optimization/solar_models.db`의 모델별 study를 재개합니다.
+실제 study 이름에는 데이터·학습 설정 fingerprint가 자동으로 붙으므로 원본 또는 의미 있는 설정이
+바뀌면 동일한 표시 이름을 사용해도 별도 탐색으로 시작합니다.
 `max_trials`는 실행할 때마다 더하는 수가 아니라 해당 study의 **최대 누적 trial 수**입니다.
 현재 고정 파라미터는 과거 데이터 구성에서 얻은 Optuna 결과로서 문서상의 참고 기준일 뿐입니다.
 새 데이터·피처 구성의 study에는 enqueue하거나 우선권을 주지 않으며 독립적으로 다시 탐색합니다.
+
+학습 상태는 기본적으로 `artifacts/checkpoints/<model>/<data-config-fingerprint>/`에 원자적으로
+저장합니다. CNN-BiLSTM은 매 epoch마다 모델·optimizer·early stopping·최적 모델·난수 상태를,
+XGBoost는 50 boosting round마다 Booster를 저장합니다. Optuna trial도 같은 단위로 이어서
+실행하며 프로세스가 비정상 종료된 trial은 heartbeat로 판별해 같은 파라미터로 한 번 재시도합니다.
+데이터 manifest 또는 학습 설정이 바뀌면 fingerprint가 달라져 과거 상태를 잘못 읽지 않습니다.
+완료 상태도 최종 manifest 저장 전 장애에 대비해 유지하므로 같은 입력으로 다시 실행하면 이미
+끝난 최종 학습을 반복하지 않습니다. 새로 학습하되 상태는 계속 저장하려면 모델 설정의
+`checkpoint.resume`을 `false`로 설정합니다. 상세 계약과 검수 결과는
+[`docs/CHECKPOINT_AND_CONSISTENCY_AUDIT.md`](docs/CHECKPOINT_AND_CONSISTENCY_AUDIT.md)를 참고합니다.
 
 - 탐색 입력: Train과 Validation만 사용
 - 목적함수: Validation MAE

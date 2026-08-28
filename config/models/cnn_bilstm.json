@@ -63,6 +63,9 @@
     "startup_trials": 5,
     "pruner_startup_trials": 5,
     "pruner_warmup_steps": 3,
+    "heartbeat_interval_seconds": 60,
+    "grace_period_seconds": 180,
+    "max_failed_trial_retries": 1,
     "trial_epochs": 20,
     "early_stopping_patience": 5,
     "tuning_train_max_sequences": 250000,
@@ -72,5 +75,11 @@
   "n_trials": 10,
   "epochs": 50,
   "use_optuna": true,
-  "resume": true
+  "checkpoint": {
+    "enabled": true,
+    "resume": true,
+    "root": "artifacts/checkpoints",
+    "cnn_every_epochs": 1,
+    "xgboost_every_rounds": 50
+  }
 }

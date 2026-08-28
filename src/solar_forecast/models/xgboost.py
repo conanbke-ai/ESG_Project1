@@ -7,15 +7,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from xgboost import XGBRegressor
 
 from solar_forecast.ensemble.dynamic_gate import normalize_prediction_columns
+from solar_forecast.artifacts.manifest import replace_file_atomic
 from solar_forecast.evaluation.temporal import TemporalSplitConfig, TemporalSplitter
 from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.pipeline.preprocessing import NumericPreprocessor
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT
 
+from .checkpointing import TrainingCheckpointStore, stable_signature
 from .optimization import OptimizationSettings
+from .xgboost_checkpoint import fit_xgboost_resumable
 from .xgboost_optimization import XGBoostHyperparameterOptimizer
 
 
@@ -57,15 +59,17 @@ class XGBoostTrainer:
             )
         )
         run_dir.mkdir(parents=True, exist_ok=True)
+        checkpoint_store = TrainingCheckpointStore.from_config(config)
         optimization_settings = OptimizationSettings.from_values(
             config.values,
             model="xgboost",
-        )
+        ).scoped(checkpoint_store.fingerprint)
         optimization_result = None
         if optimization_settings.enabled and not smoke:
             optimization_result = XGBoostHyperparameterOptimizer(
                 optimization_settings,
                 config.values,
+                checkpoint_store=checkpoint_store,
             ).optimize(
                 train_frame,
                 validation_frame,
@@ -105,18 +109,34 @@ class XGBoostTrainer:
                 if isinstance(optimizer_values, dict)
                 else config.values.get("early_stopping_rounds", 10)
             )
-        model = XGBRegressor(**params)
-        model.fit(
+        checkpoint_signature = stable_signature(
+            {
+                "params": params,
+                "feature_columns": prepared.feature_columns,
+                "target_column": target,
+                "temporal_split": split_metadata,
+            }
+        )
+        checkpoint_stage = f"final_fit_{checkpoint_signature[:20]}"
+        fit = fit_xgboost_resumable(
+            params,
             train_frame[prepared.feature_columns],
             train_frame[target],
-            eval_set=[(validation_frame[prepared.feature_columns], validation_frame[target])],
+            validation_frame[prepared.feature_columns],
+            validation_frame[target],
+            store=checkpoint_store,
+            stage=checkpoint_stage,
+            signature=checkpoint_signature,
             verbose=False,
         )
+        model = fit.model
         validation_predicted = model.predict(validation_frame[prepared.feature_columns])
         calibration_predicted = model.predict(calibration_frame[prepared.feature_columns])
         predicted = model.predict(test_frame[prepared.feature_columns])
         model_path = run_dir / "model.json"
-        model.save_model(model_path)
+        temporary_model = model_path.with_name(f"{model_path.stem}.tmp{model_path.suffix}")
+        model.save_model(temporary_model)
+        replace_file_atomic(temporary_model, model_path)
         preprocessing_path = run_dir / "preprocessing.json"
         preprocessing_path.write_text(
             json.dumps(
@@ -174,6 +194,14 @@ class XGBoostTrainer:
             "rmse": float(np.sqrt(mean_squared_error(test_frame[target], predicted))),
             "r2": float(r2_score(test_frame[target], predicted)) if len(test_frame) > 1 else float("nan"),
         }
+        checkpoint_details = {
+            **checkpoint_store.describe(),
+            "stage": checkpoint_stage,
+            "resumed": fit.resumed,
+            "initial_rounds": fit.initial_rounds,
+            "completed_rounds": fit.completed_rounds,
+            "retained_for_idempotent_resume": True,
+        }
         return {
             "source": str(source), "model_path": str(model_path),
             "preprocessing_path": str(preprocessing_path),
@@ -195,6 +223,7 @@ class XGBoostTrainer:
                 }
             ),
             "memory_aware_loading": load_report.to_dict(),
+            "checkpoint": checkpoint_details,
         }
 
     @staticmethod
