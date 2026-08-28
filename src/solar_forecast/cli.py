@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Sequence
 
@@ -194,11 +196,39 @@ def _run_build_dashboard(args: argparse.Namespace) -> None:
 
     result = DashboardBuilder(PROJECT_ROOT, Path(args.output_dir)).build()
     print(
-        f"Dashboard data refreshed: {result.solar_assets} solar assets, "
+        f"National inventory refreshed: {result.national_generator_records:,} generator records, "
+        f"{result.national_capacity_mw:,.2f} MW"
+    )
+    print(
+        f"Training portfolio refreshed: {result.solar_assets} solar assets, "
         f"{result.eligible_solar_assets} eligible"
     )
     print(f"Solar dashboard: {result.solar_dashboard}")
     print(f"Plant/region report: {result.mapping_report}")
+
+
+def _run_serve_dashboard(args: argparse.Namespace) -> None:
+    from solar_forecast.reporting import DashboardBuilder
+
+    output_dir = Path(args.output_dir)
+    if not output_dir.is_absolute():
+        output_dir = PROJECT_ROOT / output_dir
+    if not args.no_refresh:
+        DashboardBuilder(PROJECT_ROOT, output_dir).build()
+    entrypoint = output_dir / "solar_dashboard.html"
+    if not entrypoint.exists():
+        raise FileNotFoundError(f"Dashboard entrypoint is missing: {entrypoint}")
+    handler = partial(SimpleHTTPRequestHandler, directory=str(output_dir))
+    server = ThreadingHTTPServer((args.host, args.port), handler)
+    url = f"http://{args.host}:{server.server_port}/solar_dashboard.html"
+    print(f"Dashboard server: {url}", flush=True)
+    print("Stop with Ctrl+C", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -311,6 +341,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     dashboard.add_argument("--output-dir", default="dashboard")
     dashboard.set_defaults(func=_run_build_dashboard)
+
+    serve_dashboard = commands.add_parser(
+        "serve-dashboard",
+        help="Refresh and serve the dashboard with the correct document root",
+    )
+    serve_dashboard.add_argument("--host", default="127.0.0.1")
+    serve_dashboard.add_argument("--port", type=int, default=5500)
+    serve_dashboard.add_argument("--output-dir", default="dashboard")
+    serve_dashboard.add_argument(
+        "--no-refresh",
+        action="store_true",
+        help="Serve the existing dashboard payload without rebuilding it",
+    )
+    serve_dashboard.set_defaults(func=_run_serve_dashboard)
     return parser
 
 

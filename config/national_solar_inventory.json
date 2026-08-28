@@ -1,0 +1,21 @@
+{
+  "dataset_id": "kpx_epsis_national_solar_generator_status",
+  "provider": "한국전력거래소",
+  "source_system": "EPSIS",
+  "source_url": "https://epsis.kpx.or.kr/epsisnew/selectEkpoBcrGrid.do?menuId=020400",
+  "local_path": "file/generator_file/한국전력거래소_[전국] 태양광발전설비현황_20260828.csv",
+  "reference_date": "2026-08-05",
+  "downloaded_at": "2026-08-28T10:00:30+09:00",
+  "expected_sha256": "e77b879e7bca7845b2700fc2c078126f75e3c2838fcb3b7966c6bddf07973ac3",
+  "encoding": "cp949",
+  "capacity_unit": "MW",
+  "record_unit": "generator_registration_row",
+  "scope": "EPSIS 발전기 현황에서 발전원=태양에너지로 조회한 전국 계통연계 등록 설비",
+  "limitations": [
+    "구역전기사업설비와 자가용전기설비는 EPSIS 설비용량 산정에서 제외될 수 있다.",
+    "한 행은 물리적 발전소 고유 식별자가 아닌 발전기·등록 레코드이므로 단순 행 수를 발전소 개소로 표기하지 않는다.",
+    "중복으로 보이는 레코드도 공식 고유키가 없어 원본 집계에서 제거하지 않는다."
+  ],
+  "coordinate_cache_path": "map/json/coord_cache.json",
+  "boundary_path": "map/json/geoJson.json"
+}

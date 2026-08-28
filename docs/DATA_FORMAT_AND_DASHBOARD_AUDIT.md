@@ -61,20 +61,39 @@ dashboard/                       현재 웹 화면과 공유 assets/data
 
 ## HTML 구성 판단
 
-`solar_dashboard.html`은 다시 기본 진입점으로 제공한다. 다만 과거 화면의 전국 인허가 설비
-3만여 개 수치는 현재 저장소에 원천 파일과 갱신 파이프라인이 없어 최신 시간별 발전실적 통계와
-결합하지 않았다. 화면은 정확하게 “공개 시간별 발전실적을 확보한 학습 포트폴리오”로 표시한다.
+`solar_dashboard.html`은 학습 데이터 보유 여부와 무관한 전국 태양광 발전설비 현황으로 복원했다.
+2026-08-28에 EPSIS 발전기 현황 화면에서 `발전원=태양에너지`로 직접 재수집한 CP949 CSV를
+Bronze 원본으로 보존한다. 공식 기준일은 2026-08-05이며 합계행 제외 후 188,594행,
+33,059.516180 MW, 17개 시도이다. 세부지역 320개 원본 표기는 구·신 행정구역명을
+표준화해 272개 지도 지점으로 통합한다.
 
-두 HTML은 동일 CSS/JavaScript와 생성 JSON을 공유한다. 전국 현황과 매핑·품질을 별도 URL로
-유지해 기존 북마크를 깨지 않으면서, 통계 복사본이 서로 달라지는 문제를 없앴다. Leaflet 지도만
-CDN/OSM 타일을 사용하며 데이터 표와 검증 결과는 로컬 JSON이다.
+과거 코드는 `발전기명 count`를 `발전소수`로 표기했지만, 공식 물리 발전소 ID가 없어 의미가
+확정되지 않는다. 새 화면은 해당 수치를 `태양광 설비 등록 레코드`로 표기하고, 정확히
+같은 557개 레코드도 공식 고유키가 없으므로 임의 삭제하지 않는다. 원본 합계행은 행 수·용량
+교차검증에만 사용하고 지역 집계에서는 제외해 용량 2배 집계를 방지한다.
+
+두 HTML은 동일 CSS/JavaScript와 생성 JSON을 공유하지만 모집단은 섞지 않는다. 메인 화면의
+`national_inventory`는 EPSIS 전국 원본에서, 학습 품질 화면의 `plants/mapping`은 Silver/Gold
+registry에서 만든다. 시도 경계와 좌표 캐시는 로컬에서 제공하고 Leaflet 라이브러리와 OSM 배경
+타일만 CDN/네트워크를 사용한다.
+
+전국 원본은 SHA-256과 필수 11개 컬럼을 확인한 뒤 각 데이터 행의 `발전원=태양에너지`도
+검증한다. 이후 다운로드에서 조회 필터가 풀려 다른 발전원이 섞이면 부분 집계를 게시하지 않고
+즉시 실패한다. 시도 경계 파일도 config의 `boundary_path`를 실제 게시 경로에 반영한다.
 
 ```powershell
 python app.py build-dashboard
-python -m http.server 5500 --directory dashboard
+python app.py serve-dashboard --port 5500
 ```
 
-대량 데이터 측면에서는 dashboard build도 Gold 전체를 한 번에 메모리에 올리지 않는다. 각 gzip
-파티션에서 매핑 검증에 필요한 컬럼과 유일 키만 읽고 버린다. 향후 전국 설비 inventory 원천을
-다시 확보하면 별도 `facility_inventory` 계약과 갱신일을 추가하고, 발전실적 확보 자산과 전국
-인허가 설비를 같은 숫자로 합치지 않는 것이 안전하다.
+이 전용 명령은 `dashboard/`를 서버 문서 루트로 고정한다. 프로젝트 루트에서 실행되는 Live Server를
+위해서는 `/solar_dashboard.html`, 과거 북마크를 위해서는 `/map/html/solar_dashboard.html` 호환
+진입점을 제공하며 둘 다 현재 `/dashboard/solar_dashboard.html`로 이동한다.
+사용자 지정 `--output-dir`에는 정적 HTML/CSS/JavaScript와 생성 JSON/GeoJSON을 모두 복사한다.
+
+대량 데이터 측면에서는 전국 CSV를 행 단위로 스트리밍하여 시도·세부지역 집계만 메모리에
+유지한다. 정확 중복 비교도 임시 SQLite에 내려 원본 행 전체를 RAM에 적재하지 않는다.
+Gold도 각 gzip 파티션에서 매핑 검증에 필요한 컬럼과 유일 키만 읽고 버린다.
+`원본 해시 검증 → footer 교차검증 → 지역명 표준화 → 지역 집계 → 대시보드 JSON 원자적 교체`로
+lineage를 남긴다. `config/national_solar_inventory.json`은 원천 경로, 제공기관, 기준일,
+다운로드 시각, 인코딩, SHA-256, 범위 제약을 보존한다.

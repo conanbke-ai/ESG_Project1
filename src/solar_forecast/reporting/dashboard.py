@@ -12,6 +12,7 @@ import pandas as pd
 from solar_forecast.collectors.csv_artifacts import inspect_csv_artifact
 from solar_forecast.collectors.naming import is_canonical_solar_download_name
 from solar_forecast.collectors.normalization import read_csv_with_fallback
+from solar_forecast.reporting.national_inventory import build_national_inventory
 
 
 COMPANY_NAMES = {
@@ -27,8 +28,11 @@ COMPANY_NAMES = {
 @dataclass(frozen=True)
 class DashboardBuildResult:
     data_path: Path
+    boundary_path: Path | None
     solar_dashboard: Path
     mapping_report: Path
+    national_generator_records: int
+    national_capacity_mw: float
     solar_assets: int
     eligible_solar_assets: int
 
@@ -59,7 +63,9 @@ class DashboardBuilder:
             else {}
         )
         stations = self._load_weather_stations()
-        payload = self._payload(registry, quality, manifest, stations)
+        national = build_national_inventory(self.project_root)["national_inventory"]
+        payload = self._payload(registry, quality, manifest, stations, national)
+        self._publish_static_assets()
 
         data_path = self.output_dir / "data/dashboard_data.json"
         data_path.parent.mkdir(parents=True, exist_ok=True)
@@ -69,13 +75,17 @@ class DashboardBuilder:
             encoding="utf-8",
         )
         temporary.replace(data_path)
+        boundary_path = self._copy_province_boundaries(national)
 
         solar = registry.loc[registry["energy_source"].eq("solar")]
         eligible = solar["model_ready_status"].eq("eligible")
         return DashboardBuildResult(
             data_path=data_path,
+            boundary_path=boundary_path,
             solar_dashboard=self.output_dir / "solar_dashboard.html",
             mapping_report=self.output_dir / "plant_region_report_perm.html",
+            national_generator_records=int(national["summary"]["generator_records"]),
+            national_capacity_mw=float(national["summary"]["total_capacity_mw"]),
             solar_assets=int(len(solar)),
             eligible_solar_assets=int(eligible.sum()),
         )
@@ -86,6 +96,7 @@ class DashboardBuilder:
         quality: pd.DataFrame,
         manifest: dict[str, Any],
         stations: dict[int, dict[str, Any]],
+        national_inventory: dict[str, Any],
     ) -> dict[str, Any]:
         solar = registry.loc[registry["energy_source"].eq("solar")].copy()
         quality_columns = [
@@ -124,13 +135,15 @@ class DashboardBuilder:
         return {
             "meta": {
                 "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-                "scope": "공개 시간별 발전실적을 확보한 태양광 포트폴리오",
+                "scope": "전국 발전설비 현황과 발전량 학습 포트폴리오를 분리한 로컬 대시보드",
+                "training_scope": "공개 시간별 발전실적과 기상자료를 함께 확보한 태양광 학습 포트폴리오",
                 "location_policy": (
                     "발전소 실좌표가 없으면 학습에 사용한 ASOS 관측소 좌표를 대리표시하며 "
                     "두 좌표 유형을 구분한다"
                 ),
                 "raw_policy": "Bronze 원본 바이트 보존; Silver/Gold만 UTF-8-SIG와 표준 컬럼으로 변환",
             },
+            "national_inventory": national_inventory,
             "summary": {
                 "registered_assets_all_energy": int(len(registry)),
                 "solar_assets": int(len(solar)),
@@ -163,6 +176,52 @@ class DashboardBuilder:
                 "weather_availability": manifest.get("weather_availability", {}),
             },
         }
+
+    def _publish_static_assets(self) -> None:
+        """Copy the canonical dashboard shell when publishing elsewhere."""
+
+        source_root = (self.project_root / "dashboard").resolve()
+        if source_root == self.output_dir:
+            return
+        relative_paths = (
+            Path("solar_dashboard.html"),
+            Path("plant_region_report_perm.html"),
+            Path("assets/dashboard.css"),
+            Path("assets/dashboard.js"),
+        )
+        for relative_path in relative_paths:
+            source = source_root / relative_path
+            if not source.is_file():
+                raise FileNotFoundError(f"Dashboard static asset is missing: {source}")
+            target = self.output_dir / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            temporary = target.with_name(target.name + ".part")
+            temporary.write_bytes(source.read_bytes())
+            temporary.replace(target)
+
+    def _copy_province_boundaries(
+        self, national_inventory: dict[str, Any]
+    ) -> Path | None:
+        """Publish the local 17-province GeoJSON beside the generated payload."""
+
+        source_label = national_inventory.get("source", {}).get(
+            "boundary_path", "map/json/geoJson.json"
+        )
+        source = Path(str(source_label))
+        if not source.is_absolute():
+            source = self.project_root / source
+        if not source.is_file():
+            return None
+        target = self.output_dir / "data/korea_provinces.geojson"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_suffix(".geojson.part")
+        boundaries = json.loads(source.read_text(encoding="utf-8"))
+        temporary.write_text(
+            json.dumps(boundaries, ensure_ascii=False, indent=2, allow_nan=False),
+            encoding="utf-8",
+        )
+        temporary.replace(target)
+        return target
 
     def _load_weather_stations(self) -> dict[int, dict[str, Any]]:
         path = self.project_root / "file/KMA_data_file/META_관측지점정보.csv"

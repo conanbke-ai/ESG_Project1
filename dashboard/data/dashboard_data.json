@@ -1,9 +1,2908 @@
 {
   "meta": {
-    "generated_at": "2026-08-28T09:37:51+09:00",
-    "scope": "공개 시간별 발전실적을 확보한 태양광 포트폴리오",
+    "generated_at": "2026-08-28T10:31:08+09:00",
+    "scope": "전국 발전설비 현황과 발전량 학습 포트폴리오를 분리한 로컬 대시보드",
+    "training_scope": "공개 시간별 발전실적과 기상자료를 함께 확보한 태양광 학습 포트폴리오",
     "location_policy": "발전소 실좌표가 없으면 학습에 사용한 ASOS 관측소 좌표를 대리표시하며 두 좌표 유형을 구분한다",
     "raw_policy": "Bronze 원본 바이트 보존; Silver/Gold만 UTF-8-SIG와 표준 컬럼으로 변환"
+  },
+  "national_inventory": {
+    "source": {
+      "dataset_id": "kpx_epsis_national_solar_generator_status",
+      "provider": "한국전력거래소",
+      "source_system": "EPSIS",
+      "source_url": "https://epsis.kpx.or.kr/epsisnew/selectEkpoBcrGrid.do?menuId=020400",
+      "local_path": "file/generator_file/한국전력거래소_[전국] 태양광발전설비현황_20260828.csv",
+      "reference_date": "2026-08-05",
+      "downloaded_at": "2026-08-28T10:00:30+09:00",
+      "encoding": "cp949",
+      "capacity_unit": "MW",
+      "record_unit": "generator_registration_row",
+      "scope": "EPSIS 발전기 현황에서 발전원=태양에너지로 조회한 전국 계통연계 등록 설비",
+      "limitations": [
+        "구역전기사업설비와 자가용전기설비는 EPSIS 설비용량 산정에서 제외될 수 있다.",
+        "한 행은 물리적 발전소 고유 식별자가 아닌 발전기·등록 레코드이므로 단순 행 수를 발전소 개소로 표기하지 않는다.",
+        "중복으로 보이는 레코드도 공식 고유키가 없어 원본 집계에서 제거하지 않는다."
+      ],
+      "boundary_path": "map/json/geoJson.json",
+      "sha256": "e77b879e7bca7845b2700fc2c078126f75e3c2838fcb3b7966c6bddf07973ac3",
+      "expected_sha256": "e77b879e7bca7845b2700fc2c078126f75e3c2838fcb3b7966c6bddf07973ac3",
+      "sha256_verified": true,
+      "bytes": 20870460
+    },
+    "summary": {
+      "generator_records": 188594,
+      "total_capacity_mw": 33059.51618,
+      "canonical_regions": 17,
+      "regions_with_records": 17,
+      "source_subregion_labels": 320,
+      "subregions": 272,
+      "located_subregions": 272
+    },
+    "regions": [
+      {
+        "region": "서울특별시",
+        "generator_records": 546,
+        "capacity_mw": 47.843075
+      },
+      {
+        "region": "부산광역시",
+        "generator_records": 1698,
+        "capacity_mw": 385.00048
+      },
+      {
+        "region": "대구광역시",
+        "generator_records": 4093,
+        "capacity_mw": 546.663306
+      },
+      {
+        "region": "인천광역시",
+        "generator_records": 1415,
+        "capacity_mw": 238.06782
+      },
+      {
+        "region": "광주광역시",
+        "generator_records": 2516,
+        "capacity_mw": 418.071636
+      },
+      {
+        "region": "대전광역시",
+        "generator_records": 883,
+        "capacity_mw": 79.70561
+      },
+      {
+        "region": "울산광역시",
+        "generator_records": 1155,
+        "capacity_mw": 232.899915
+      },
+      {
+        "region": "세종특별자치시",
+        "generator_records": 656,
+        "capacity_mw": 111.17658
+      },
+      {
+        "region": "경기도",
+        "generator_records": 21784,
+        "capacity_mw": 2746.906556
+      },
+      {
+        "region": "강원특별자치도",
+        "generator_records": 10551,
+        "capacity_mw": 2151.91951
+      },
+      {
+        "region": "충청북도",
+        "generator_records": 13779,
+        "capacity_mw": 1942.260034
+      },
+      {
+        "region": "충청남도",
+        "generator_records": 22683,
+        "capacity_mw": 4618.17599
+      },
+      {
+        "region": "전북특별자치도",
+        "generator_records": 35050,
+        "capacity_mw": 4916.994515
+      },
+      {
+        "region": "전라남도",
+        "generator_records": 23954,
+        "capacity_mw": 6567.33573
+      },
+      {
+        "region": "경상북도",
+        "generator_records": 30305,
+        "capacity_mw": 4740.361053
+      },
+      {
+        "region": "경상남도",
+        "generator_records": 15435,
+        "capacity_mw": 2574.084975
+      },
+      {
+        "region": "제주특별자치도",
+        "generator_records": 2091,
+        "capacity_mw": 742.049395
+      }
+    ],
+    "locations": [
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 강릉시",
+        "generator_records": 607,
+        "capacity_mw": 114.205285,
+        "latitude": 37.7521116823526,
+        "longitude": 128.875906235799,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 강릉시"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 고성군",
+        "generator_records": 633,
+        "capacity_mw": 127.627135,
+        "latitude": 38.3805924324313,
+        "longitude": 128.467866303854,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 고성군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 동해시",
+        "generator_records": 106,
+        "capacity_mw": 28.693415,
+        "latitude": 37.5247415047897,
+        "longitude": 129.114299292996,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 동해시"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 삼척시",
+        "generator_records": 392,
+        "capacity_mw": 156.631083,
+        "latitude": 37.4498976008043,
+        "longitude": 129.165111673939,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 삼척시"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 속초시",
+        "generator_records": 68,
+        "capacity_mw": 6.217765,
+        "latitude": 38.20689433526,
+        "longitude": 128.591938589225,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원특별자치도 속초시"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 양구군",
+        "generator_records": 737,
+        "capacity_mw": 99.35608,
+        "latitude": 38.1100012808234,
+        "longitude": 127.989950629015,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 양구군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 양양군",
+        "generator_records": 112,
+        "capacity_mw": 23.27978,
+        "latitude": 38.0755111735403,
+        "longitude": 128.619079851708,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 양양군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 영월군",
+        "generator_records": 355,
+        "capacity_mw": 126.98789,
+        "latitude": 37.1836860419285,
+        "longitude": 128.461783934728,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원 영월군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 원주시",
+        "generator_records": 1512,
+        "capacity_mw": 221.124829,
+        "latitude": 37.3420475880601,
+        "longitude": 127.92009712318,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 원주시"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 인제군",
+        "generator_records": 851,
+        "capacity_mw": 117.5502,
+        "latitude": 38.0697061389168,
+        "longitude": 128.170351448366,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 인제군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 정선군",
+        "generator_records": 244,
+        "capacity_mw": 86.821635,
+        "latitude": 37.3805844996072,
+        "longitude": 128.660813602081,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 정선군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 철원군",
+        "generator_records": 845,
+        "capacity_mw": 217.19009,
+        "latitude": 38.1467919880831,
+        "longitude": 127.313379851684,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 철원군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 춘천시",
+        "generator_records": 743,
+        "capacity_mw": 112.823305,
+        "latitude": 37.8812440340087,
+        "longitude": 127.730207024668,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 춘천시"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 태백시",
+        "generator_records": 129,
+        "capacity_mw": 70.766925,
+        "latitude": 37.1640074201903,
+        "longitude": 128.985725257053,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 태백시"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 평창군",
+        "generator_records": 585,
+        "capacity_mw": 211.707845,
+        "latitude": 37.3707820404543,
+        "longitude": 128.39016179013,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 평창군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 홍천군",
+        "generator_records": 1295,
+        "capacity_mw": 188.776161,
+        "latitude": 37.697167316273,
+        "longitude": 127.888684130433,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 홍천군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 화천군",
+        "generator_records": 544,
+        "capacity_mw": 109.125222,
+        "latitude": 38.1061819512293,
+        "longitude": 127.70815057883,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 화천군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 횡선군",
+        "generator_records": 1,
+        "capacity_mw": 0.46624,
+        "latitude": 36.5,
+        "longitude": 127.5,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 횡선군"
+      },
+      {
+        "region": "강원특별자치도",
+        "subregion": "강원특별자치도 횡성군",
+        "generator_records": 792,
+        "capacity_mw": 132.568625,
+        "latitude": 37.4917832355593,
+        "longitude": 127.985070911254,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 횡성군"
+      },
+      {
+        "region": "경기도",
+        "subregion": "강원특별자치도 강릉시",
+        "generator_records": 1,
+        "capacity_mw": 0.999,
+        "latitude": 37.7521116823526,
+        "longitude": 128.875906235799,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 강릉시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "강원특별자치도 철원군",
+        "generator_records": 1,
+        "capacity_mw": 0.89976,
+        "latitude": 38.1467919880831,
+        "longitude": 127.313379851684,
+        "coordinate_basis": "exact",
+        "coordinate_key": "강원도 철원군"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 가평군",
+        "generator_records": 409,
+        "capacity_mw": 49.17016,
+        "latitude": 37.8314413100686,
+        "longitude": 127.509570182184,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 가평군"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 고양시",
+        "generator_records": 593,
+        "capacity_mw": 55.236085,
+        "latitude": 37.6584289395157,
+        "longitude": 126.831977751081,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 고양시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 과천시",
+        "generator_records": 5,
+        "capacity_mw": 0.2824,
+        "latitude": 37.4292328036839,
+        "longitude": 126.987720998734,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 과천시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 광명시",
+        "generator_records": 29,
+        "capacity_mw": 4.56377,
+        "latitude": 37.4785674780311,
+        "longitude": 126.864647815161,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 광명시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 광주시",
+        "generator_records": 596,
+        "capacity_mw": 63.22265,
+        "latitude": 37.4293941934863,
+        "longitude": 127.255138719721,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 광주시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 구리시",
+        "generator_records": 15,
+        "capacity_mw": 1.134705,
+        "latitude": 37.5943523748219,
+        "longitude": 127.12964184094,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 구리시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 군포시",
+        "generator_records": 29,
+        "capacity_mw": 11.632005,
+        "latitude": 37.3616318289593,
+        "longitude": 126.935205932727,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 군포시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 김포시",
+        "generator_records": 1682,
+        "capacity_mw": 154.29589,
+        "latitude": 37.6152686898331,
+        "longitude": 126.715657922927,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 김포시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 남양주시",
+        "generator_records": 420,
+        "capacity_mw": 43.986685,
+        "latitude": 37.6360236390492,
+        "longitude": 127.216475764948,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 남양주시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 동두천시",
+        "generator_records": 120,
+        "capacity_mw": 15.761955,
+        "latitude": 37.903598648985,
+        "longitude": 127.060440729219,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 동두천시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 부천시",
+        "generator_records": 32,
+        "capacity_mw": 3.01027,
+        "latitude": 37.5035117792841,
+        "longitude": 126.766038450927,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 부천시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 성남시",
+        "generator_records": 38,
+        "capacity_mw": 3.96866,
+        "latitude": 37.4199323570328,
+        "longitude": 127.12629039752,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 성남시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 수원시",
+        "generator_records": 203,
+        "capacity_mw": 18.718575,
+        "latitude": 37.2635846787741,
+        "longitude": 127.028715898311,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 수원시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 시흥시",
+        "generator_records": 526,
+        "capacity_mw": 83.49199,
+        "latitude": 37.3801150715958,
+        "longitude": 126.802977796436,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 시흥시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 안산시",
+        "generator_records": 487,
+        "capacity_mw": 69.60151,
+        "latitude": 37.3219085506384,
+        "longitude": 126.830834434401,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 안산시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 안성시",
+        "generator_records": 2127,
+        "capacity_mw": 267.003005,
+        "latitude": 37.0080705033715,
+        "longitude": 127.27979032841,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 안성시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 안양시",
+        "generator_records": 29,
+        "capacity_mw": 2.04848,
+        "latitude": 37.394258803186,
+        "longitude": 126.956860524882,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 안양시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 양주시",
+        "generator_records": 819,
+        "capacity_mw": 86.10727,
+        "latitude": 37.7853136973153,
+        "longitude": 127.045786084702,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 양주시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 양평군",
+        "generator_records": 518,
+        "capacity_mw": 37.52567,
+        "latitude": 37.4917882876855,
+        "longitude": 127.487578470072,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 양평군"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 여주시",
+        "generator_records": 1592,
+        "capacity_mw": 225.158965,
+        "latitude": 37.2984233734533,
+        "longitude": 127.637058787484,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기 여주시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 연천군",
+        "generator_records": 1021,
+        "capacity_mw": 223.474595,
+        "latitude": 38.0965222523366,
+        "longitude": 127.075355784687,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 연천군"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 오산시",
+        "generator_records": 72,
+        "capacity_mw": 8.78723,
+        "latitude": 37.1498790159118,
+        "longitude": 127.077526548914,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 오산시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 용인시",
+        "generator_records": 604,
+        "capacity_mw": 73.89871,
+        "latitude": 37.2410299792267,
+        "longitude": 127.177482330871,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 용인시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 의왕시",
+        "generator_records": 31,
+        "capacity_mw": 2.88472,
+        "latitude": 37.3447600461019,
+        "longitude": 126.968273810339,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 의왕시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 의정부시",
+        "generator_records": 50,
+        "capacity_mw": 7.17963,
+        "latitude": 37.7380566430616,
+        "longitude": 127.033899090337,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 의정부시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 이천시",
+        "generator_records": 1272,
+        "capacity_mw": 198.48328,
+        "latitude": 37.2722675901773,
+        "longitude": 127.435089282738,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 이천시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 파주시",
+        "generator_records": 1620,
+        "capacity_mw": 194.450035,
+        "latitude": 37.7600449967302,
+        "longitude": 126.779881359268,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 파주시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 평택시",
+        "generator_records": 1433,
+        "capacity_mw": 195.57014,
+        "latitude": 36.9922606745326,
+        "longitude": 127.112688386546,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 평택시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 포천시",
+        "generator_records": 1993,
+        "capacity_mw": 249.611006,
+        "latitude": 37.8949928340087,
+        "longitude": 127.200332890652,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 포천시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 하남시",
+        "generator_records": 50,
+        "capacity_mw": 3.627835,
+        "latitude": 37.5392745653537,
+        "longitude": 127.214860598563,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 하남시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "경기도 화성시",
+        "generator_records": 3365,
+        "capacity_mw": 387.127155,
+        "latitude": 37.1995372034717,
+        "longitude": 126.831477350333,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경기도 화성시"
+      },
+      {
+        "region": "경기도",
+        "subregion": "울산광역시 북구",
+        "generator_records": 1,
+        "capacity_mw": 2.99376,
+        "latitude": 35.58274699573,
+        "longitude": 129.361146675228,
+        "coordinate_basis": "exact",
+        "coordinate_key": "울산광역시 북구"
+      },
+      {
+        "region": "경기도",
+        "subregion": "충청남도 태안군",
+        "generator_records": 1,
+        "capacity_mw": 0.999,
+        "latitude": 36.74560468436,
+        "longitude": 126.297926066959,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 태안군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 거제시",
+        "generator_records": 137,
+        "capacity_mw": 15.711095,
+        "latitude": 34.8805390453822,
+        "longitude": 128.621129462965,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 거제시"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 거창군",
+        "generator_records": 1049,
+        "capacity_mw": 161.713705,
+        "latitude": 35.6866846276575,
+        "longitude": 127.90950298922,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 거창군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 고성군",
+        "generator_records": 524,
+        "capacity_mw": 106.89273,
+        "latitude": 34.9730618412549,
+        "longitude": 128.32236130677,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 고성군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 김해시",
+        "generator_records": 1984,
+        "capacity_mw": 282.77649,
+        "latitude": 35.228565355864,
+        "longitude": 128.88936269803,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 김해시"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 남해군",
+        "generator_records": 877,
+        "capacity_mw": 94.573665,
+        "latitude": 34.8377033412786,
+        "longitude": 127.892653150096,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 남해군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 밀양시",
+        "generator_records": 1166,
+        "capacity_mw": 166.202234,
+        "latitude": 35.5038172707286,
+        "longitude": 128.74660754822,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 밀양시"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 사천시",
+        "generator_records": 867,
+        "capacity_mw": 150.051565,
+        "latitude": 35.0036771766929,
+        "longitude": 128.064212593324,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경남 사천시"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 산청군",
+        "generator_records": 576,
+        "capacity_mw": 102.53574,
+        "latitude": 35.4155303921176,
+        "longitude": 127.873349988179,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 산청군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 양산시",
+        "generator_records": 496,
+        "capacity_mw": 76.35207,
+        "latitude": 35.3349920568283,
+        "longitude": 129.037272788805,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 양산시"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 의령군",
+        "generator_records": 434,
+        "capacity_mw": 117.383436,
+        "latitude": 35.3222352197812,
+        "longitude": 128.261686482096,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 의령군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 진주시",
+        "generator_records": 1236,
+        "capacity_mw": 184.015425,
+        "latitude": 35.1802228341536,
+        "longitude": 128.107706335688,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 진주시"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 창녕군",
+        "generator_records": 899,
+        "capacity_mw": 172.935615,
+        "latitude": 35.5446153780505,
+        "longitude": 128.492168076007,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 창녕군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 창원시",
+        "generator_records": 1080,
+        "capacity_mw": 244.790405,
+        "latitude": 35.2279398139955,
+        "longitude": 128.681834075637,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 창원시"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 통영시",
+        "generator_records": 144,
+        "capacity_mw": 32.596385,
+        "latitude": 34.8544448243999,
+        "longitude": 128.43314921138,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 통영시"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 하동군",
+        "generator_records": 984,
+        "capacity_mw": 168.664185,
+        "latitude": 35.067305595229,
+        "longitude": 127.751308023408,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 하동군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 함안군",
+        "generator_records": 1048,
+        "capacity_mw": 172.171175,
+        "latitude": 35.2724275981435,
+        "longitude": 128.406498603978,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경남 함안군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 함양군",
+        "generator_records": 684,
+        "capacity_mw": 83.55139,
+        "latitude": 35.5205271695144,
+        "longitude": 127.725160459864,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상남도 함양군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 합천군",
+        "generator_records": 1249,
+        "capacity_mw": 239.292785,
+        "latitude": 35.5666703386368,
+        "longitude": 128.165790828628,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경남 합천군"
+      },
+      {
+        "region": "경상남도",
+        "subregion": "전북특별자치도 익산시",
+        "generator_records": 1,
+        "capacity_mw": 1.87488,
+        "latitude": 35.9487207295638,
+        "longitude": 126.95785508057,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 익산시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 경산시",
+        "generator_records": 2091,
+        "capacity_mw": 275.287279,
+        "latitude": 35.8250815854688,
+        "longitude": 128.741316589035,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 경산시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 경주시",
+        "generator_records": 2203,
+        "capacity_mw": 348.31499,
+        "latitude": 35.8562184605104,
+        "longitude": 129.224781713089,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 경주시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 고령군",
+        "generator_records": 846,
+        "capacity_mw": 94.92218,
+        "latitude": 35.7260653208402,
+        "longitude": 128.262895757558,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경북 고령군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 구미시",
+        "generator_records": 2432,
+        "capacity_mw": 326.907975,
+        "latitude": 36.1195708487139,
+        "longitude": 128.344246361062,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 구미시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 김천시",
+        "generator_records": 2274,
+        "capacity_mw": 341.949447,
+        "latitude": 36.1398881671645,
+        "longitude": 128.11362447591,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경북 김천시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 문경시",
+        "generator_records": 1043,
+        "capacity_mw": 172.869025,
+        "latitude": 36.5865273680411,
+        "longitude": 128.186771917242,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 문경시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 봉화군",
+        "generator_records": 818,
+        "capacity_mw": 157.418995,
+        "latitude": 36.8931350959362,
+        "longitude": 128.732386681867,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 봉화군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 상주시",
+        "generator_records": 2883,
+        "capacity_mw": 505.209798,
+        "latitude": 36.410939800185,
+        "longitude": 128.159145076992,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 상주시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 성주군",
+        "generator_records": 978,
+        "capacity_mw": 140.687516,
+        "latitude": 35.919093403726,
+        "longitude": 128.282934640557,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 성주군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 안동시",
+        "generator_records": 2367,
+        "capacity_mw": 353.349165,
+        "latitude": 36.568460763249,
+        "longitude": 128.729587379397,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경북 안동시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 영덕군",
+        "generator_records": 964,
+        "capacity_mw": 180.59245,
+        "latitude": 36.415061879816,
+        "longitude": 129.365306771358,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 영덕군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 영양군",
+        "generator_records": 739,
+        "capacity_mw": 141.17402,
+        "latitude": 36.6667028574184,
+        "longitude": 129.112510246081,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 영양군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 영주시",
+        "generator_records": 1508,
+        "capacity_mw": 240.296482,
+        "latitude": 36.8056192756902,
+        "longitude": 128.62393703546,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 영주시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 영천시",
+        "generator_records": 2286,
+        "capacity_mw": 324.215095,
+        "latitude": 35.9732205043331,
+        "longitude": 128.938550862057,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 영천시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 예천군",
+        "generator_records": 1788,
+        "capacity_mw": 262.870196,
+        "latitude": 36.6576538637802,
+        "longitude": 128.45292491125,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경북 예천군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 울진군",
+        "generator_records": 102,
+        "capacity_mw": 18.663035,
+        "latitude": 36.9930349161337,
+        "longitude": 129.400547024062,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 울진군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 의성군",
+        "generator_records": 1414,
+        "capacity_mw": 327.539555,
+        "latitude": 36.3527164442431,
+        "longitude": 128.697077816075,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경북 의성군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 청도군",
+        "generator_records": 601,
+        "capacity_mw": 70.873605,
+        "latitude": 35.6473848149498,
+        "longitude": 128.734015262482,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 청도군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 청송군",
+        "generator_records": 316,
+        "capacity_mw": 36.00558,
+        "latitude": 36.4362299589939,
+        "longitude": 129.057070558406,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 청송군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 칠곡군",
+        "generator_records": 1821,
+        "capacity_mw": 221.132025,
+        "latitude": 35.9955896857128,
+        "longitude": 128.401662171953,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경북 칠곡군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 칠곡군왜관읍",
+        "generator_records": 1,
+        "capacity_mw": 0.30035,
+        "latitude": 35.9890285712877,
+        "longitude": 128.397709505787,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 칠곡군왜관읍"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 포항시",
+        "generator_records": 799,
+        "capacity_mw": 168.050915,
+        "latitude": 36.0189954294848,
+        "longitude": 129.343164578824,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 포항시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "대구광역시 군위군",
+        "generator_records": 29,
+        "capacity_mw": 31.5321,
+        "latitude": 36.2429652060091,
+        "longitude": 128.572962666478,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 군위군"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "전북특별자치도 익산시",
+        "generator_records": 1,
+        "capacity_mw": 0.0999,
+        "latitude": 35.9487207295638,
+        "longitude": 126.95785508057,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 익산시"
+      },
+      {
+        "region": "경상북도",
+        "subregion": "전북특별자치도 정읍시",
+        "generator_records": 1,
+        "capacity_mw": 0.099375,
+        "latitude": 35.5698491739941,
+        "longitude": 126.855996873997,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 정읍시"
+      },
+      {
+        "region": "광주광역시",
+        "subregion": "광주광역시 광산구",
+        "generator_records": 1622,
+        "capacity_mw": 308.058191,
+        "latitude": 35.1395471867532,
+        "longitude": 126.793633444381,
+        "coordinate_basis": "exact",
+        "coordinate_key": "광주광역시 광산구"
+      },
+      {
+        "region": "광주광역시",
+        "subregion": "광주광역시 남구",
+        "generator_records": 110,
+        "capacity_mw": 15.56408,
+        "latitude": 35.1328188781248,
+        "longitude": 126.902475772667,
+        "coordinate_basis": "exact",
+        "coordinate_key": "광주광역시 남구"
+      },
+      {
+        "region": "광주광역시",
+        "subregion": "광주광역시 동구",
+        "generator_records": 41,
+        "capacity_mw": 7.624855,
+        "latitude": 35.1461666691498,
+        "longitude": 126.923095112877,
+        "coordinate_basis": "exact",
+        "coordinate_key": "광주광역시 동구"
+      },
+      {
+        "region": "광주광역시",
+        "subregion": "광주광역시 북구",
+        "generator_records": 522,
+        "capacity_mw": 63.63361,
+        "latitude": 35.1741733740375,
+        "longitude": 126.912012078919,
+        "coordinate_basis": "exact",
+        "coordinate_key": "광주광역시 북구"
+      },
+      {
+        "region": "광주광역시",
+        "subregion": "광주광역시 서구",
+        "generator_records": 220,
+        "capacity_mw": 22.49138,
+        "latitude": 35.1520722691295,
+        "longitude": 126.890187526298,
+        "coordinate_basis": "exact",
+        "coordinate_key": "광주광역시 서구"
+      },
+      {
+        "region": "광주광역시",
+        "subregion": "전라남도 해남군",
+        "generator_records": 1,
+        "capacity_mw": 0.69952,
+        "latitude": 34.5735165884839,
+        "longitude": 126.599270065365,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 해남군"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "경상북도 영주시",
+        "generator_records": 1,
+        "capacity_mw": 0.48555,
+        "latitude": 36.8056192756902,
+        "longitude": 128.62393703546,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 영주시"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 군위군",
+        "generator_records": 679,
+        "capacity_mw": 120.856625,
+        "latitude": 36.2429652060091,
+        "longitude": 128.572962666478,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 군위군"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 남구",
+        "generator_records": 34,
+        "capacity_mw": 0.844455,
+        "latitude": 35.8460409913892,
+        "longitude": 128.597678619113,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 남구"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 달서구",
+        "generator_records": 943,
+        "capacity_mw": 130.250896,
+        "latitude": 35.8299152394915,
+        "longitude": 128.532836540567,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 달서구"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 달성군",
+        "generator_records": 1220,
+        "capacity_mw": 188.091615,
+        "latitude": 35.7744738663994,
+        "longitude": 128.431220139822,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 달성군"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 동구",
+        "generator_records": 284,
+        "capacity_mw": 25.25874,
+        "latitude": 35.8866236166116,
+        "longitude": 128.635524099685,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 동구"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 북구",
+        "generator_records": 586,
+        "capacity_mw": 53.68228,
+        "latitude": 35.8856831131871,
+        "longitude": 128.582781134786,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 북구"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 서구",
+        "generator_records": 277,
+        "capacity_mw": 24.210095,
+        "latitude": 35.8716675785129,
+        "longitude": 128.559154246786,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 서구"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 수성구",
+        "generator_records": 59,
+        "capacity_mw": 2.762965,
+        "latitude": 35.8581745018635,
+        "longitude": 128.630635463648,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 수성구"
+      },
+      {
+        "region": "대구광역시",
+        "subregion": "대구광역시 중구",
+        "generator_records": 10,
+        "capacity_mw": 0.220085,
+        "latitude": 35.8693892533553,
+        "longitude": 128.606220516052,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대구광역시 중구"
+      },
+      {
+        "region": "대전광역시",
+        "subregion": "대전광역시 대덕구",
+        "generator_records": 316,
+        "capacity_mw": 33.32049,
+        "latitude": 36.3467051322808,
+        "longitude": 127.415561890628,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대전광역시 대덕구"
+      },
+      {
+        "region": "대전광역시",
+        "subregion": "대전광역시 동구",
+        "generator_records": 140,
+        "capacity_mw": 11.09419,
+        "latitude": 36.3117768357127,
+        "longitude": 127.454807132217,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대전광역시 동구"
+      },
+      {
+        "region": "대전광역시",
+        "subregion": "대전광역시 서구",
+        "generator_records": 141,
+        "capacity_mw": 7.55247,
+        "latitude": 36.3554987200538,
+        "longitude": 127.383789715873,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대전광역시 서구"
+      },
+      {
+        "region": "대전광역시",
+        "subregion": "대전광역시 유성구",
+        "generator_records": 192,
+        "capacity_mw": 22.935735,
+        "latitude": 36.3622851114387,
+        "longitude": 127.356257593324,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대전광역시 유성구"
+      },
+      {
+        "region": "대전광역시",
+        "subregion": "대전광역시 중구",
+        "generator_records": 94,
+        "capacity_mw": 4.802725,
+        "latitude": 36.3257812272135,
+        "longitude": 127.421339922096,
+        "coordinate_basis": "exact",
+        "coordinate_key": "대전광역시 중구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 강서구",
+        "generator_records": 1045,
+        "capacity_mw": 260.302565,
+        "latitude": 35.2121944923177,
+        "longitude": 128.980561688902,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 강서구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 금정구",
+        "generator_records": 43,
+        "capacity_mw": 7.832205,
+        "latitude": 35.2427772019609,
+        "longitude": 129.092095292484,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 금정구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 기장군",
+        "generator_records": 286,
+        "capacity_mw": 70.61578,
+        "latitude": 35.2444181044993,
+        "longitude": 129.222422056731,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 기장군"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 남구",
+        "generator_records": 16,
+        "capacity_mw": 6.267705,
+        "latitude": 35.136522660289,
+        "longitude": 129.084238267311,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 남구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 동구",
+        "generator_records": 9,
+        "capacity_mw": 1.008705,
+        "latitude": 35.1292668000695,
+        "longitude": 129.045305770373,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 동구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 동래구",
+        "generator_records": 25,
+        "capacity_mw": 1.44847,
+        "latitude": 35.2050915314732,
+        "longitude": 129.083719021169,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 동래구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 부산진구",
+        "generator_records": 13,
+        "capacity_mw": 4.32594,
+        "latitude": 35.1628554465193,
+        "longitude": 129.053165443787,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 부산진구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 북구",
+        "generator_records": 13,
+        "capacity_mw": 1.8018,
+        "latitude": 35.1972959412871,
+        "longitude": 128.990036594501,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 북구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 사상구",
+        "generator_records": 81,
+        "capacity_mw": 6.81333,
+        "latitude": 35.152597977756,
+        "longitude": 128.991119769511,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 사상구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 사하구",
+        "generator_records": 114,
+        "capacity_mw": 21.73224,
+        "latitude": 35.1044479031517,
+        "longitude": 128.974932970701,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 사하구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 서구",
+        "generator_records": 3,
+        "capacity_mw": 0.0888,
+        "latitude": 35.0979235209909,
+        "longitude": 129.024298440459,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 서구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 수영구",
+        "generator_records": 6,
+        "capacity_mw": 0.2072,
+        "latitude": 35.1455383782307,
+        "longitude": 129.113125189096,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 수영구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 연제구",
+        "generator_records": 7,
+        "capacity_mw": 0.246775,
+        "latitude": 35.1762076666857,
+        "longitude": 129.079741441241,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 연제구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 영도구",
+        "generator_records": 10,
+        "capacity_mw": 0.55141,
+        "latitude": 35.0912398945932,
+        "longitude": 129.06788880232,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 영도구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 중구",
+        "generator_records": 6,
+        "capacity_mw": 0.18918,
+        "latitude": 35.106226983592,
+        "longitude": 129.032373132261,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 중구"
+      },
+      {
+        "region": "부산광역시",
+        "subregion": "부산광역시 해운대구",
+        "generator_records": 21,
+        "capacity_mw": 1.568375,
+        "latitude": 35.1630666685464,
+        "longitude": 129.163596084009,
+        "coordinate_basis": "exact",
+        "coordinate_key": "부산광역시 해운대구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "광주광역시 북구",
+        "generator_records": 2,
+        "capacity_mw": 1.92,
+        "latitude": 35.1741733740375,
+        "longitude": 126.912012078919,
+        "coordinate_basis": "exact",
+        "coordinate_key": "광주광역시 북구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 강남구",
+        "generator_records": 24,
+        "capacity_mw": 2.21081,
+        "latitude": 37.517331925853,
+        "longitude": 127.047377408384,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 강남구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 강동구",
+        "generator_records": 25,
+        "capacity_mw": 7.92535,
+        "latitude": 37.5301933196157,
+        "longitude": 127.123792501252,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 강동구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 강북구",
+        "generator_records": 24,
+        "capacity_mw": 1.11686,
+        "latitude": 37.639751327588,
+        "longitude": 127.025538071854,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 강북구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 강서구",
+        "generator_records": 33,
+        "capacity_mw": 8.32951,
+        "latitude": 37.5509646154242,
+        "longitude": 126.849533759514,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 강서구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 관악구",
+        "generator_records": 26,
+        "capacity_mw": 0.83912,
+        "latitude": 37.4782566343102,
+        "longitude": 126.951521225531,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 관악구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 광진구",
+        "generator_records": 36,
+        "capacity_mw": 3.207235,
+        "latitude": 37.5362839252073,
+        "longitude": 127.087754781481,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 광진구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 구로구",
+        "generator_records": 28,
+        "capacity_mw": 1.69769,
+        "latitude": 37.4954330863646,
+        "longitude": 126.88750531451,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 구로구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 금천구",
+        "generator_records": 21,
+        "capacity_mw": 1.0361,
+        "latitude": 37.4568411485783,
+        "longitude": 126.895456780022,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 금천구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 노원구",
+        "generator_records": 32,
+        "capacity_mw": 2.59258,
+        "latitude": 37.6543617567056,
+        "longitude": 127.056430475216,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 노원구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 도봉구",
+        "generator_records": 25,
+        "capacity_mw": 1.04694,
+        "latitude": 37.6686914100283,
+        "longitude": 127.04721049936,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 도봉구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 동대문구",
+        "generator_records": 21,
+        "capacity_mw": 0.67667,
+        "latitude": 37.574522981712,
+        "longitude": 127.039657001091,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 동대문구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 동작구",
+        "generator_records": 17,
+        "capacity_mw": 0.547125,
+        "latitude": 37.5042365347877,
+        "longitude": 126.940271737306,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 동작구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 마포구",
+        "generator_records": 15,
+        "capacity_mw": 0.72535,
+        "latitude": 37.5662141900952,
+        "longitude": 126.901955141101,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 마포구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 서대문구",
+        "generator_records": 23,
+        "capacity_mw": 1.10858,
+        "latitude": 37.5791618639788,
+        "longitude": 126.9368156604,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 서대문구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 서초구",
+        "generator_records": 23,
+        "capacity_mw": 1.48514,
+        "latitude": 37.4835888103327,
+        "longitude": 127.032734543897,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 서초구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 성동구",
+        "generator_records": 11,
+        "capacity_mw": 2.433255,
+        "latitude": 37.5634272053368,
+        "longitude": 127.036930141185,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 성동구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 성북구",
+        "generator_records": 23,
+        "capacity_mw": 0.63039,
+        "latitude": 37.5893588153917,
+        "longitude": 127.016702905651,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 성북구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 송파구",
+        "generator_records": 35,
+        "capacity_mw": 2.51924,
+        "latitude": 37.5145837194398,
+        "longitude": 127.10591770866,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 송파구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 양천구",
+        "generator_records": 14,
+        "capacity_mw": 0.59136,
+        "latitude": 37.5169884752607,
+        "longitude": 126.866501409661,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 양천구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 영등포구",
+        "generator_records": 18,
+        "capacity_mw": 0.75879,
+        "latitude": 37.5263635705034,
+        "longitude": 126.896273923703,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 영등포구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 용산구",
+        "generator_records": 4,
+        "capacity_mw": 0.10561,
+        "latitude": 37.5324274347656,
+        "longitude": 126.990577820242,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 용산구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 은평구",
+        "generator_records": 24,
+        "capacity_mw": 1.01133,
+        "latitude": 37.6028174370821,
+        "longitude": 126.928940981464,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 은평구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 종로구",
+        "generator_records": 6,
+        "capacity_mw": 0.205,
+        "latitude": 37.5747259958602,
+        "longitude": 126.979012251452,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 종로구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 중구",
+        "generator_records": 7,
+        "capacity_mw": 0.17141,
+        "latitude": 37.5638077703599,
+        "longitude": 126.997555182292,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 중구"
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "서울특별시 중랑구",
+        "generator_records": 29,
+        "capacity_mw": 2.95163,
+        "latitude": 37.6065432383918,
+        "longitude": 127.092820287004,
+        "coordinate_basis": "exact",
+        "coordinate_key": "서울특별시 중랑구"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 가람동",
+        "generator_records": 4,
+        "capacity_mw": 2.9928,
+        "latitude": 36.4702502294378,
+        "longitude": 127.245412457164,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 가람동"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 고운동",
+        "generator_records": 3,
+        "capacity_mw": 1.90244,
+        "latitude": 36.5241551273913,
+        "longitude": 127.237632940381,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 고운동"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 금남면",
+        "generator_records": 60,
+        "capacity_mw": 5.817125,
+        "latitude": 36.4641242999386,
+        "longitude": 127.280514263106,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 금남면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 금송로",
+        "generator_records": 1,
+        "capacity_mw": 0.32731,
+        "latitude": 36.4504050177365,
+        "longitude": 127.225877195819,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 금송로"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 다정동",
+        "generator_records": 1,
+        "capacity_mw": 2.99931,
+        "latitude": 36.494398097197,
+        "longitude": 127.250412851526,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 다정동"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 대평동",
+        "generator_records": 2,
+        "capacity_mw": 0.994,
+        "latitude": 36.4701788762711,
+        "longitude": 127.274841285487,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 대평동"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 도담동",
+        "generator_records": 1,
+        "capacity_mw": 0.093,
+        "latitude": 36.5151654998968,
+        "longitude": 127.261616917625,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 도담동"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 반곡동",
+        "generator_records": 5,
+        "capacity_mw": 1.89767,
+        "latitude": 36.4987729615695,
+        "longitude": 127.310686222061,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 반곡동"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 보람동",
+        "generator_records": 3,
+        "capacity_mw": 1.253,
+        "latitude": 36.4786266695463,
+        "longitude": 127.290676321154,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 보람동"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 부강면",
+        "generator_records": 82,
+        "capacity_mw": 21.549735,
+        "latitude": 36.5297446571298,
+        "longitude": 127.370923522244,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 부강면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 소담동",
+        "generator_records": 1,
+        "capacity_mw": 0.497,
+        "latitude": 36.4840852051248,
+        "longitude": 127.300409935756,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 소담동"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 소정면",
+        "generator_records": 35,
+        "capacity_mw": 6.104255,
+        "latitude": 36.7223426518509,
+        "longitude": 127.158295280854,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 소정면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 연기면",
+        "generator_records": 22,
+        "capacity_mw": 4.753875,
+        "latitude": 36.5430865816296,
+        "longitude": 127.239397335324,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 연기면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 연동면",
+        "generator_records": 114,
+        "capacity_mw": 19.000445,
+        "latitude": 36.5552990017923,
+        "longitude": 127.327345245798,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 연동면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 연서면",
+        "generator_records": 56,
+        "capacity_mw": 4.95729,
+        "latitude": 36.5925410679428,
+        "longitude": 127.271533146429,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 연서면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 장군면",
+        "generator_records": 47,
+        "capacity_mw": 6.838095,
+        "latitude": 36.4967113002568,
+        "longitude": 127.205654457633,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 장군면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 전동면",
+        "generator_records": 67,
+        "capacity_mw": 6.48005,
+        "latitude": 36.6559328684455,
+        "longitude": 127.264118976061,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 전동면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 전의면",
+        "generator_records": 104,
+        "capacity_mw": 19.920225,
+        "latitude": 36.6813970295598,
+        "longitude": 127.196004270138,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 전의면"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 조치원읍",
+        "generator_records": 47,
+        "capacity_mw": 2.774635,
+        "latitude": 36.604591645707,
+        "longitude": 127.298444484667,
+        "coordinate_basis": "exact",
+        "coordinate_key": "세종특별자치시 조치원읍"
+      },
+      {
+        "region": "세종특별자치시",
+        "subregion": "세종특별자치시 해밀동",
+        "generator_records": 1,
+        "capacity_mw": 0.02432,
+        "latitude": 36.48,
+        "longitude": 127.289,
+        "coordinate_basis": "province_centroid",
+        "coordinate_key": "세종특별자치시"
+      },
+      {
+        "region": "울산광역시",
+        "subregion": "울산광역시 남구",
+        "generator_records": 124,
+        "capacity_mw": 28.749225,
+        "latitude": 35.5438097037233,
+        "longitude": 129.330091790831,
+        "coordinate_basis": "exact",
+        "coordinate_key": "울산광역시 남구"
+      },
+      {
+        "region": "울산광역시",
+        "subregion": "울산광역시 동구",
+        "generator_records": 32,
+        "capacity_mw": 7.83626,
+        "latitude": 35.5046358750559,
+        "longitude": 129.416487775873,
+        "coordinate_basis": "exact",
+        "coordinate_key": "울산광역시 동구"
+      },
+      {
+        "region": "울산광역시",
+        "subregion": "울산광역시 북구",
+        "generator_records": 257,
+        "capacity_mw": 56.014795,
+        "latitude": 35.58274699573,
+        "longitude": 129.361146675228,
+        "coordinate_basis": "exact",
+        "coordinate_key": "울산광역시 북구"
+      },
+      {
+        "region": "울산광역시",
+        "subregion": "울산광역시 울주군",
+        "generator_records": 727,
+        "capacity_mw": 139.594045,
+        "latitude": 35.6018157675331,
+        "longitude": 129.15026714578,
+        "coordinate_basis": "exact",
+        "coordinate_key": "울산광역시 울주군"
+      },
+      {
+        "region": "울산광역시",
+        "subregion": "울산광역시 중구",
+        "generator_records": 15,
+        "capacity_mw": 0.70559,
+        "latitude": 35.5693352250424,
+        "longitude": 129.332494084522,
+        "coordinate_basis": "exact",
+        "coordinate_key": "울산광역시 중구"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 강화군",
+        "generator_records": 502,
+        "capacity_mw": 47.77018,
+        "latitude": 37.7465683959167,
+        "longitude": 126.488039602372,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 강화군"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 검단구",
+        "generator_records": 175,
+        "capacity_mw": 19.347385,
+        "latitude": 37.4563,
+        "longitude": 126.7052,
+        "coordinate_basis": "province_centroid",
+        "coordinate_key": "인천광역시"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 계양구",
+        "generator_records": 36,
+        "capacity_mw": 3.888415,
+        "latitude": 37.5374956682829,
+        "longitude": 126.73770466472,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 계양구"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 남동구",
+        "generator_records": 125,
+        "capacity_mw": 22.2362,
+        "latitude": 37.4473487903569,
+        "longitude": 126.73148773974,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 남동구"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 동구",
+        "generator_records": 3,
+        "capacity_mw": 1.27935,
+        "latitude": 37.4738609917961,
+        "longitude": 126.643281922795,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 동구"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 미추홀구",
+        "generator_records": 32,
+        "capacity_mw": 2.792585,
+        "latitude": 37.4570756444155,
+        "longitude": 126.664971932721,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 미추홀구"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 부평구",
+        "generator_records": 32,
+        "capacity_mw": 2.54789,
+        "latitude": 37.5070416636401,
+        "longitude": 126.721864167603,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 부평구"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 서구",
+        "generator_records": 30,
+        "capacity_mw": 28.04685,
+        "latitude": 37.5454335160343,
+        "longitude": 126.676028468221,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 서구"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 서해구",
+        "generator_records": 327,
+        "capacity_mw": 44.669175,
+        "latitude": 37.4563,
+        "longitude": 126.7052,
+        "coordinate_basis": "province_centroid",
+        "coordinate_key": "인천광역시"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 연수구",
+        "generator_records": 17,
+        "capacity_mw": 1.9585,
+        "latitude": 37.4101013788809,
+        "longitude": 126.678274850516,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 연수구"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 영종구",
+        "generator_records": 38,
+        "capacity_mw": 1.73463,
+        "latitude": 37.4563,
+        "longitude": 126.7052,
+        "coordinate_basis": "province_centroid",
+        "coordinate_key": "인천광역시"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 옹진군",
+        "generator_records": 34,
+        "capacity_mw": 14.97145,
+        "latitude": 37.9534650042742,
+        "longitude": 124.670086072278,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 옹진군"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 제물포구",
+        "generator_records": 45,
+        "capacity_mw": 10.53858,
+        "latitude": 37.4563,
+        "longitude": 126.7052,
+        "coordinate_basis": "province_centroid",
+        "coordinate_key": "인천광역시"
+      },
+      {
+        "region": "인천광역시",
+        "subregion": "인천광역시 중구",
+        "generator_records": 19,
+        "capacity_mw": 36.28663,
+        "latitude": 37.4736605302969,
+        "longitude": 126.621704022591,
+        "coordinate_basis": "exact",
+        "coordinate_key": "인천광역시 중구"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "경상북도 의성군",
+        "generator_records": 1,
+        "capacity_mw": 0.995,
+        "latitude": 36.3527164442431,
+        "longitude": 128.697077816075,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 의성군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 강진군",
+        "generator_records": 1104,
+        "capacity_mw": 231.31726,
+        "latitude": 34.6420615268847,
+        "longitude": 126.767213471898,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 강진군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 고흥군",
+        "generator_records": 1819,
+        "capacity_mw": 571.06221,
+        "latitude": 34.6110820210892,
+        "longitude": 127.284968746855,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 고흥군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 곡성군",
+        "generator_records": 483,
+        "capacity_mw": 79.59163,
+        "latitude": 35.2820258392345,
+        "longitude": 127.291929639637,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 곡성군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 광양시",
+        "generator_records": 800,
+        "capacity_mw": 210.685185,
+        "latitude": 34.9404252535158,
+        "longitude": 127.695930772808,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 광양시"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 구례군",
+        "generator_records": 78,
+        "capacity_mw": 17.36471,
+        "latitude": 35.2024963617061,
+        "longitude": 127.46270363657,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 구례군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 나주시",
+        "generator_records": 2569,
+        "capacity_mw": 478.491495,
+        "latitude": 35.0158976865693,
+        "longitude": 126.71082925505,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전남 나주시"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 담양군",
+        "generator_records": 861,
+        "capacity_mw": 104.111185,
+        "latitude": 35.3212107735494,
+        "longitude": 126.988210711052,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 담양군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 목포시",
+        "generator_records": 434,
+        "capacity_mw": 69.698075,
+        "latitude": 34.8118309400519,
+        "longitude": 126.392235351241,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 목포시"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 무안군",
+        "generator_records": 1283,
+        "capacity_mw": 342.070595,
+        "latitude": 34.9903406227326,
+        "longitude": 126.481704827287,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 무안군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 보성군",
+        "generator_records": 911,
+        "capacity_mw": 220.96503,
+        "latitude": 34.7714427538717,
+        "longitude": 127.079946438917,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 보성군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 순천시",
+        "generator_records": 1612,
+        "capacity_mw": 309.15776,
+        "latitude": 34.9506097806659,
+        "longitude": 127.487382934915,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 순천시"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 신안군",
+        "generator_records": 576,
+        "capacity_mw": 1056.32513,
+        "latitude": 34.833553882858,
+        "longitude": 126.351614243402,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 신안군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 여수시",
+        "generator_records": 710,
+        "capacity_mw": 122.682675,
+        "latitude": 34.7604010648246,
+        "longitude": 127.662331251572,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 여수시"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 영광군",
+        "generator_records": 948,
+        "capacity_mw": 602.382825,
+        "latitude": 35.2771900332592,
+        "longitude": 126.512013797425,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전남 영광군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 영암군",
+        "generator_records": 2339,
+        "capacity_mw": 581.09601,
+        "latitude": 34.8000591144732,
+        "longitude": 126.696762590551,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전남 영암군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 완도군",
+        "generator_records": 689,
+        "capacity_mw": 90.796,
+        "latitude": 34.310978917096,
+        "longitude": 126.754998729552,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 완도군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 장성군",
+        "generator_records": 947,
+        "capacity_mw": 160.4156,
+        "latitude": 35.3018576771346,
+        "longitude": 126.784918877012,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 장성군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 장흥군",
+        "generator_records": 950,
+        "capacity_mw": 161.564385,
+        "latitude": 34.6816120675641,
+        "longitude": 126.907058431105,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 장흥군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 전남광주통합특별시 고흥군",
+        "generator_records": 1,
+        "capacity_mw": 0.315615,
+        "latitude": 34.8161,
+        "longitude": 126.4629,
+        "coordinate_basis": "province_centroid",
+        "coordinate_key": "전라남도"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 진도군",
+        "generator_records": 644,
+        "capacity_mw": 127.735855,
+        "latitude": 34.4868286203469,
+        "longitude": 126.263446186439,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 진도군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 함평군",
+        "generator_records": 847,
+        "capacity_mw": 149.072735,
+        "latitude": 35.0659111691232,
+        "longitude": 126.516624840635,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 함평군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 해남군",
+        "generator_records": 2027,
+        "capacity_mw": 665.938885,
+        "latitude": 34.5735165884839,
+        "longitude": 126.599270065365,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 해남군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전라남도 화순군",
+        "generator_records": 1319,
+        "capacity_mw": 210.88912,
+        "latitude": 35.0645119791195,
+        "longitude": 126.986502436773,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 화순군"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "전북특별자치도 군산시",
+        "generator_records": 1,
+        "capacity_mw": 1.41076,
+        "latitude": 35.9674665619211,
+        "longitude": 126.736840487468,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 군산시"
+      },
+      {
+        "region": "전라남도",
+        "subregion": "충청남도 금산군",
+        "generator_records": 1,
+        "capacity_mw": 1.2,
+        "latitude": 36.1088634036971,
+        "longitude": 127.48797455592,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 금산군"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전라남도 순천시",
+        "generator_records": 7,
+        "capacity_mw": 6.98064,
+        "latitude": 34.9506097806659,
+        "longitude": 127.487382934915,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라남도 순천시"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 고창군",
+        "generator_records": 1731,
+        "capacity_mw": 281.137615,
+        "latitude": 35.4356982163474,
+        "longitude": 126.702120365321,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 고창군"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 군산시",
+        "generator_records": 2203,
+        "capacity_mw": 685.715865,
+        "latitude": 35.9674665619211,
+        "longitude": 126.736840487468,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 군산시"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 김제시",
+        "generator_records": 4853,
+        "capacity_mw": 584.129972,
+        "latitude": 35.8035816671862,
+        "longitude": 126.88064623757,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 김제시"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 남원시",
+        "generator_records": 3640,
+        "capacity_mw": 547.612705,
+        "latitude": 35.4163627529975,
+        "longitude": 127.390396427422,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 남원시"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 무주군",
+        "generator_records": 694,
+        "capacity_mw": 71.189555,
+        "latitude": 36.0068437431515,
+        "longitude": 127.660806341146,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 무주군"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 부안군",
+        "generator_records": 2565,
+        "capacity_mw": 376.073775,
+        "latitude": 35.7316577924641,
+        "longitude": 126.733011321782,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 부안군"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 순창군",
+        "generator_records": 881,
+        "capacity_mw": 122.691455,
+        "latitude": 35.3744307820684,
+        "longitude": 127.137391267803,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 순창군"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 완주군",
+        "generator_records": 2489,
+        "capacity_mw": 327.3899,
+        "latitude": 35.9048145963415,
+        "longitude": 127.162119017463,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 완주군"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 익산시",
+        "generator_records": 5822,
+        "capacity_mw": 694.02707,
+        "latitude": 35.9487207295638,
+        "longitude": 126.95785508057,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 익산시"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 임실군",
+        "generator_records": 1853,
+        "capacity_mw": 223.99055,
+        "latitude": 35.6178545082341,
+        "longitude": 127.289087482791,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 임실군"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 장수군",
+        "generator_records": 1247,
+        "capacity_mw": 207.769755,
+        "latitude": 35.6478395956293,
+        "longitude": 127.521293139612,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 장수군"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 전주시",
+        "generator_records": 1197,
+        "capacity_mw": 91.12893,
+        "latitude": 35.8240731508767,
+        "longitude": 127.148143800621,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 전주시"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 정읍시",
+        "generator_records": 4447,
+        "capacity_mw": 530.081538,
+        "latitude": 35.5698491739941,
+        "longitude": 126.855996873997,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 정읍시"
+      },
+      {
+        "region": "전북특별자치도",
+        "subregion": "전북특별자치도 진안군",
+        "generator_records": 1421,
+        "capacity_mw": 167.07519,
+        "latitude": 35.7917723036084,
+        "longitude": 127.424865465441,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 진안군"
+      },
+      {
+        "region": "제주특별자치도",
+        "subregion": "제주특별자치도 서귀포시",
+        "generator_records": 943,
+        "capacity_mw": 428.8028,
+        "latitude": 33.2540646255023,
+        "longitude": 126.559563466911,
+        "coordinate_basis": "exact",
+        "coordinate_key": "제주특별자치도 서귀포시"
+      },
+      {
+        "region": "제주특별자치도",
+        "subregion": "제주특별자치도 제주시",
+        "generator_records": 1147,
+        "capacity_mw": 312.395745,
+        "latitude": 33.4995342411967,
+        "longitude": 126.531171087132,
+        "coordinate_basis": "exact",
+        "coordinate_key": "제주특별자치도 제주시"
+      },
+      {
+        "region": "제주특별자치도",
+        "subregion": "제주특별자치도 한림읍",
+        "generator_records": 1,
+        "capacity_mw": 0.85085,
+        "latitude": 33.4105783903133,
+        "longitude": 126.266790495497,
+        "coordinate_basis": "exact",
+        "coordinate_key": "제주특별자치도 한림읍"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 계룡시",
+        "generator_records": 49,
+        "capacity_mw": 4.436675,
+        "latitude": 36.274558995832,
+        "longitude": 127.248542561419,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 계룡시"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 공주시",
+        "generator_records": 1835,
+        "capacity_mw": 213.140564,
+        "latitude": 36.4465551158221,
+        "longitude": 127.11905504092,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 공주시"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 금산군",
+        "generator_records": 1647,
+        "capacity_mw": 213.676051,
+        "latitude": 36.1088634036971,
+        "longitude": 127.48797455592,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 금산군"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 논산시",
+        "generator_records": 2898,
+        "capacity_mw": 348.94812,
+        "latitude": 36.1871836043026,
+        "longitude": 127.098734690891,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충남 논산시"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 당진시",
+        "generator_records": 1766,
+        "capacity_mw": 673.11974,
+        "latitude": 36.8896748628643,
+        "longitude": 126.645888436838,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 당진시"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 보령시",
+        "generator_records": 1085,
+        "capacity_mw": 208.300377,
+        "latitude": 36.3333366887905,
+        "longitude": 126.612759338779,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 보령시"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 부여군",
+        "generator_records": 1486,
+        "capacity_mw": 251.013055,
+        "latitude": 36.2757637166445,
+        "longitude": 126.909772812745,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 부여군"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 서산시",
+        "generator_records": 1387,
+        "capacity_mw": 556.952125,
+        "latitude": 36.7848762954282,
+        "longitude": 126.450333937447,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충남 서산시"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 서천군",
+        "generator_records": 1628,
+        "capacity_mw": 208.722875,
+        "latitude": 36.0780362860107,
+        "longitude": 126.702882822382,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 서천군"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 아산시",
+        "generator_records": 1857,
+        "capacity_mw": 311.563114,
+        "latitude": 36.789974167605,
+        "longitude": 127.002509638233,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 아산시"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 예산군",
+        "generator_records": 1856,
+        "capacity_mw": 231.401075,
+        "latitude": 36.6826228017856,
+        "longitude": 126.848642241312,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 예산군"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 천안시",
+        "generator_records": 2729,
+        "capacity_mw": 366.689934,
+        "latitude": 36.8150678816279,
+        "longitude": 127.113911972591,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 천안시"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 청양군",
+        "generator_records": 668,
+        "capacity_mw": 82.70805,
+        "latitude": 36.4592146952297,
+        "longitude": 126.80220021685,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 청양군"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 태안군",
+        "generator_records": 622,
+        "capacity_mw": 752.33599,
+        "latitude": 36.74560468436,
+        "longitude": 126.297926066959,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 태안군"
+      },
+      {
+        "region": "충청남도",
+        "subregion": "충청남도 홍성군",
+        "generator_records": 1170,
+        "capacity_mw": 195.168245,
+        "latitude": 36.6013575607948,
+        "longitude": 126.66083238915,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청남도 홍성군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "경상북도 영주시",
+        "generator_records": 1,
+        "capacity_mw": 0.3,
+        "latitude": 36.8056192756902,
+        "longitude": 128.62393703546,
+        "coordinate_basis": "exact",
+        "coordinate_key": "경상북도 영주시"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "전북특별자치도 고창군",
+        "generator_records": 1,
+        "capacity_mw": 0.5,
+        "latitude": 35.4356982163474,
+        "longitude": 126.702120365321,
+        "coordinate_basis": "exact",
+        "coordinate_key": "전라북도 고창군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 괴산군",
+        "generator_records": 950,
+        "capacity_mw": 157.75701,
+        "latitude": 36.8153571576603,
+        "longitude": 127.786652163107,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청북도 괴산군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 단양군",
+        "generator_records": 450,
+        "capacity_mw": 95.47155,
+        "latitude": 36.9846577435687,
+        "longitude": 128.365546464353,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청북도 단양군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 보은군",
+        "generator_records": 984,
+        "capacity_mw": 137.973515,
+        "latitude": 36.4894353521296,
+        "longitude": 127.729498803338,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충북 보은군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 영동군",
+        "generator_records": 963,
+        "capacity_mw": 115.862625,
+        "latitude": 36.1749928212643,
+        "longitude": 127.783438619236,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충북 영동군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 옥천군",
+        "generator_records": 1465,
+        "capacity_mw": 167.775034,
+        "latitude": 36.3064355612674,
+        "longitude": 127.571345042936,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청북도 옥천군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 음성군",
+        "generator_records": 1802,
+        "capacity_mw": 292.454411,
+        "latitude": 36.9403218849117,
+        "longitude": 127.690480041094,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청북도 음성군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 제천시",
+        "generator_records": 805,
+        "capacity_mw": 120.36897,
+        "latitude": 37.1326577745505,
+        "longitude": 128.19098500203,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충북 제천시"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 증평군",
+        "generator_records": 433,
+        "capacity_mw": 50.865115,
+        "latitude": 36.7854023677827,
+        "longitude": 127.581539888445,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청북도 증평군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 진천군",
+        "generator_records": 1084,
+        "capacity_mw": 171.309539,
+        "latitude": 36.8553789918256,
+        "longitude": 127.435536085976,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충북 진천군"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 청주시",
+        "generator_records": 3616,
+        "capacity_mw": 445.75943,
+        "latitude": 36.6424871337285,
+        "longitude": 127.489020156402,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충청북도 청주시"
+      },
+      {
+        "region": "충청북도",
+        "subregion": "충청북도 충주시",
+        "generator_records": 1225,
+        "capacity_mw": 185.862835,
+        "latitude": 36.9910490160218,
+        "longitude": 127.925961035784,
+        "coordinate_basis": "exact",
+        "coordinate_key": "충북 충주시"
+      }
+    ],
+    "quality": {
+      "schema_valid": true,
+      "required_columns": [
+        "회사명",
+        "발전기명",
+        "호기",
+        "설비용량",
+        "회원구분",
+        "급전방식",
+        "발전원",
+        "발전종류",
+        "사업구분",
+        "광역지역",
+        "세부지역"
+      ],
+      "source_columns": [
+        "회사명",
+        "발전기명",
+        "호기",
+        "설비용량",
+        "회원구분",
+        "급전방식",
+        "발전원",
+        "발전종류",
+        "사업구분",
+        "광역지역",
+        "세부지역"
+      ],
+      "malformed_records": 0,
+      "invalid_capacity_records": 0,
+      "negative_capacity_records": 0,
+      "zero_capacity_records": 1,
+      "exact_duplicate_records": 557,
+      "exact_duplicate_capacity_mw": 58.17463,
+      "replacement_character_cells": 0,
+      "fullwidth_question_mark_cells": 16,
+      "garbled_records": 8,
+      "unknown_region_records": 0,
+      "missing_cells_by_column": {},
+      "coordinate_basis_counts": {
+        "exact": 266,
+        "province_centroid": 6
+      },
+      "invalid_coordinate_cache_entries": 1,
+      "duplicates_retained": true,
+      "footer": {
+        "found": true,
+        "excluded_records": 1,
+        "declared_record_count": 188594,
+        "declared_capacity_mw": 33059.516179980885,
+        "record_count_matches": true,
+        "capacity_matches": true,
+        "capacity_difference_mw": 1.9115e-08
+      }
+    }
   },
   "summary": {
     "registered_assets_all_energy": 68,

@@ -1,2 +1,6 @@
 *.html filter=lfs diff=lfs merge=lfs -text
-dashboard/*.html -filter -diff -merge text eol=lf
+dashboard/*.html -filter diff merge text eol=lf
+/solar_dashboard.html -filter diff merge text eol=lf
+/plant_region_report_perm.html -filter diff merge text eol=lf
+map/html/*.html -filter diff merge text eol=lf
+/file/generator_file/*.csv -text
