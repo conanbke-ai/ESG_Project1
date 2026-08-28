@@ -627,3 +627,37 @@ def test_dashboard_frontend_has_no_retired_developer_quality_view():
     assert "model_analysis" in script
     assert "source_region_conflict" in script
     assert ".slice(0, 3)" not in script
+
+
+def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "dashboard/assets/dashboard.js").read_text(encoding="utf-8")
+    styles = (root / "dashboard/assets/dashboard.css").read_text(encoding="utf-8")
+    coverage = (root / "dashboard/solar_dashboard.html").read_text(encoding="utf-8")
+
+    assert "analysis-metric" not in script
+    assert "state.metric" not in script
+    assert "metric-overview-grid" in script
+    assert "metricQuartet" in script
+    for metric in ("NMAE", "MAE", "RMSE", "R²"):
+        assert metric in script
+
+    assert "L.tileLayer" in script
+    assert 'L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png"' in script
+    assert "L.control.zoom" in script
+    assert "zoomSnap: .1" in script
+    assert "openstreetmap.org" in script
+    assert "tile.openstreetmap.org" in coverage
+    assert "province-hover-tooltip" in script
+    assert "permanent: true" not in script
+
+    assert "전국 세부지역 검색" in script
+    assert "shortRegion(row.region)" in script
+    assert "regionSearchTerms" in script
+    assert "전라북도" in script
+    assert "data-detail-region" in script
+    assert "<th>시도</th>" in script
+    assert "summary-value" in script
+    assert ".summary-value" in styles
+    assert "comparable.length < 2" in script
+    assert 'role="region" aria-label="전국 시도별 태양광 설비 분포 지도"' in script

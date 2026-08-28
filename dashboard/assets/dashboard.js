@@ -7,7 +7,6 @@
     selectedRegion: null,
     subregionQuery: "",
     tab: "comparison",
-    metric: "nmae_capacity",
     region: "all",
     plantId: "all",
   };
@@ -24,12 +23,16 @@
     const data = await response.json();
     if (view === "analysis") {
       const analysis = data.model_analysis || emptyAnalysis();
-      state.metric = initialAnalysisMetric(analysis);
       app.innerHTML = analysisPage(analysis);
       setupAnalysis(analysis);
     } else {
-      const boundaryResponse = await fetch("data/korea_provinces.geojson", { cache: "no-store" });
-      const boundaries = boundaryResponse.ok ? await boundaryResponse.json() : null;
+      let boundaries = null;
+      try {
+        const boundaryResponse = await fetch("data/korea_provinces.geojson", { cache: "no-store" });
+        if (boundaryResponse.ok) boundaries = await boundaryResponse.json();
+      } catch (boundaryError) {
+        console.warn("province boundaries unavailable", boundaryError);
+      }
       app.innerHTML = coveragePage(data.national_inventory);
       setupCoverage(data.national_inventory, boundaries);
     }
@@ -62,7 +65,7 @@
   }
 
   function stats(items) {
-    return `<section class="summary-grid">${items.map(([label, value, unit = ""]) => `<article class="summary-item"><span>${esc(label)}</span><strong>${esc(value)}</strong>${unit ? `<small>${esc(unit)}</small>` : ""}</article>`).join("")}</section>`;
+    return `<section class="summary-grid">${items.map(([label, value, unit = ""]) => `<article class="summary-item"><span>${esc(label)}</span><div class="summary-value"><strong>${esc(value)}</strong>${unit ? `<small>${esc(unit)}</small>` : ""}</div></article>`).join("")}</section>`;
   }
 
   function emptyState(title, message) {
@@ -88,7 +91,7 @@
     const regions = inventory.regions || [];
     const leader = [...regions].sort((a, b) => Number(b.capacity_mw) - Number(a.capacity_mw))[0];
     state.selectedRegion = leader?.region || regions[0]?.region || null;
-    return intro("전국 태양광 발전설비 현황", "전국 설비 규모를 비교하고 시도별 세부지역 현황을 확인할 수 있습니다.") +
+    return intro("전국 태양광 발전설비 현황", "전국 설비 규모를 한눈에 비교하고 원하는 세부지역을 바로 찾아볼 수 있습니다.") +
       stats([
         ["전국 설비용량", number(summary.total_capacity_mw, 2), "MW"],
         ["설비 등록", int.format(Number(summary.generator_records) || 0), "건"],
@@ -97,7 +100,7 @@
       `<section class="national-layout">
         <article class="surface map-surface">
           <div class="section-head">
-            <div><h2>시도별 분포</h2><p>지역을 선택하면 아래에서 모든 세부지역을 확인할 수 있습니다.</p></div>
+            <div><h2>시도별 설비 분포</h2><p>지도나 목록에서 지역을 선택해 설비 규모를 비교해 보세요.</p></div>
             <div class="national-controls">
               <label class="field-label" for="province-select"><span>시도</span><select id="province-select">${regionOptions(regions)}</select></label>
               <div class="segmented-control" role="group" aria-label="전국 현황 기준">
@@ -106,18 +109,18 @@
               </div>
             </div>
           </div>
-          <div id="map" role="img" aria-label="전국 시도별 태양광 설비 분포 지도"></div>
+          <div id="map" role="region" aria-label="전국 시도별 태양광 설비 분포 지도"></div>
           <div class="map-scale" aria-hidden="true"><strong id="map-scale-title">설비용량</strong><span>낮음</span><span class="scale-colors"><i></i><i></i><i></i><i></i><i></i></span><span>높음</span></div>
         </article>
         <article class="surface region-surface">
-          <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>17개 시도를 한 화면에서 비교합니다.</p></div></div>
+          <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>전국 17개 시도의 규모와 순위를 비교합니다.</p></div></div>
           <div id="region-list" class="region-list">${regionList(regions)}</div>
         </article>
       </section>
       <section class="surface detail-surface" aria-labelledby="subregion-title">
         <div class="section-head detail-head">
           <div><h2 id="subregion-title"></h2><p id="subregion-caption"></p></div>
-          <label class="field-label search-field" for="subregion-search"><span>세부지역 검색</span><input id="subregion-search" type="search" autocomplete="off" placeholder="예: 여수시"></label>
+          <label class="field-label search-field" for="subregion-search"><span>전국 세부지역 검색</span><input id="subregion-search" type="search" autocomplete="off" placeholder="예: 전남 여수시, 강원"></label>
         </div>
         <div id="subregion-summary"></div>
         <div id="subregion-table"></div>
@@ -157,22 +160,39 @@
     return name.startsWith(prefix) ? name.slice(prefix.length) : name;
   }
 
+  function regionSearchTerms(region) {
+    const aliases = {
+      강원특별자치도: ["강원도"],
+      전북특별자치도: ["전라북도"],
+      제주특별자치도: ["제주도"],
+      세종특별자치시: ["세종시"],
+    };
+    return [region, shortRegion(region), ...(aliases[region] || [])];
+  }
+
   function detailRows(inventory, query = state.subregionQuery) {
-    const normalized = String(query).trim().toLocaleLowerCase("ko");
+    const normalized = String(query).trim().replace(/\s+/g, " ").toLocaleLowerCase("ko");
     return (inventory.locations || [])
-      .filter((row) => row.region === state.selectedRegion)
-      .filter((row) => !normalized || cleanSubregion(row).toLocaleLowerCase("ko").includes(normalized))
+      .filter((row) => {
+        if (!normalized) return row.region === state.selectedRegion;
+        const searchText = [...regionSearchTerms(row.region), cleanSubregion(row), row.subregion]
+          .join(" ")
+          .toLocaleLowerCase("ko");
+        return searchText.includes(normalized);
+      })
       .sort((a, b) => nationalValue(b) - nationalValue(a));
   }
 
   function detailTable(inventory) {
     const rows = detailRows(inventory);
-    if (!rows.length) return emptyState("세부지역 결과 없음", state.subregionQuery ? "검색 조건에 맞는 세부지역이 없습니다." : "표시할 세부지역 정보가 없습니다.");
+    const searching = Boolean(String(state.subregionQuery).trim());
+    if (!rows.length) return emptyState("세부지역 결과 없음", searching ? "시도명·약칭 또는 세부지역명을 바꿔 검색해 보세요." : "표시할 세부지역 정보가 없습니다.");
     const maximum = Math.max(...rows.map((row) => nationalValue(row)), 1);
     return `<div class="table-responsive"><table class="data-table subregion-table">
-      <thead><tr><th>순위</th><th>세부지역</th><th class="numeric">등록건수</th><th class="numeric">설비용량(MW)</th></tr></thead>
+      <thead><tr><th>순위</th>${searching ? "<th>시도</th>" : ""}<th>세부지역</th><th class="numeric">등록건수</th><th class="numeric">설비용량(MW)</th></tr></thead>
       <tbody>${rows.map((row, index) => `<tr>
         <td class="rank-cell">${index + 1}</td>
+        ${searching ? `<td><button type="button" class="text-button" data-detail-region="${esc(row.region)}" aria-label="${esc(row.region)} 상세 보기">${esc(shortRegion(row.region))}</button></td>` : ""}
         <td><div class="name-line"><strong>${esc(cleanSubregion(row))}</strong>${row.source_region_conflict ? '<span class="status-tag caution">지역 확인 필요</span>' : ""}</div><div class="inline-track"><span style="width:${Math.max(1, nationalValue(row) / maximum * 100).toFixed(2)}%"></span></div></td>
         <td class="numeric">${int.format(Number(row.generator_records) || 0)}</td><td class="numeric">${number(row.capacity_mw, 2)}</td>
       </tr>`).join("")}</tbody>
@@ -196,17 +216,23 @@
 
     function renderDetail() {
       const row = byName.get(state.selectedRegion);
-      const count = detailRows(inventory, "").length;
-      document.getElementById("subregion-title").textContent = `${state.selectedRegion || "선택 지역"} 세부지역`;
-      document.getElementById("subregion-caption").textContent = `${count}개 세부지역의 등록건수와 설비용량을 비교합니다.`;
-      document.getElementById("subregion-summary").innerHTML = row ? `<div class="selected-summary"><span><small>설비 등록</small><strong>${int.format(Number(row.generator_records) || 0)}건</strong></span><span><small>설비용량</small><strong>${number(row.capacity_mw, 2)} MW</strong></span></div>` : "";
+      const searching = Boolean(String(state.subregionQuery).trim());
+      const count = detailRows(inventory).length;
+      document.getElementById("subregion-title").textContent = searching ? "전국 세부지역 검색 결과" : `${state.selectedRegion || "선택 지역"} 세부지역`;
+      document.getElementById("subregion-caption").textContent = searching
+        ? `${count}개 결과입니다. 시도를 선택하면 해당 지역의 전체 현황으로 이동합니다.`
+        : `${count}개 세부지역의 등록건수와 설비용량을 비교합니다.`;
+      document.getElementById("subregion-summary").innerHTML = !searching && row ? `<div class="selected-summary"><span><small>설비 등록</small><strong>${int.format(Number(row.generator_records) || 0)}건</strong></span><span><small>설비용량</small><strong>${number(row.capacity_mw, 2)} MW</strong></span></div>` : "";
       document.getElementById("subregion-table").innerHTML = detailTable(inventory);
+      document.querySelectorAll("[data-detail-region]").forEach((button) => button.addEventListener("click", () => selectRegion(button.dataset.detailRegion)));
     }
 
     function selectRegion(region) {
       if (!byName.has(region)) return;
       state.selectedRegion = region;
+      state.subregionQuery = "";
       document.getElementById("province-select").value = region;
+      document.getElementById("subregion-search").value = "";
       renderList();
       renderDetail();
       mapController?.select(region);
@@ -215,7 +241,7 @@
     document.getElementById("province-select").addEventListener("change", (event) => selectRegion(event.target.value));
     document.getElementById("subregion-search").addEventListener("input", (event) => {
       state.subregionQuery = event.target.value;
-      document.getElementById("subregion-table").innerHTML = detailTable(inventory);
+      renderDetail();
     });
     document.querySelectorAll("[data-map-metric]").forEach((button) => button.addEventListener("click", () => {
       state.nationalMetric = button.dataset.mapMetric;
@@ -236,7 +262,11 @@
 
   function drawMap(inventory, boundaries, onSelect) {
     const node = document.getElementById("map");
-    if (!node || typeof L === "undefined") return null;
+    if (!node) return null;
+    if (typeof L === "undefined") {
+      node.innerHTML = '<p class="map-empty">지도 모듈을 불러오지 못했습니다. 시도 목록에서 지역을 선택해 주세요.</p>';
+      return null;
+    }
     if (!boundaries) {
       node.innerHTML = '<p class="map-empty">지도를 불러오지 못했습니다. 시도 목록에서 지역을 선택해 주세요.</p>';
       return null;
@@ -248,11 +278,29 @@
       KR46: "전라남도", KR47: "경상북도", KR48: "경상남도", KR49: "제주특별자치도", KR50: "세종특별자치시",
     };
     const byName = new Map((inventory.regions || []).map((row) => [row.region, row]));
-    const colors = ["#eef5f2", "#cfe5dd", "#91c9b6", "#48a17f", "#12684f"];
+    const colors = ["#eff6f4", "#d8eae5", "#afd2c8", "#72ae9e", "#327c69"];
     let metric = state.nationalMetric;
     let selected = state.selectedRegion;
-    const map = L.map(node, { zoomControl: false, preferCanvas: true, scrollWheelZoom: false, doubleClickZoom: false, attributionControl: false, minZoom: 5, maxZoom: 8 });
-    L.control.attribution({ position: "bottomright", prefix: false }).addAttribution("경계 © SimpleMaps").addTo(map);
+    const map = L.map(node, {
+      zoomControl: false,
+      zoomSnap: .1,
+      zoomDelta: .25,
+      preferCanvas: true,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      attributionControl: false,
+      minZoom: 5,
+      maxZoom: 8,
+    });
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+    const attribution = L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+    attribution.addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>');
+    attribution.addAttribution("경계 © SimpleMaps");
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      opacity: .62,
+      maxZoom: 19,
+      attribution: "",
+    }).addTo(map);
     const key = () => metric === "records" ? "generator_records" : "capacity_mw";
     const maximum = () => Math.max(...(inventory.regions || []).map((row) => Number(row[key()]) || 0), 1);
     const color = (value) => {
@@ -263,22 +311,23 @@
     const style = (feature) => {
       const name = featureName(feature);
       const active = name === selected;
-      return { color: active ? "#063f31" : "#527268", weight: active ? 3.2 : 1.5, fillColor: color(byName.get(name)?.[key()]), fillOpacity: active ? 1 : .94 };
+      return { color: active ? "#0a5b48" : "#698c81", weight: active ? 2.4 : 1.1, fillColor: color(byName.get(name)?.[key()]), fillOpacity: active ? .68 : .5 };
     };
     const layer = L.geoJSON(boundaries, {
       style,
       onEachFeature: (feature, shape) => {
         const name = featureName(feature);
-        shape.bindTooltip(esc(shortRegion(name)), { permanent: true, direction: "center", className: "province-label" });
+        const row = byName.get(name) || {};
+        shape.bindTooltip(() => `<strong>${esc(name)}</strong><span>${esc(nationalText(row, metric))}</span>`, { sticky: true, direction: "top", className: "province-hover-tooltip", opacity: 1 });
         shape.on({
-          mouseover: (event) => event.target.setStyle({ color: "#063f31", weight: 3, fillOpacity: 1 }),
+          mouseover: (event) => event.target.setStyle({ color: "#0a5b48", weight: 2, fillOpacity: .64 }),
           mouseout: () => layer.setStyle(style),
           click: () => onSelect(name),
         });
       },
     }).addTo(map);
-    map.fitBounds(layer.getBounds(), { padding: [18, 18] });
-    map.setMaxBounds(layer.getBounds().pad(.18));
+    map.fitBounds(layer.getBounds(), { padding: [4, 4], animate: false });
+    map.setMaxBounds(layer.getBounds().pad(.08));
     return {
       metric(next) { metric = next; layer.setStyle(style); },
       select(region) { selected = region; layer.setStyle(style); },
@@ -308,7 +357,6 @@
       `<section class="analysis-toolbar" aria-label="분석 조건">
         <label class="field-label" for="analysis-region"><span>지역</span><select id="analysis-region">${analysisRegionOptions(analysis)}</select></label>
         <label class="field-label" for="analysis-plant"><span>발전소</span><select id="analysis-plant">${analysisPlantOptions(analysis)}</select></label>
-        <label class="field-label" for="analysis-metric"><span>비교 지표</span><select id="analysis-metric">${Object.entries(metrics).map(([key, definition]) => `<option value="${key}"${key === state.metric ? " selected" : ""}>${esc(definition.short)}</option>`).join("")}</select></label>
       </section>
       <div class="analysis-tabs" role="tablist" aria-label="예측 분석 보기">
         <button type="button" role="tab" id="tab-comparison" aria-controls="analysis-content" aria-selected="true" data-tab="comparison">모델 비교</button>
@@ -316,16 +364,6 @@
         <button type="button" role="tab" id="tab-anomalies" aria-controls="analysis-content" aria-selected="false" data-tab="anomalies">이상 신호</button>
       </div>
       <section id="analysis-content" class="analysis-content" role="tabpanel" aria-labelledby="tab-comparison"></section>`;
-  }
-
-  function initialAnalysisMetric(analysis) {
-    const comparable = (analysis.models || []).filter((model) => model.comparable !== false);
-    const availableCount = (key) => comparable.filter((model) => finite(model.metrics?.[key])).length;
-    if (availableCount(state.metric) >= 2) return state.metric;
-    const fallbackOrder = ["mae", "rmse", "r2", "nmae_capacity"];
-    return fallbackOrder.find((key) => availableCount(key) >= 2)
-      || fallbackOrder.find((key) => availableCount(key) > 0)
-      || "mae";
   }
 
   function predictionEvents(analysis) {
@@ -428,7 +466,6 @@
       render();
     });
     document.getElementById("analysis-plant").addEventListener("change", (event) => { state.plantId = event.target.value; render(); });
-    document.getElementById("analysis-metric").addEventListener("change", (event) => { state.metric = event.target.value; render(); });
     render();
   }
 
@@ -448,7 +485,7 @@
     }));
   }
 
-  function metricValue(row, key = state.metric) {
+  function metricValue(row, key) {
     const value = row?.metrics?.[key];
     return finite(value) ? Number(value) : null;
   }
@@ -458,42 +495,46 @@
     return finite(value) ? `${number(value, definition.digits)}${definition.unit ? ` ${definition.unit}` : ""}` : "-";
   }
 
-  function metricHint(key = state.metric) {
+  function metricHint(key) {
     const direction = metrics[key].better === "higher" ? "높을수록 좋음" : "낮을수록 좋음";
     return key === "nmae_capacity" ? `${direction} · 설비용량 확인 표본 기준` : direction;
   }
 
   function comparisonView(analysis) {
     const allModels = analysis.models || [];
-    const models = allModels.filter((model) => metricValue(model) !== null);
+    const models = allModels.filter((model) => Object.keys(metrics).some((key) => metricValue(model, key) !== null));
     const comparable = models.filter((model) => model.comparable !== false);
-    let result = "";
+    if (!models.length) return emptyState("모델 평가 결과가 없습니다", analysis.message || "모델 평가가 완료되면 네 가지 성능 지표가 함께 표시됩니다.") + predictionSection(analysis);
     if (comparable.length < 2) {
-      result += emptyState("모델 간 비교 결과가 없습니다", analysis.message || "동일한 테스트 구간으로 평가된 모델이 두 개 이상 준비되면 비교 결과가 표시됩니다.");
-      if (allModels.length) result += `<section class="surface analysis-section"><div class="section-head"><div><h2>확인 가능한 개별 결과</h2><p>동일 표본 비교가 아니므로 순위에는 포함하지 않습니다.</p></div></div>${modelTable(allModels)}</section>`;
-    } else {
-      const ordered = [...comparable].sort((a, b) => metrics[state.metric].better === "higher" ? metricValue(b) - metricValue(a) : metricValue(a) - metricValue(b));
-      const best = ordered[0];
-      const second = ordered[1];
-      const gap = metrics[state.metric].better === "higher" ? `${number(metricValue(best) - metricValue(second), 3)} 차이` : `${number(metricValue(second) > 0 ? (metricValue(second) - metricValue(best)) / metricValue(second) * 100 : 0, 1)}% 낮음`;
-      result += stats([
-        [metrics[state.metric].better === "higher" ? "가장 높은 설명력" : "가장 낮은 오차", best.label, metricText(state.metric, metricValue(best))],
-        ["2위 모델 대비", gap, second.label],
-        ["공통 평가 표본", int.format(Number(analysis.evaluation?.common_samples) || Number(best.metrics?.n_samples) || 0), "건"],
-      ]);
-      result += `<section class="analysis-grid"><article class="surface analysis-section"><div class="section-head"><div><h2>${esc(metrics[state.metric].label)} 비교</h2><p>${metricHint()} · 동일한 평가 표본만 비교</p></div></div>${modelBars(comparable)}</article><article class="surface analysis-section"><div class="section-head"><div><h2>모델별 평가 지표</h2><p>오차와 설명력을 함께 확인합니다.</p></div></div>${modelTable(models)}</article></section>`;
+      return emptyState("모델 간 비교 결과가 없습니다", analysis.message || "동일한 테스트 표본의 모델이 두 개 이상 확보되면 네 가지 지표 비교가 활성화됩니다.") +
+        `<section class="surface analysis-section"><div class="section-head"><div><h2>확인 가능한 개별 결과</h2><p>평가 구간이 같지 않아 모델 간 순위나 막대 비교에는 사용하지 않습니다.</p></div></div>${modelTable(models)}</section>` +
+        predictionSection(analysis);
     }
+    const commonSamples = finite(analysis.evaluation?.common_samples) ? Number(analysis.evaluation.common_samples) : 0;
+    const horizon = finite(analysis.evaluation?.horizon_hours) ? number(analysis.evaluation.horizon_hours) : "-";
+    let result = stats([
+      ["비교 모델", int.format(comparable.length), "개"],
+      ["공통 평가 표본", int.format(commonSamples), "건"],
+      ["예측 범위", horizon, finite(analysis.evaluation?.horizon_hours) ? "시간" : ""],
+    ]);
+    result += `<section class="metric-overview-grid" aria-label="모델별 네 가지 성능 지표">${Object.keys(metrics).map((key) => metricPanel(comparable, key)).join("")}</section>`;
+    result += `<section class="surface analysis-section"><div class="section-head"><div><h2>모델별 전체 평가 지표</h2><p>NMAE, MAE, RMSE, R²를 같은 평가 구간에서 함께 확인합니다.</p></div></div>${modelTable(models)}</section>`;
     return result + predictionSection(analysis);
   }
 
-  function modelBars(models) {
-    const values = models.map((model) => metricValue(model));
+  function metricPanel(models, key) {
+    const available = models.filter((model) => metricValue(model, key) !== null);
+    return `<article class="surface metric-panel"><div class="metric-panel-head"><div><strong>${esc(metrics[key].short)}</strong><span>${esc(metrics[key].label)}</span></div><small>${esc(metricHint(key))}</small></div>${available.length ? modelBars(available, key) : emptyState(`${metrics[key].short} 결과 없음`, "이 지표를 계산할 수 있는 평가 표본이 없습니다.")}</article>`;
+  }
+
+  function modelBars(models, key) {
+    const values = models.map((model) => metricValue(model, key));
     const maximum = Math.max(...values, 0);
     const minimum = Math.min(...values, 0);
     return `<div class="metric-bars">${models.map((model, index) => {
-      const value = metricValue(model);
-      const width = metrics[state.metric].better === "higher" ? (maximum === minimum ? 100 : (value - minimum) / (maximum - minimum) * 100) : (maximum ? value / maximum * 100 : 0);
-      return `<div class="metric-bar-row"><div><strong>${esc(model.label)}</strong><span>${esc(metricText(state.metric, value))}</span></div><div class="metric-track"><i class="series-${index % 4}" style="width:${Math.max(3, width).toFixed(2)}%"></i></div></div>`;
+      const value = metricValue(model, key);
+      const width = metrics[key].better === "higher" ? (maximum === minimum ? 100 : (value - minimum) / (maximum - minimum) * 100) : (maximum ? value / maximum * 100 : 0);
+      return `<div class="metric-bar-row"><div><strong>${esc(model.label)}</strong><span>${esc(metricText(key, value))}</span></div><div class="metric-track"><i class="series-${index % 4}" style="width:${Math.max(3, width).toFixed(2)}%"></i></div></div>`;
     }).join("")}</div>`;
   }
 
@@ -573,11 +614,11 @@
       return emptyState("지역·발전소 성능 결과가 없습니다", analysis.message || "세부 평가가 완료되면 지역과 발전소별 성능이 표시됩니다.");
     }
     return `<section class="surface analysis-section">
-        <div class="section-head"><div><h2>지역별 ${esc(metrics[state.metric].short)} 비교</h2><p>${metricHint()} · 지역을 선택하면 발전소별 결과로 이어집니다.</p></div></div>
+        <div class="section-head"><div><h2>지역별 네 가지 성능 지표</h2><p>모델별 NMAE, MAE, RMSE, R²를 함께 보고 지역을 선택해 발전소 결과로 이어갑니다.</p></div></div>
         ${regionMatrix(analysis)}
       </section>
       <section class="surface analysis-section">
-        <div class="section-head"><div><h2>${state.region === "all" ? "발전소별 성능" : `${esc(displayRegion(state.region))} 발전소별 성능`}</h2><p>모델별 오차와 평가 표본을 함께 확인합니다.</p></div></div>
+        <div class="section-head"><div><h2>${state.region === "all" ? "발전소별 성능" : `${esc(displayRegion(state.region))} 발전소별 성능`}</h2><p>발전소마다 네 가지 지표와 평가 표본을 함께 확인합니다.</p></div></div>
         ${plantTable(analysis)}
       </section>`;
   }
@@ -592,32 +633,25 @@
       grouped.set(row.region, values);
     });
     if (!grouped.size) return emptyState("지역별 결과 없음", "지역 단위 평가 결과가 아직 없습니다.");
-    const worst = (values) => {
-      const available = [...values.values()].map((row) => Number(row[state.metric])).filter(Number.isFinite);
-      if (!available.length) return metrics[state.metric].better === "higher" ? Infinity : -Infinity;
-      return metrics[state.metric].better === "higher" ? Math.min(...available) : Math.max(...available);
-    };
-    const ordered = [...grouped.entries()].sort((a, b) => metrics[state.metric].better === "higher" ? worst(a[1]) - worst(b[1]) : worst(b[1]) - worst(a[1]));
+    const ordered = [...grouped.entries()].sort((a, b) => a[0].localeCompare(b[0], "ko"));
     return `<div class="table-responsive"><table class="data-table region-matrix">
-      <thead><tr><th>지역</th>${models.map((model) => `<th class="numeric">${esc(model.label)}</th>`).join("")}</tr></thead>
+      <thead><tr><th>지역</th>${models.map((model) => `<th>${esc(model.label)}</th>`).join("")}</tr></thead>
       <tbody>${ordered.map(([region, values]) => `<tr class="${region === state.region ? "is-selected" : ""}">
         <td><button type="button" class="text-button" data-analysis-region="${esc(region)}">${esc(displayRegion(region))}</button></td>
-        ${models.map((model) => `<td class="numeric">${esc(metricText(state.metric, values.get(model.id)?.[state.metric]))}</td>`).join("")}
+        ${models.map((model) => `<td>${metricQuartet(values.get(model.id))}</td>`).join("")}
       </tr>`).join("")}</tbody>
     </table></div>`;
+  }
+
+  function metricQuartet(values = {}) {
+    return `<div class="metric-quartet">${Object.keys(metrics).map((key) => `<span><small>${esc(metrics[key].short)}</small><strong>${esc(metricText(key, values?.[key]))}</strong></span>`).join("")}</div>`;
   }
 
   function plantTable(analysis) {
     if (state.region === "all") return emptyState("지역을 선택해 주세요", "위 지역별 비교에서 확인할 지역을 선택하면 발전소별 결과가 표시됩니다.");
     let rows = (analysis.plants || []).filter((row) => row.region === state.region);
     if (state.plantId !== "all") rows = rows.filter((row) => String(row.plant_id) === state.plantId);
-    rows.sort((a, b) => {
-      const left = metricValue(a);
-      const right = metricValue(b);
-      if (left === null) return 1;
-      if (right === null) return -1;
-      return metrics[state.metric].better === "higher" ? left - right : right - left;
-    });
+    rows.sort((a, b) => String(a.plant || "").localeCompare(String(b.plant || ""), "ko") || String(a.model || "").localeCompare(String(b.model || "")));
     if (!rows.length) return emptyState("발전소별 결과 없음", "선택한 지역의 발전소별 평가 결과가 아직 없습니다.");
     return `<div class="table-responsive"><table class="data-table plant-performance-table">
       <thead><tr><th>발전소</th><th>모델</th><th class="numeric">NMAE</th><th class="numeric">MAE</th><th class="numeric">RMSE</th><th class="numeric">R²</th><th class="numeric">평가 표본</th></tr></thead>
