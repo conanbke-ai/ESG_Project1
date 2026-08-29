@@ -75,7 +75,7 @@
   function shortRegion(region) {
     return ({
       서울특별시: "서울", 부산광역시: "부산", 대구광역시: "대구", 인천광역시: "인천",
-      광주광역시: "광주", 대전광역시: "대전", 울산광역시: "울산", 세종특별자치시: "세종",
+      광주광역시: "광주", 전남광주통합특별시: "전남광주", 대전광역시: "대전", 울산광역시: "울산", 세종특별자치시: "세종",
       경기도: "경기", 강원특별자치도: "강원", 충청북도: "충북", 충청남도: "충남",
       전북특별자치도: "전북", 전라남도: "전남", 경상북도: "경북", 경상남도: "경남",
       제주특별자치도: "제주", unknown: "지역 미확인",
@@ -113,7 +113,7 @@
           <div class="map-scale" aria-hidden="true"><strong id="map-scale-title">설비용량</strong><span>낮음</span><span class="scale-colors"><i></i><i></i><i></i><i></i><i></i></span><span>높음</span></div>
         </article>
         <article class="surface region-surface">
-          <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>전국 17개 시도의 규모와 순위를 비교합니다.</p></div></div>
+          <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>전국 ${int.format(regions.length)}개 시도의 규모와 순위를 비교합니다.</p></div></div>
           <div id="region-list" class="region-list">${regionList(regions)}</div>
         </article>
       </section>
@@ -164,6 +164,7 @@
     const aliases = {
       강원특별자치도: ["강원도"],
       전북특별자치도: ["전라북도"],
+      전남광주통합특별시: ["전남", "전라남도", "광주", "광주시", "광주광역시", "광주전남"],
       제주특별자치도: ["제주도"],
       세종특별자치시: ["세종시"],
     };
@@ -183,12 +184,10 @@
       .sort((a, b) => nationalValue(b) - nationalValue(a));
   }
 
-  function detailTable(inventory) {
-    const rows = detailRows(inventory);
-    const searching = Boolean(String(state.subregionQuery).trim());
-    if (!rows.length) return emptyState("세부지역 결과 없음", searching ? "시도명·약칭 또는 세부지역명을 바꿔 검색해 보세요." : "표시할 세부지역 정보가 없습니다.");
+  function detailTable(rows, searching) {
+    if (!rows.length) return `<div class="detail-table-shell is-empty">${emptyState("세부지역 결과 없음", searching ? "시도명·약칭 또는 세부지역명을 바꿔 검색해 보세요." : "표시할 세부지역 정보가 없습니다.")}</div>`;
     const maximum = Math.max(...rows.map((row) => nationalValue(row)), 1);
-    return `<div class="table-responsive"><table class="data-table subregion-table">
+    return `<div class="table-responsive detail-table-shell"><table class="data-table subregion-table">
       <thead><tr><th>순위</th>${searching ? "<th>시도</th>" : ""}<th>세부지역</th><th class="numeric">등록건수</th><th class="numeric">설비용량(MW)</th></tr></thead>
       <tbody>${rows.map((row, index) => `<tr>
         <td class="rank-cell">${index + 1}</td>
@@ -217,13 +216,21 @@
     function renderDetail() {
       const row = byName.get(state.selectedRegion);
       const searching = Boolean(String(state.subregionQuery).trim());
-      const count = detailRows(inventory).length;
+      const rows = detailRows(inventory);
+      const totals = rows.reduce((summary, item) => ({
+        generatorRecords: summary.generatorRecords + (Number(item.generator_records) || 0),
+        capacityMw: summary.capacityMw + (Number(item.capacity_mw) || 0),
+      }), { generatorRecords: 0, capacityMw: 0 });
+      const summary = searching ? totals : {
+        generatorRecords: Number(row?.generator_records) || totals.generatorRecords,
+        capacityMw: Number(row?.capacity_mw) || totals.capacityMw,
+      };
       document.getElementById("subregion-title").textContent = searching ? "전국 세부지역 검색 결과" : `${state.selectedRegion || "선택 지역"} 세부지역`;
       document.getElementById("subregion-caption").textContent = searching
-        ? `${count}개 결과입니다. 시도를 선택하면 해당 지역의 전체 현황으로 이동합니다.`
-        : `${count}개 세부지역의 등록건수와 설비용량을 비교합니다.`;
-      document.getElementById("subregion-summary").innerHTML = !searching && row ? `<div class="selected-summary"><span><small>설비 등록</small><strong>${int.format(Number(row.generator_records) || 0)}건</strong></span><span><small>설비용량</small><strong>${number(row.capacity_mw, 2)} MW</strong></span></div>` : "";
-      document.getElementById("subregion-table").innerHTML = detailTable(inventory);
+        ? `${rows.length}개 결과입니다. 시도를 선택하면 해당 지역의 전체 현황으로 이동합니다.`
+        : `${rows.length}개 세부지역의 등록건수와 설비용량을 비교합니다.`;
+      document.getElementById("subregion-summary").innerHTML = `<div class="selected-summary"><span><small>${searching ? "검색 결과 등록" : "설비 등록"}</small><strong>${int.format(summary.generatorRecords)}건</strong></span><span><small>${searching ? "검색 결과 용량" : "설비용량"}</small><strong>${number(summary.capacityMw, 2)} MW</strong></span></div>`;
+      document.getElementById("subregion-table").innerHTML = detailTable(rows, searching);
       document.querySelectorAll("[data-detail-region]").forEach((button) => button.addEventListener("click", () => selectRegion(button.dataset.detailRegion)));
     }
 
@@ -239,10 +246,26 @@
     }
 
     document.getElementById("province-select").addEventListener("change", (event) => selectRegion(event.target.value));
-    document.getElementById("subregion-search").addEventListener("input", (event) => {
-      state.subregionQuery = event.target.value;
-      renderDetail();
+    const searchInput = document.getElementById("subregion-search");
+    let composingSearch = false;
+    let searchRenderFrame = null;
+    function scheduleSearchRender(value) {
+      state.subregionQuery = value;
+      if (composingSearch) return;
+      if (searchRenderFrame !== null) cancelAnimationFrame(searchRenderFrame);
+      searchRenderFrame = requestAnimationFrame(() => {
+        searchRenderFrame = null;
+        renderDetail();
+      });
+    }
+    searchInput.addEventListener("compositionstart", () => {
+      composingSearch = true;
     });
+    searchInput.addEventListener("compositionend", (event) => {
+      composingSearch = false;
+      scheduleSearchRender(event.target.value);
+    });
+    searchInput.addEventListener("input", (event) => scheduleSearchRender(event.target.value));
     document.querySelectorAll("[data-map-metric]").forEach((button) => button.addEventListener("click", () => {
       state.nationalMetric = button.dataset.mapMetric;
       document.querySelectorAll("[data-map-metric]").forEach((candidate) => {
@@ -273,9 +296,9 @@
     }
     const names = {
       KR11: "서울특별시", KR26: "부산광역시", KR27: "대구광역시", KR28: "인천광역시",
-      KR29: "광주광역시", KR30: "대전광역시", KR31: "울산광역시", KR41: "경기도",
+      KR29: "전남광주통합특별시", KR30: "대전광역시", KR31: "울산광역시", KR41: "경기도",
       KR42: "강원특별자치도", KR43: "충청북도", KR44: "충청남도", KR45: "전북특별자치도",
-      KR46: "전라남도", KR47: "경상북도", KR48: "경상남도", KR49: "제주특별자치도", KR50: "세종특별자치시",
+      KR46: "전남광주통합특별시", KR47: "경상북도", KR48: "경상남도", KR49: "제주특별자치도", KR50: "세종특별자치시",
     };
     const byName = new Map((inventory.regions || []).map((row) => [row.region, row]));
     const colors = ["#eff6f4", "#d8eae5", "#afd2c8", "#72ae9e", "#327c69"];

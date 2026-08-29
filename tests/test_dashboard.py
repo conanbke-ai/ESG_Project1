@@ -190,7 +190,7 @@ def test_dashboard_builder_publishes_clean_user_contract_without_registry(tmp_pa
     region = next(
         row
         for row in payload["national_inventory"]["regions"]
-        if row["region"] == "전라남도"
+        if row["region"] == "전남광주통합특별시"
     )
     assert region["local_area_count"] == 1
     assert payload["model_analysis"]["status"] == "empty"
@@ -658,8 +658,21 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert "shortRegion(row.region)" in script
     assert "regionSearchTerms" in script
     assert "전라북도" in script
+    assert "전남광주통합특별시" in script
+    assert 'KR29: "전남광주통합특별시"' in script
+    assert 'KR46: "전남광주통합특별시"' in script
     assert "data-detail-region" in script
     assert "<th>시도</th>" in script
+    assert "detailTable(rows, searching)" in script
+    assert "검색 결과 등록" in script
+    assert "검색 결과 용량" in script
+    assert 'addEventListener("compositionstart"' in script
+    assert 'addEventListener("compositionend"' in script
+    assert "requestAnimationFrame" in script
+    assert "detail-table-shell" in script
+    assert ".detail-table-shell" in styles
+    assert "scrollbar-gutter: stable" in styles
+    assert "overflow-anchor: none" in styles
     assert "summary-value" in script
     assert ".summary-value" in styles
     assert "comparable.length < 2" in script

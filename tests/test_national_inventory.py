@@ -7,11 +7,14 @@ from pathlib import Path
 import pytest
 
 from solar_forecast.reporting.national_inventory import (
+    AdministrativeRegionReference,
     InventoryContentError,
     InventoryIntegrityError,
     InventorySchemaError,
     NationalInventoryService,
     REQUIRED_COLUMNS,
+    canonical_location,
+    canonical_region,
     source_region_conflict,
 )
 
@@ -106,7 +109,7 @@ def test_cp949_inventory_keeps_duplicates_and_validates_footer_and_coordinates(t
     assert inventory["summary"] == {
         "generator_records": 4,
         "total_capacity_mw": 2.9,
-        "canonical_regions": 17,
+        "canonical_regions": 16,
         "regions_with_records": 3,
         "source_subregion_labels": 2,
         "subregions": 3,
@@ -152,6 +155,22 @@ def test_source_region_conflict_is_flagged_without_silent_reassignment():
     assert source_region_conflict("강원특별자치도 강릉시", "경기도") is True
     assert source_region_conflict("전남 영암군", "전라남도") is False
     assert source_region_conflict("영암군", "전라남도") is False
+
+
+def test_effective_dated_reference_merges_legacy_gwangju_jeonnam_names():
+    root = Path(__file__).resolve().parents[1]
+    reference = AdministrativeRegionReference.from_json(
+        root / "config/administrative_regions_20260701.json"
+    )
+
+    assert len(reference.canonical_regions) == 16
+    assert reference.effective_date == "2026-07-01"
+    assert reference.aliases["광주광역시"] == "전남광주통합특별시"
+    assert reference.aliases["전라남도"] == "전남광주통합특별시"
+    assert canonical_region("전남") == "전남광주통합특별시"
+    assert canonical_location(
+        "전라남도 영암군", "전남광주통합특별시"
+    ) == "전남광주통합특별시 영암군"
 
 
 def test_utf8_replacement_character_metric_and_sha256_failure(tmp_path):

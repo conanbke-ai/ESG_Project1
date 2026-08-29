@@ -17,5 +17,6 @@
     "중복으로 보이는 레코드도 공식 고유키가 없어 원본 집계에서 제거하지 않는다."
   ],
   "coordinate_cache_path": "map/json/coord_cache.json",
+  "region_reference_path": "config/administrative_regions_20260701.json",
   "boundary_path": "map/json/geoJson.json"
 }

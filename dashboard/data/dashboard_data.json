@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-28T11:50:27+09:00",
+    "generated_at": "2026-08-28T23:55:14+09:00",
     "scope": "전국 태양광 설비 현황과 정식 모델 평가 결과"
   },
   "national_inventory": {
@@ -14,10 +14,10 @@
     "summary": {
       "generator_records": 188594,
       "total_capacity_mw": 33059.51618,
-      "canonical_regions": 17,
-      "regions_with_records": 17,
-      "subregions": 272,
-      "source_region_conflicts": 17
+      "canonical_regions": 16,
+      "regions_with_records": 16,
+      "subregions": 270,
+      "source_region_conflicts": 16
     },
     "regions": [
       {
@@ -43,12 +43,6 @@
         "generator_records": 1415,
         "capacity_mw": 238.06782,
         "local_area_count": 14
-      },
-      {
-        "region": "광주광역시",
-        "generator_records": 2516,
-        "capacity_mw": 418.071636,
-        "local_area_count": 6
       },
       {
         "region": "대전광역시",
@@ -99,10 +93,10 @@
         "local_area_count": 15
       },
       {
-        "region": "전라남도",
-        "generator_records": 23954,
-        "capacity_mw": 6567.33573,
-        "local_area_count": 26
+        "region": "전남광주통합특별시",
+        "generator_records": 26470,
+        "capacity_mw": 6985.407366,
+        "local_area_count": 30
       },
       {
         "region": "경상북도",
@@ -811,48 +805,6 @@
         "source_region_conflict": true
       },
       {
-        "region": "광주광역시",
-        "subregion": "광주광역시 광산구",
-        "generator_records": 1622,
-        "capacity_mw": 308.058191,
-        "source_region_conflict": false
-      },
-      {
-        "region": "광주광역시",
-        "subregion": "광주광역시 남구",
-        "generator_records": 110,
-        "capacity_mw": 15.56408,
-        "source_region_conflict": false
-      },
-      {
-        "region": "광주광역시",
-        "subregion": "광주광역시 동구",
-        "generator_records": 41,
-        "capacity_mw": 7.624855,
-        "source_region_conflict": false
-      },
-      {
-        "region": "광주광역시",
-        "subregion": "광주광역시 북구",
-        "generator_records": 522,
-        "capacity_mw": 63.63361,
-        "source_region_conflict": false
-      },
-      {
-        "region": "광주광역시",
-        "subregion": "광주광역시 서구",
-        "generator_records": 220,
-        "capacity_mw": 22.49138,
-        "source_region_conflict": false
-      },
-      {
-        "region": "광주광역시",
-        "subregion": "전라남도 해남군",
-        "generator_records": 1,
-        "capacity_mw": 0.69952,
-        "source_region_conflict": true
-      },
-      {
         "region": "대구광역시",
         "subregion": "경상북도 영주시",
         "generator_records": 1,
@@ -1071,13 +1023,6 @@
       },
       {
         "region": "서울특별시",
-        "subregion": "광주광역시 북구",
-        "generator_records": 2,
-        "capacity_mw": 1.92,
-        "source_region_conflict": true
-      },
-      {
-        "region": "서울특별시",
         "subregion": "서울특별시 강남구",
         "generator_records": 24,
         "capacity_mw": 2.21081,
@@ -1250,6 +1195,13 @@
         "generator_records": 29,
         "capacity_mw": 2.95163,
         "source_region_conflict": false
+      },
+      {
+        "region": "서울특별시",
+        "subregion": "전남광주통합특별시 북구",
+        "generator_records": 2,
+        "capacity_mw": 1.92,
+        "source_region_conflict": true
       },
       {
         "region": "세종특별자치시",
@@ -1525,182 +1477,210 @@
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
+        "region": "전남광주통합특별시",
         "subregion": "경상북도 의성군",
         "generator_records": 1,
         "capacity_mw": 0.995,
         "source_region_conflict": true
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 강진군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 강진군",
         "generator_records": 1104,
         "capacity_mw": 231.31726,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 고흥군",
-        "generator_records": 1819,
-        "capacity_mw": 571.06221,
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 고흥군",
+        "generator_records": 1820,
+        "capacity_mw": 571.377825,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 곡성군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 곡성군",
         "generator_records": 483,
         "capacity_mw": 79.59163,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 광양시",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 광산구",
+        "generator_records": 1622,
+        "capacity_mw": 308.058191,
+        "source_region_conflict": false
+      },
+      {
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 광양시",
         "generator_records": 800,
         "capacity_mw": 210.685185,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 구례군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 구례군",
         "generator_records": 78,
         "capacity_mw": 17.36471,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 나주시",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 나주시",
         "generator_records": 2569,
         "capacity_mw": 478.491495,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 담양군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 남구",
+        "generator_records": 110,
+        "capacity_mw": 15.56408,
+        "source_region_conflict": false
+      },
+      {
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 담양군",
         "generator_records": 861,
         "capacity_mw": 104.111185,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 목포시",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 동구",
+        "generator_records": 41,
+        "capacity_mw": 7.624855,
+        "source_region_conflict": false
+      },
+      {
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 목포시",
         "generator_records": 434,
         "capacity_mw": 69.698075,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 무안군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 무안군",
         "generator_records": 1283,
         "capacity_mw": 342.070595,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 보성군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 보성군",
         "generator_records": 911,
         "capacity_mw": 220.96503,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 순천시",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 북구",
+        "generator_records": 522,
+        "capacity_mw": 63.63361,
+        "source_region_conflict": false
+      },
+      {
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 서구",
+        "generator_records": 220,
+        "capacity_mw": 22.49138,
+        "source_region_conflict": false
+      },
+      {
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 순천시",
         "generator_records": 1612,
         "capacity_mw": 309.15776,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 신안군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 신안군",
         "generator_records": 576,
         "capacity_mw": 1056.32513,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 여수시",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 여수시",
         "generator_records": 710,
         "capacity_mw": 122.682675,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 영광군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 영광군",
         "generator_records": 948,
         "capacity_mw": 602.382825,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 영암군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 영암군",
         "generator_records": 2339,
         "capacity_mw": 581.09601,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 완도군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 완도군",
         "generator_records": 689,
         "capacity_mw": 90.796,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 장성군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 장성군",
         "generator_records": 947,
         "capacity_mw": 160.4156,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 장흥군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 장흥군",
         "generator_records": 950,
         "capacity_mw": 161.564385,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 전남광주통합특별시 고흥군",
-        "generator_records": 1,
-        "capacity_mw": 0.315615,
-        "source_region_conflict": false
-      },
-      {
-        "region": "전라남도",
-        "subregion": "전라남도 진도군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 진도군",
         "generator_records": 644,
         "capacity_mw": 127.735855,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 함평군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 함평군",
         "generator_records": 847,
         "capacity_mw": 149.072735,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 해남군",
-        "generator_records": 2027,
-        "capacity_mw": 665.938885,
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 해남군",
+        "generator_records": 2028,
+        "capacity_mw": 666.638405,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
-        "subregion": "전라남도 화순군",
+        "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 화순군",
         "generator_records": 1319,
         "capacity_mw": 210.88912,
         "source_region_conflict": false
       },
       {
-        "region": "전라남도",
+        "region": "전남광주통합특별시",
         "subregion": "전북특별자치도 군산시",
         "generator_records": 1,
         "capacity_mw": 1.41076,
         "source_region_conflict": true
       },
       {
-        "region": "전라남도",
+        "region": "전남광주통합특별시",
         "subregion": "충청남도 금산군",
         "generator_records": 1,
         "capacity_mw": 1.2,
@@ -1708,7 +1688,7 @@
       },
       {
         "region": "전북특별자치도",
-        "subregion": "전라남도 순천시",
+        "subregion": "전남광주통합특별시 순천시",
         "generator_records": 7,
         "capacity_mw": 6.98064,
         "source_region_conflict": true

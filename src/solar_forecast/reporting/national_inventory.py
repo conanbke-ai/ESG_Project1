@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import csv
@@ -42,7 +43,6 @@ CANONICAL_REGIONS: tuple[str, ...] = (
     "부산광역시",
     "대구광역시",
     "인천광역시",
-    "광주광역시",
     "대전광역시",
     "울산광역시",
     "세종특별자치시",
@@ -51,7 +51,7 @@ CANONICAL_REGIONS: tuple[str, ...] = (
     "충청북도",
     "충청남도",
     "전북특별자치도",
-    "전라남도",
+    "전남광주통합특별시",
     "경상북도",
     "경상남도",
     "제주특별자치도",
@@ -70,9 +70,9 @@ REGION_ALIASES: dict[str, str] = {
     "인천": "인천광역시",
     "인천시": "인천광역시",
     "인천광역시": "인천광역시",
-    "광주": "광주광역시",
-    "광주시": "광주광역시",
-    "광주광역시": "광주광역시",
+    "광주": "전남광주통합특별시",
+    "광주시": "전남광주통합특별시",
+    "광주광역시": "전남광주통합특별시",
     "대전": "대전광역시",
     "대전시": "대전광역시",
     "대전광역시": "대전광역시",
@@ -94,8 +94,11 @@ REGION_ALIASES: dict[str, str] = {
     "전북": "전북특별자치도",
     "전라북도": "전북특별자치도",
     "전북특별자치도": "전북특별자치도",
-    "전남": "전라남도",
-    "전라남도": "전라남도",
+    "전남": "전남광주통합특별시",
+    "전라남도": "전남광주통합특별시",
+    "전남광주": "전남광주통합특별시",
+    "광주전남": "전남광주통합특별시",
+    "전남광주통합특별시": "전남광주통합특별시",
     "경북": "경상북도",
     "경상북도": "경상북도",
     "경남": "경상남도",
@@ -112,7 +115,6 @@ PROVINCE_CENTROIDS: dict[str, tuple[float, float]] = {
     "부산광역시": (35.1796, 129.0756),
     "대구광역시": (35.8714, 128.6014),
     "인천광역시": (37.4563, 126.7052),
-    "광주광역시": (35.1595, 126.8526),
     "대전광역시": (36.3504, 127.3845),
     "울산광역시": (35.5384, 129.3114),
     "세종특별자치시": (36.4800, 127.2890),
@@ -121,7 +123,7 @@ PROVINCE_CENTROIDS: dict[str, tuple[float, float]] = {
     "충청북도": (36.6357, 127.4917),
     "충청남도": (36.6588, 126.6728),
     "전북특별자치도": (35.8203, 127.1088),
-    "전라남도": (34.8161, 126.4629),
+    "전남광주통합특별시": (35.1595, 126.8526),
     "경상북도": (36.4919, 128.8889),
     "경상남도": (35.4606, 128.2132),
     "제주특별자치도": (33.4996, 126.5312),
@@ -147,6 +149,83 @@ class InventoryContentError(ValueError):
 
 
 @dataclass(frozen=True)
+class AdministrativeRegionReference:
+    """Effective-dated administrative names used independently of EPSIS facts."""
+
+    canonical_regions: tuple[str, ...]
+    aliases: Mapping[str, str]
+    province_centroids: Mapping[str, tuple[float, float]]
+    provider: str = "행정안전부 행정표준코드관리시스템"
+    source_url: str = "https://www.code.go.kr/stdcode/regCodeL.do"
+    effective_date: str = "2026-07-01"
+
+    @classmethod
+    def default(cls) -> "AdministrativeRegionReference":
+        return cls(
+            canonical_regions=CANONICAL_REGIONS,
+            aliases=dict(REGION_ALIASES),
+            province_centroids=dict(PROVINCE_CENTROIDS),
+        )
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "AdministrativeRegionReference":
+        reference_path = Path(path)
+        if not reference_path.is_file():
+            raise InventoryConfigurationError(
+                f"Administrative region reference is missing: {reference_path}"
+            )
+        payload = json.loads(reference_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise InventoryConfigurationError(
+                "administrative region reference must be a JSON object"
+            )
+        canonical = tuple(
+            str(item).strip() for item in payload.get("canonical_regions", [])
+        )
+        aliases_value = payload.get("aliases", {})
+        centroids_value = payload.get("province_centroids", {})
+        if not canonical or len(set(canonical)) != len(canonical):
+            raise InventoryConfigurationError(
+                "canonical_regions must be a non-empty unique list"
+            )
+        if not isinstance(aliases_value, dict):
+            raise InventoryConfigurationError("administrative aliases must be an object")
+        aliases = {
+            str(alias).strip(): str(target).strip()
+            for alias, target in aliases_value.items()
+            if str(alias).strip()
+        }
+        for region in canonical:
+            aliases.setdefault(region, region)
+        invalid_targets = sorted(set(aliases.values()) - set(canonical))
+        if invalid_targets:
+            raise InventoryConfigurationError(
+                "administrative aliases target unknown regions: "
+                + ", ".join(invalid_targets)
+            )
+        if not isinstance(centroids_value, dict):
+            raise InventoryConfigurationError(
+                "province_centroids must be an object"
+            )
+        centroids: dict[str, tuple[float, float]] = {}
+        for region, value in centroids_value.items():
+            coordinates = _coordinates(value)
+            if coordinates is None or region not in canonical:
+                raise InventoryConfigurationError(
+                    f"invalid administrative centroid: {region}"
+                )
+            centroids[str(region)] = coordinates
+        return cls(
+            canonical_regions=canonical,
+            aliases=aliases,
+            province_centroids=centroids,
+            provider=str(payload.get("provider", cls.provider)),
+            source_url=str(payload.get("source_url", cls.source_url)),
+            effective_date=str(payload.get("effective_date", cls.effective_date)),
+        )
+
+
+@dataclass(frozen=True)
 class NationalInventoryConfig:
     """Resolved source metadata used by the repository and output lineage."""
 
@@ -154,6 +233,8 @@ class NationalInventoryConfig:
     local_path: Path
     local_path_label: str
     coordinate_cache_path: Path
+    region_reference_path: Path | None
+    region_reference_path_label: str | None
     boundary_path: Path
     boundary_path_label: str
     expected_sha256: str
@@ -204,6 +285,17 @@ class NationalInventoryConfig:
         coordinate_path = Path(coordinate_label)
         if not coordinate_path.is_absolute():
             coordinate_path = root / coordinate_path
+        region_reference_label_value = values.get("region_reference_path")
+        region_reference_label = (
+            str(region_reference_label_value)
+            if region_reference_label_value
+            else None
+        )
+        region_reference_path = (
+            Path(region_reference_label) if region_reference_label else None
+        )
+        if region_reference_path is not None and not region_reference_path.is_absolute():
+            region_reference_path = root / region_reference_path
         boundary_label = str(values.get("boundary_path", "map/json/geoJson.json"))
         boundary_path = Path(boundary_label)
         if not boundary_path.is_absolute():
@@ -225,6 +317,16 @@ class NationalInventoryConfig:
             local_path=local_path.resolve(),
             local_path_label=local_label.replace("\\", "/"),
             coordinate_cache_path=coordinate_path.resolve(),
+            region_reference_path=(
+                region_reference_path.resolve()
+                if region_reference_path is not None
+                else None
+            ),
+            region_reference_path_label=(
+                region_reference_label.replace("\\", "/")
+                if region_reference_label
+                else None
+            ),
             boundary_path=boundary_path.resolve(),
             boundary_path_label=boundary_label.replace("\\", "/"),
             expected_sha256=expected_digest,
@@ -377,11 +479,31 @@ class NationalInventoryService:
         repository: KpxEpsisSolarInventoryRepository,
         *,
         coordinate_cache: Mapping[str, Sequence[float]] | None = None,
+        region_reference: AdministrativeRegionReference | None = None,
     ):
         self.repository = repository
         self._coordinate_cache = (
             dict(coordinate_cache) if coordinate_cache is not None else None
         )
+        reference_path = repository.config.region_reference_path
+        self.region_reference = region_reference or (
+            AdministrativeRegionReference.from_json(reference_path)
+            if reference_path is not None
+            else AdministrativeRegionReference.default()
+        )
+        try:
+            inventory_date = date.fromisoformat(repository.config.reference_date)
+            administrative_date = date.fromisoformat(
+                self.region_reference.effective_date
+            )
+        except ValueError as error:
+            raise InventoryConfigurationError(
+                "reference_date and administrative effective_date must use YYYY-MM-DD"
+            ) from error
+        if administrative_date > inventory_date:
+            raise InventoryConfigurationError(
+                "administrative region reference cannot be newer than the inventory"
+            )
 
     @classmethod
     def from_config(
@@ -390,6 +512,7 @@ class NationalInventoryService:
         *,
         project_root: str | Path = ".",
         coordinate_cache: Mapping[str, Sequence[float]] | None = None,
+        region_reference: AdministrativeRegionReference | None = None,
     ) -> "NationalInventoryService":
         if isinstance(config, Mapping):
             resolved = NationalInventoryConfig.from_mapping(
@@ -402,11 +525,15 @@ class NationalInventoryService:
         return cls(
             KpxEpsisSolarInventoryRepository(resolved),
             coordinate_cache=coordinate_cache,
+            region_reference=region_reference,
         )
 
     def build(self) -> dict[str, Any]:
         digest = self.repository.verify_sha256()
-        region_totals = {region: _Aggregate() for region in CANONICAL_REGIONS}
+        region_totals = {
+            region: _Aggregate()
+            for region in self.region_reference.canonical_regions
+        }
         location_totals: dict[tuple[str, str], _LocationAggregate] = {}
         missing_cells: Counter[str] = Counter()
         coordinate_cache = self._load_coordinate_cache()
@@ -475,7 +602,9 @@ class NationalInventoryService:
                     garbled_records += metrics["garbled_records"]
                     unknown_region_records += metrics["unknown_region_records"]
 
-        regions = self._region_records(region_totals)
+        regions = self._region_records(
+            region_totals, self.region_reference.canonical_regions
+        )
         locations, coordinate_counts, invalid_cache_coordinates = self._location_records(
             location_totals, coordinate_cache
         )
@@ -497,6 +626,12 @@ class NationalInventoryService:
                 "scope": config.scope,
                 "limitations": list(config.limitations),
                 "boundary_path": config.boundary_path_label,
+                "administrative_reference": {
+                    "provider": self.region_reference.provider,
+                    "source_url": self.region_reference.source_url,
+                    "effective_date": self.region_reference.effective_date,
+                    "local_path": config.region_reference_path_label,
+                },
                 "sha256": digest,
                 "expected_sha256": config.expected_sha256,
                 "sha256_verified": True,
@@ -505,7 +640,7 @@ class NationalInventoryService:
             "summary": {
                 "generator_records": total.records,
                 "total_capacity_mw": _number(total.capacity_mw),
-                "canonical_regions": len(CANONICAL_REGIONS),
+                "canonical_regions": len(self.region_reference.canonical_regions),
                 "regions_with_records": sum(
                     aggregate.records > 0 for aggregate in region_totals.values()
                 ),
@@ -568,12 +703,17 @@ class NationalInventoryService:
         capacity = _decimal(values.get("설비용량", ""))
         duplicate = duplicates.is_duplicate(record.raw_values)
         region_raw = _clean(values.get("광역지역", ""))
-        region = canonical_region(region_raw)
-        unknown_region = region not in CANONICAL_REGIONS
+        region = canonical_region(region_raw, aliases=self.region_reference.aliases)
+        unknown_region = region not in self.region_reference.canonical_regions
         if unknown_region and region not in region_totals:
             region_totals[region] = _Aggregate()
         source_subregion = _clean(values.get("세부지역", ""))
-        subregion = canonical_location(source_subregion, region)
+        subregion = canonical_location(
+            source_subregion,
+            region,
+            aliases=self.region_reference.aliases,
+            canonical_regions=self.region_reference.canonical_regions,
+        )
         if not subregion:
             subregion = region
 
@@ -587,7 +727,11 @@ class NationalInventoryService:
             location.source_locations.add(source_subregion)
             location.source_region_conflict = (
                 location.source_region_conflict
-                or source_region_conflict(source_subregion, region)
+                or source_region_conflict(
+                    source_subregion,
+                    region,
+                    aliases=self.region_reference.aliases,
+                )
             )
 
         for column in REQUIRED_COLUMNS:
@@ -665,9 +809,10 @@ class NationalInventoryService:
     @staticmethod
     def _region_records(
         totals: Mapping[str, _Aggregate],
+        canonical_regions: Sequence[str],
     ) -> list[dict[str, Any]]:
-        ordered = list(CANONICAL_REGIONS) + sorted(
-            region for region in totals if region not in CANONICAL_REGIONS
+        ordered = list(canonical_regions) + sorted(
+            region for region in totals if region not in canonical_regions
         )
         return [
             {
@@ -678,8 +823,8 @@ class NationalInventoryService:
             for region in ordered
         ]
 
-    @staticmethod
     def _location_records(
+        self,
         totals: Mapping[tuple[str, str], _LocationAggregate],
         cache: Mapping[str, Sequence[float]],
     ) -> tuple[list[dict[str, Any]], Counter[str], int]:
@@ -694,7 +839,12 @@ class NationalInventoryService:
             clean_key = _clean(key)
             exact[clean_key] = coordinates
             normalized.setdefault(
-                normalize_location_key(clean_key), (clean_key, coordinates)
+                normalize_location_key(
+                    clean_key,
+                    aliases=self.region_reference.aliases,
+                    canonical_regions=self.region_reference.canonical_regions,
+                ),
+                (clean_key, coordinates),
             )
 
         records: list[dict[str, Any]] = []
@@ -711,17 +861,32 @@ class NationalInventoryService:
             else:
                 match = next(
                     (
-                        normalized[normalize_location_key(key, region)]
+                        normalized[
+                            normalize_location_key(
+                                key,
+                                region,
+                                aliases=self.region_reference.aliases,
+                                canonical_regions=self.region_reference.canonical_regions,
+                            )
+                        ]
                         for key in sorted(aggregate.source_locations)
-                        if normalize_location_key(key, region) in normalized
+                        if normalize_location_key(
+                            key,
+                            region,
+                            aliases=self.region_reference.aliases,
+                            canonical_regions=self.region_reference.canonical_regions,
+                        )
+                        in normalized
                     ),
                     None,
                 )
                 if match is not None:
                     coordinate_key, (latitude, longitude) = match
                     basis = "normalized"
-                elif region in PROVINCE_CENTROIDS:
-                    latitude, longitude = PROVINCE_CENTROIDS[region]
+                elif region in self.region_reference.province_centroids:
+                    latitude, longitude = self.region_reference.province_centroids[
+                        region
+                    ]
                     basis = "province_centroid"
                     coordinate_key = region
                 else:
@@ -760,37 +925,69 @@ def build_national_inventory(
     return service.build()
 
 
-def canonical_region(value: object) -> str:
+def canonical_region(
+    value: object,
+    *,
+    aliases: Mapping[str, str] = REGION_ALIASES,
+) -> str:
     cleaned = _clean(value)
-    return REGION_ALIASES.get(cleaned, cleaned or "미분류")
+    return aliases.get(cleaned, cleaned or "미분류")
 
 
-def canonical_location(value: object, region: str) -> str:
+def canonical_location(
+    value: object,
+    region: str,
+    *,
+    aliases: Mapping[str, str] = REGION_ALIASES,
+    canonical_regions: Sequence[str] = CANONICAL_REGIONS,
+) -> str:
     text = _clean(value)
     if not text:
         return ""
-    for alias in sorted(REGION_ALIASES, key=len, reverse=True):
+    for alias in sorted(aliases, key=len, reverse=True):
         if text == alias or text.startswith(alias + " "):
             suffix = text[len(alias) :].strip()
-            canonical = REGION_ALIASES[alias]
+            canonical = aliases[alias]
             return f"{canonical} {suffix}".strip()
-    if region in CANONICAL_REGIONS:
+    if region in canonical_regions:
         return f"{region} {text}"
     return text
 
 
-def normalize_location_key(value: object, region: str | None = None) -> str:
+def normalize_location_key(
+    value: object,
+    region: str | None = None,
+    *,
+    aliases: Mapping[str, str] = REGION_ALIASES,
+    canonical_regions: Sequence[str] = CANONICAL_REGIONS,
+) -> str:
     text = canonical_location(
-        value, region if region is not None else canonical_region(_first_token(value))
+        value,
+        (
+            region
+            if region is not None
+            else canonical_region(_first_token(value), aliases=aliases)
+        ),
+        aliases=aliases,
+        canonical_regions=canonical_regions,
     )
     return re.sub(r"\s+", "", text)
 
 
-def source_region_conflict(value: object, region: str) -> bool:
+def source_region_conflict(
+    value: object,
+    region: str,
+    *,
+    aliases: Mapping[str, str] = REGION_ALIASES,
+) -> bool:
     """Return true only when both source fields name different provinces."""
 
     first = _first_token(value)
-    return first in REGION_ALIASES and canonical_region(first) != region
+    return (
+        first in aliases
+        and canonical_region(first, aliases=aliases)
+        != canonical_region(region, aliases=aliases)
+    )
 
 
 def _first_token(value: object) -> str:
@@ -841,6 +1038,7 @@ def _coordinates(value: Sequence[float] | object) -> tuple[float, float] | None:
 
 
 __all__ = [
+    "AdministrativeRegionReference",
     "CANONICAL_REGIONS",
     "KpxEpsisSolarInventoryRepository",
     "NationalInventoryConfig",
