@@ -713,9 +713,21 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert 'state.detailSortKey === "name" ? "asc" : "desc"' in script
     assert 'directionSelect.addEventListener("change"' in script
     assert 'aria-sort="${state.detailSortDirection' in script
+    assert 'const rankLabel = state.detailSortKey' not in script
+    assert '<thead><tr><th>순위</th>' in script
+    assert "<th>순서</th>" not in script
     assert ".detail-controls" in styles
     assert "@media (max-width: 660px)" in styles
-    assert "전남·광주는 2026년 7월 1일 통합 행정구역 기준" in script
+    assert 'return region === "전남광주통합특별시" ? "전남·광주" : region' in script
+    assert '["설비용량 1위", leader ? displayRegion(leader.region) : "-"' in script
+    assert "displayRegion(a.region).localeCompare(displayRegion(b.region), \"ko\")" in script
+    assert '<option value="${esc(row.region)}"${row.region === state.selectedRegion ? " selected" : ""}>${esc(displayRegion(row.region))}</option>' in script
+    assert 'data-detail-region="${esc(row.region)}"' in script
+    assert 'aria-label="${esc(displayRegion(row.region))} 상세 보기"' in script
+    assert 'const selectedRegionLabel = state.selectedRegion ? displayRegion(state.selectedRegion) : "선택 지역"' in script
+    assert "`${selectedRegionLabel} 세부지역`" in script
+    assert "<strong>${esc(displayRegion(name))}</strong>" in script
+    assert "전남·광주는 2026년 7월 1일 통합 행정구역을 기준으로 함께 집계합니다." in script
     assert "shortRegion(row.region)" in script
     assert "regionSearchTerms" in script
     assert "전라북도" in script

@@ -18,5 +18,6 @@
   ],
   "coordinate_cache_path": "map/json/coord_cache.json",
   "region_reference_path": "config/administrative_regions_20260701.json",
+  "location_override_path": "config/national_solar_location_overrides_20260828.json",
   "boundary_path": "map/json/geoJson.json"
 }

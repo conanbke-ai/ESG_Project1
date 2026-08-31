@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-31T13:41:22+09:00",
+    "generated_at": "2026-08-31T15:26:11+09:00",
     "scope": "전국 태양광 설비 현황과 정식 모델 평가 결과"
   },
   "national_inventory": {
@@ -16,8 +16,8 @@
       "total_capacity_mw": 33059.51618,
       "canonical_regions": 16,
       "regions_with_records": 16,
-      "subregions": 270,
-      "source_region_conflicts": 16
+      "subregions": 258,
+      "source_region_conflicts": 4
     },
     "regions": [
       {
@@ -34,9 +34,9 @@
       },
       {
         "region": "대구광역시",
-        "generator_records": 4093,
-        "capacity_mw": 546.663306,
-        "local_area_count": 10
+        "generator_records": 4121,
+        "capacity_mw": 577.709856,
+        "local_area_count": 9
       },
       {
         "region": "인천광역시",
@@ -52,8 +52,8 @@
       },
       {
         "region": "울산광역시",
-        "generator_records": 1155,
-        "capacity_mw": 232.899915,
+        "generator_records": 1156,
+        "capacity_mw": 235.893675,
         "local_area_count": 5
       },
       {
@@ -64,45 +64,45 @@
       },
       {
         "region": "경기도",
-        "generator_records": 21784,
-        "capacity_mw": 2746.906556,
-        "local_area_count": 35
+        "generator_records": 21780,
+        "capacity_mw": 2741.015036,
+        "local_area_count": 31
       },
       {
         "region": "강원특별자치도",
-        "generator_records": 10551,
-        "capacity_mw": 2151.91951,
+        "generator_records": 10553,
+        "capacity_mw": 2153.81827,
         "local_area_count": 19
       },
       {
         "region": "충청북도",
-        "generator_records": 13779,
-        "capacity_mw": 1942.260034,
-        "local_area_count": 13
+        "generator_records": 13777,
+        "capacity_mw": 1941.460034,
+        "local_area_count": 11
       },
       {
         "region": "충청남도",
-        "generator_records": 22683,
-        "capacity_mw": 4618.17599,
+        "generator_records": 22684,
+        "capacity_mw": 4619.17499,
         "local_area_count": 15
       },
       {
         "region": "전북특별자치도",
-        "generator_records": 35050,
-        "capacity_mw": 4916.994515,
-        "local_area_count": 15
+        "generator_records": 35046,
+        "capacity_mw": 4912.024535,
+        "local_area_count": 14
       },
       {
         "region": "전남광주통합특별시",
-        "generator_records": 26470,
-        "capacity_mw": 6985.407366,
-        "local_area_count": 30
+        "generator_records": 26476,
+        "capacity_mw": 6990.977246,
+        "local_area_count": 28
       },
       {
         "region": "경상북도",
-        "generator_records": 30305,
-        "capacity_mw": 4740.361053,
-        "local_area_count": 25
+        "generator_records": 30277,
+        "capacity_mw": 4709.514603,
+        "local_area_count": 23
       },
       {
         "region": "경상남도",
@@ -121,8 +121,8 @@
       {
         "region": "강원특별자치도",
         "subregion": "강원특별자치도 강릉시",
-        "generator_records": 607,
-        "capacity_mw": 114.205285,
+        "generator_records": 608,
+        "capacity_mw": 115.204285,
         "source_region_conflict": false
       },
       {
@@ -198,8 +198,8 @@
       {
         "region": "강원특별자치도",
         "subregion": "강원특별자치도 철원군",
-        "generator_records": 845,
-        "capacity_mw": 217.19009,
+        "generator_records": 846,
+        "capacity_mw": 218.08985,
         "source_region_conflict": false
       },
       {
@@ -250,20 +250,6 @@
         "generator_records": 792,
         "capacity_mw": 132.568625,
         "source_region_conflict": false
-      },
-      {
-        "region": "경기도",
-        "subregion": "강원특별자치도 강릉시",
-        "generator_records": 1,
-        "capacity_mw": 0.999,
-        "source_region_conflict": true
-      },
-      {
-        "region": "경기도",
-        "subregion": "강원특별자치도 철원군",
-        "generator_records": 1,
-        "capacity_mw": 0.89976,
-        "source_region_conflict": true
       },
       {
         "region": "경기도",
@@ -483,20 +469,6 @@
         "source_region_conflict": false
       },
       {
-        "region": "경기도",
-        "subregion": "울산광역시 북구",
-        "generator_records": 1,
-        "capacity_mw": 2.99376,
-        "source_region_conflict": true
-      },
-      {
-        "region": "경기도",
-        "subregion": "충청남도 태안군",
-        "generator_records": 1,
-        "capacity_mw": 0.999,
-        "source_region_conflict": true
-      },
-      {
         "region": "경상남도",
         "subregion": "경상남도 거제시",
         "generator_records": 137,
@@ -530,6 +502,13 @@
         "generator_records": 877,
         "capacity_mw": 94.573665,
         "source_region_conflict": false
+      },
+      {
+        "region": "경상남도",
+        "subregion": "경상남도 미확정 지역",
+        "generator_records": 1,
+        "capacity_mw": 1.87488,
+        "source_region_conflict": true
       },
       {
         "region": "경상남도",
@@ -623,13 +602,6 @@
         "source_region_conflict": false
       },
       {
-        "region": "경상남도",
-        "subregion": "전북특별자치도 익산시",
-        "generator_records": 1,
-        "capacity_mw": 1.87488,
-        "source_region_conflict": true
-      },
-      {
         "region": "경상북도",
         "subregion": "경상북도 경산시",
         "generator_records": 2091,
@@ -670,6 +642,13 @@
         "generator_records": 1043,
         "capacity_mw": 172.869025,
         "source_region_conflict": false
+      },
+      {
+        "region": "경상북도",
+        "subregion": "경상북도 미확정 지역",
+        "generator_records": 1,
+        "capacity_mw": 0.099375,
+        "source_region_conflict": true
       },
       {
         "region": "경상북도",
@@ -716,8 +695,8 @@
       {
         "region": "경상북도",
         "subregion": "경상북도 영주시",
-        "generator_records": 1508,
-        "capacity_mw": 240.296482,
+        "generator_records": 1510,
+        "capacity_mw": 241.082032,
         "source_region_conflict": false
       },
       {
@@ -784,38 +763,10 @@
         "source_region_conflict": false
       },
       {
-        "region": "경상북도",
-        "subregion": "대구광역시 군위군",
-        "generator_records": 29,
-        "capacity_mw": 31.5321,
-        "source_region_conflict": true
-      },
-      {
-        "region": "경상북도",
-        "subregion": "전북특별자치도 익산시",
-        "generator_records": 1,
-        "capacity_mw": 0.0999,
-        "source_region_conflict": true
-      },
-      {
-        "region": "경상북도",
-        "subregion": "전북특별자치도 정읍시",
-        "generator_records": 1,
-        "capacity_mw": 0.099375,
-        "source_region_conflict": true
-      },
-      {
-        "region": "대구광역시",
-        "subregion": "경상북도 영주시",
-        "generator_records": 1,
-        "capacity_mw": 0.48555,
-        "source_region_conflict": true
-      },
-      {
         "region": "대구광역시",
         "subregion": "대구광역시 군위군",
-        "generator_records": 679,
-        "capacity_mw": 120.856625,
+        "generator_records": 708,
+        "capacity_mw": 152.388725,
         "source_region_conflict": false
       },
       {
@@ -1114,6 +1065,13 @@
       },
       {
         "region": "서울특별시",
+        "subregion": "서울특별시 미확정 지역",
+        "generator_records": 1,
+        "capacity_mw": 1.22,
+        "source_region_conflict": true
+      },
+      {
+        "region": "서울특별시",
         "subregion": "서울특별시 서대문구",
         "generator_records": 23,
         "capacity_mw": 1.10858,
@@ -1129,8 +1087,8 @@
       {
         "region": "서울특별시",
         "subregion": "서울특별시 성동구",
-        "generator_records": 11,
-        "capacity_mw": 2.433255,
+        "generator_records": 12,
+        "capacity_mw": 3.133255,
         "source_region_conflict": false
       },
       {
@@ -1195,13 +1153,6 @@
         "generator_records": 29,
         "capacity_mw": 2.95163,
         "source_region_conflict": false
-      },
-      {
-        "region": "서울특별시",
-        "subregion": "전남광주통합특별시 북구",
-        "generator_records": 2,
-        "capacity_mw": 1.92,
-        "source_region_conflict": true
       },
       {
         "region": "세종특별자치시",
@@ -1360,8 +1311,8 @@
       {
         "region": "울산광역시",
         "subregion": "울산광역시 북구",
-        "generator_records": 257,
-        "capacity_mw": 56.014795,
+        "generator_records": 258,
+        "capacity_mw": 59.008555,
         "source_region_conflict": false
       },
       {
@@ -1478,13 +1429,6 @@
       },
       {
         "region": "전남광주통합특별시",
-        "subregion": "경상북도 의성군",
-        "generator_records": 1,
-        "capacity_mw": 0.995,
-        "source_region_conflict": true
-      },
-      {
-        "region": "전남광주통합특별시",
         "subregion": "전남광주통합특별시 강진군",
         "generator_records": 1104,
         "capacity_mw": 231.31726,
@@ -1493,8 +1437,8 @@
       {
         "region": "전남광주통합특별시",
         "subregion": "전남광주통합특별시 고흥군",
-        "generator_records": 1820,
-        "capacity_mw": 571.377825,
+        "generator_records": 1821,
+        "capacity_mw": 572.372825,
         "source_region_conflict": false
       },
       {
@@ -1569,6 +1513,13 @@
       },
       {
         "region": "전남광주통합특별시",
+        "subregion": "전남광주통합특별시 미확정 지역",
+        "generator_records": 1,
+        "capacity_mw": 1.2,
+        "source_region_conflict": true
+      },
+      {
+        "region": "전남광주통합특별시",
         "subregion": "전남광주통합특별시 보성군",
         "generator_records": 911,
         "capacity_mw": 220.96503,
@@ -1591,8 +1542,8 @@
       {
         "region": "전남광주통합특별시",
         "subregion": "전남광주통합특별시 순천시",
-        "generator_records": 1612,
-        "capacity_mw": 309.15776,
+        "generator_records": 1619,
+        "capacity_mw": 316.1384,
         "source_region_conflict": false
       },
       {
@@ -1673,38 +1624,17 @@
         "source_region_conflict": false
       },
       {
-        "region": "전남광주통합특별시",
-        "subregion": "전북특별자치도 군산시",
-        "generator_records": 1,
-        "capacity_mw": 1.41076,
-        "source_region_conflict": true
-      },
-      {
-        "region": "전남광주통합특별시",
-        "subregion": "충청남도 금산군",
-        "generator_records": 1,
-        "capacity_mw": 1.2,
-        "source_region_conflict": true
-      },
-      {
-        "region": "전북특별자치도",
-        "subregion": "전남광주통합특별시 순천시",
-        "generator_records": 7,
-        "capacity_mw": 6.98064,
-        "source_region_conflict": true
-      },
-      {
         "region": "전북특별자치도",
         "subregion": "전북특별자치도 고창군",
-        "generator_records": 1731,
-        "capacity_mw": 281.137615,
+        "generator_records": 1732,
+        "capacity_mw": 281.637615,
         "source_region_conflict": false
       },
       {
         "region": "전북특별자치도",
         "subregion": "전북특별자치도 군산시",
-        "generator_records": 2203,
-        "capacity_mw": 685.715865,
+        "generator_records": 2204,
+        "capacity_mw": 687.126625,
         "source_region_conflict": false
       },
       {
@@ -1752,8 +1682,8 @@
       {
         "region": "전북특별자치도",
         "subregion": "전북특별자치도 익산시",
-        "generator_records": 5822,
-        "capacity_mw": 694.02707,
+        "generator_records": 5823,
+        "capacity_mw": 694.12697,
         "source_region_conflict": false
       },
       {
@@ -1906,8 +1836,8 @@
       {
         "region": "충청남도",
         "subregion": "충청남도 태안군",
-        "generator_records": 622,
-        "capacity_mw": 752.33599,
+        "generator_records": 623,
+        "capacity_mw": 753.33499,
         "source_region_conflict": false
       },
       {
@@ -1916,20 +1846,6 @@
         "generator_records": 1170,
         "capacity_mw": 195.168245,
         "source_region_conflict": false
-      },
-      {
-        "region": "충청북도",
-        "subregion": "경상북도 영주시",
-        "generator_records": 1,
-        "capacity_mw": 0.3,
-        "source_region_conflict": true
-      },
-      {
-        "region": "충청북도",
-        "subregion": "전북특별자치도 고창군",
-        "generator_records": 1,
-        "capacity_mw": 0.5,
-        "source_region_conflict": true
       },
       {
         "region": "충청북도",

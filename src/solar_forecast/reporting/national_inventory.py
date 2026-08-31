@@ -270,6 +270,8 @@ class NationalInventoryConfig:
     coordinate_cache_path: Path
     region_reference_path: Path | None
     region_reference_path_label: str | None
+    location_override_path: Path | None
+    location_override_path_label: str | None
     boundary_path: Path
     boundary_path_label: str
     expected_sha256: str
@@ -331,6 +333,17 @@ class NationalInventoryConfig:
         )
         if region_reference_path is not None and not region_reference_path.is_absolute():
             region_reference_path = root / region_reference_path
+        location_override_label_value = values.get("location_override_path")
+        location_override_label = (
+            str(location_override_label_value)
+            if location_override_label_value
+            else None
+        )
+        location_override_path = (
+            Path(location_override_label) if location_override_label else None
+        )
+        if location_override_path is not None and not location_override_path.is_absolute():
+            location_override_path = root / location_override_path
         boundary_label = str(values.get("boundary_path", "map/json/geoJson.json"))
         boundary_path = Path(boundary_label)
         if not boundary_path.is_absolute():
@@ -360,6 +373,16 @@ class NationalInventoryConfig:
             region_reference_path_label=(
                 region_reference_label.replace("\\", "/")
                 if region_reference_label
+                else None
+            ),
+            location_override_path=(
+                location_override_path.resolve()
+                if location_override_path is not None
+                else None
+            ),
+            location_override_path_label=(
+                location_override_label.replace("\\", "/")
+                if location_override_label
                 else None
             ),
             boundary_path=boundary_path.resolve(),
@@ -400,6 +423,287 @@ class InventoryCsvRecord:
     raw_values: tuple[str, ...]
     malformed: bool
     row_number: int
+
+
+@dataclass(frozen=True)
+class ReviewedLocationOverride:
+    """A source-hash-bound, human-reviewed correction for immutable CSV rows."""
+
+    override_id: str
+    source_row_numbers: tuple[int, ...]
+    old_region: str
+    old_subregion: str
+    new_region: str
+    new_subregion: str
+    expected_records: int
+    expected_capacity_mw: Decimal
+    evidence_provider: str
+    evidence_url: str
+    evidence_reference_date: str
+    match_method: str
+    confidence: str
+    reason: str
+
+
+class ReviewedLocationOverrideSet:
+    """Validate and audit reviewed row corrections before regional aggregation."""
+
+    def __init__(
+        self,
+        *,
+        source_path: Path,
+        source_path_label: str,
+        entries: Sequence[ReviewedLocationOverride],
+    ):
+        self.source_path = source_path
+        self.source_path_label = source_path_label
+        self.entries = tuple(entries)
+        self._by_row: dict[int, ReviewedLocationOverride] = {}
+        for entry in self.entries:
+            for row_number in entry.source_row_numbers:
+                if row_number in self._by_row:
+                    other = self._by_row[row_number]
+                    raise InventoryConfigurationError(
+                        "location override row is assigned more than once: "
+                        f"CSV row {row_number}, {other.override_id}, {entry.override_id}"
+                    )
+                self._by_row[row_number] = entry
+        self._applied_records: Counter[str] = Counter()
+        self._applied_capacity: dict[str, Decimal] = {
+            entry.override_id: Decimal("0") for entry in self.entries
+        }
+
+    @classmethod
+    def from_json(
+        cls,
+        path: str | Path,
+        *,
+        path_label: str,
+        config: NationalInventoryConfig,
+        actual_source_sha256: str,
+        region_reference: AdministrativeRegionReference,
+    ) -> "ReviewedLocationOverrideSet":
+        override_path = Path(path)
+        if not override_path.is_file():
+            raise InventoryConfigurationError(
+                f"Reviewed location override file is missing: {override_path}"
+            )
+        payload = json.loads(override_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise InventoryConfigurationError(
+                "reviewed location override must be a JSON object"
+            )
+        if payload.get("schema_version") != 1:
+            raise InventoryConfigurationError(
+                "reviewed location override schema_version must be 1"
+            )
+        if str(payload.get("dataset_id", "")) != config.dataset_id:
+            raise InventoryConfigurationError(
+                "reviewed location override dataset_id does not match the inventory"
+            )
+        configured_digest = str(payload.get("source_sha256", "")).lower()
+        if configured_digest != config.expected_sha256 or configured_digest != actual_source_sha256:
+            raise InventoryConfigurationError(
+                "reviewed location override source_sha256 does not match the verified inventory"
+            )
+        try:
+            date.fromisoformat(str(payload.get("reviewed_at", "")))
+        except ValueError as error:
+            raise InventoryConfigurationError(
+                "reviewed location override reviewed_at must use YYYY-MM-DD"
+            ) from error
+        if payload.get("unresolved_policy") != (
+            "keep_source_region_and_quarantine_subregion"
+        ):
+            raise InventoryConfigurationError(
+                "reviewed location override unresolved_policy is unsupported"
+            )
+        raw_entries = payload.get("overrides")
+        if not isinstance(raw_entries, list) or not raw_entries:
+            raise InventoryConfigurationError(
+                "reviewed location override overrides must be a non-empty list"
+            )
+
+        entries: list[ReviewedLocationOverride] = []
+        override_ids: set[str] = set()
+        for index, raw in enumerate(raw_entries, start=1):
+            if not isinstance(raw, dict):
+                raise InventoryConfigurationError(
+                    f"reviewed location override entry {index} must be an object"
+                )
+            required_text = (
+                "id",
+                "old_region",
+                "old_subregion",
+                "new_region",
+                "new_subregion",
+                "evidence_provider",
+                "evidence_url",
+                "evidence_reference_date",
+                "match_method",
+                "confidence",
+                "review_status",
+                "reason",
+            )
+            missing_text = [key for key in required_text if not _clean(raw.get(key))]
+            if missing_text:
+                raise InventoryConfigurationError(
+                    f"reviewed location override entry {index} has empty fields: "
+                    + ", ".join(missing_text)
+                )
+            override_id = _clean(raw["id"])
+            if override_id in override_ids:
+                raise InventoryConfigurationError(
+                    f"reviewed location override id is duplicated: {override_id}"
+                )
+            override_ids.add(override_id)
+            if _clean(raw["review_status"]) != "approved":
+                raise InventoryConfigurationError(
+                    f"reviewed location override is not approved: {override_id}"
+                )
+            confidence = _clean(raw["confidence"])
+            if confidence not in {"high", "medium"}:
+                raise InventoryConfigurationError(
+                    f"reviewed location override confidence is invalid: {override_id}"
+                )
+            if not re.match(r"^https://", _clean(raw["evidence_url"])):
+                raise InventoryConfigurationError(
+                    f"reviewed location override evidence_url must use HTTPS: {override_id}"
+                )
+            try:
+                date.fromisoformat(_clean(raw["evidence_reference_date"]))
+            except ValueError as error:
+                raise InventoryConfigurationError(
+                    "reviewed location override evidence_reference_date must use "
+                    f"YYYY-MM-DD: {override_id}"
+                ) from error
+
+            row_values = raw.get("source_row_numbers")
+            if (
+                isinstance(row_values, (str, bytes))
+                or not isinstance(row_values, Sequence)
+                or not row_values
+            ):
+                raise InventoryConfigurationError(
+                    f"reviewed location override source_row_numbers is invalid: {override_id}"
+                )
+            row_numbers: list[int] = []
+            for value in row_values:
+                if isinstance(value, bool):
+                    row_number = -1
+                else:
+                    try:
+                        row_number = int(value)
+                    except (TypeError, ValueError):
+                        row_number = -1
+                if row_number < 2:
+                    raise InventoryConfigurationError(
+                        f"reviewed location override row number is invalid: {override_id}"
+                    )
+                row_numbers.append(row_number)
+            if len(set(row_numbers)) != len(row_numbers):
+                raise InventoryConfigurationError(
+                    f"reviewed location override repeats a row: {override_id}"
+                )
+            expected_records = _integer(raw.get("expected_records"))
+            if expected_records != len(row_numbers):
+                raise InventoryConfigurationError(
+                    "reviewed location override expected_records does not match rows: "
+                    f"{override_id}"
+                )
+            expected_capacity = _decimal(raw.get("expected_capacity_mw"))
+            if expected_capacity is None or expected_capacity < 0:
+                raise InventoryConfigurationError(
+                    f"reviewed location override expected_capacity_mw is invalid: {override_id}"
+                )
+            new_region = _clean(raw["new_region"])
+            if (
+                new_region not in region_reference.canonical_regions
+                or canonical_region(new_region, aliases=region_reference.aliases)
+                != new_region
+            ):
+                raise InventoryConfigurationError(
+                    f"reviewed location override target region is invalid: {override_id}"
+                )
+            new_subregion = _clean(raw["new_subregion"])
+            if new_subregion != new_region and not new_subregion.startswith(
+                new_region + " "
+            ):
+                raise InventoryConfigurationError(
+                    f"reviewed location override target subregion is invalid: {override_id}"
+                )
+            entries.append(
+                ReviewedLocationOverride(
+                    override_id=override_id,
+                    source_row_numbers=tuple(row_numbers),
+                    old_region=_clean(raw["old_region"]),
+                    old_subregion=_clean(raw["old_subregion"]),
+                    new_region=new_region,
+                    new_subregion=new_subregion,
+                    expected_records=expected_records,
+                    expected_capacity_mw=expected_capacity,
+                    evidence_provider=_clean(raw["evidence_provider"]),
+                    evidence_url=_clean(raw["evidence_url"]),
+                    evidence_reference_date=_clean(raw["evidence_reference_date"]),
+                    match_method=_clean(raw["match_method"]),
+                    confidence=confidence,
+                    reason=_clean(raw["reason"]),
+                )
+            )
+        return cls(
+            source_path=override_path.resolve(),
+            source_path_label=path_label,
+            entries=entries,
+        )
+
+    def apply(
+        self,
+        record: InventoryCsvRecord,
+        capacity_mw: Decimal | None,
+    ) -> ReviewedLocationOverride | None:
+        entry = self._by_row.get(record.row_number)
+        if entry is None:
+            return None
+        actual_region = _clean(record.values.get("광역지역", ""))
+        actual_subregion = _clean(record.values.get("세부지역", ""))
+        if actual_region != entry.old_region or actual_subregion != entry.old_subregion:
+            raise InventoryContentError(
+                "reviewed location override source matcher failed: "
+                f"{entry.override_id}, CSV row {record.row_number}, "
+                f"expected=({entry.old_region}, {entry.old_subregion}), "
+                f"actual=({actual_region}, {actual_subregion})"
+            )
+        if capacity_mw is None:
+            raise InventoryContentError(
+                "reviewed location override matched a row without valid capacity: "
+                f"{entry.override_id}, CSV row {record.row_number}"
+            )
+        self._applied_records[entry.override_id] += 1
+        self._applied_capacity[entry.override_id] += capacity_mw
+        return entry
+
+    def validate_complete(self) -> dict[str, Any]:
+        for entry in self.entries:
+            actual_records = self._applied_records[entry.override_id]
+            actual_capacity = self._applied_capacity[entry.override_id]
+            if (
+                actual_records != entry.expected_records
+                or actual_capacity != entry.expected_capacity_mw
+            ):
+                raise InventoryContentError(
+                    "reviewed location override application does not match its contract: "
+                    f"{entry.override_id}, records={actual_records}/"
+                    f"{entry.expected_records}, capacity_mw={actual_capacity}/"
+                    f"{entry.expected_capacity_mw}"
+                )
+        return {
+            "configured": True,
+            "verified": True,
+            "local_path": self.source_path_label,
+            "entries": len(self.entries),
+            "applied_records": sum(self._applied_records.values()),
+            "applied_capacity_mw": _number(sum(self._applied_capacity.values(), Decimal("0"))),
+        }
 
 
 class KpxEpsisSolarInventoryRepository:
@@ -477,6 +781,7 @@ class _Aggregate:
 @dataclass
 class _LocationAggregate(_Aggregate):
     source_locations: set[str] = field(default_factory=set)
+    coordinate_candidates: set[str] = field(default_factory=set)
     source_region_conflict: bool = False
 
 
@@ -572,6 +877,7 @@ class NationalInventoryService:
         location_totals: dict[tuple[str, str], _LocationAggregate] = {}
         missing_cells: Counter[str] = Counter()
         coordinate_cache = self._load_coordinate_cache()
+        location_overrides = self._load_location_overrides(digest)
 
         total = _Aggregate()
         duplicate_records = 0
@@ -584,6 +890,12 @@ class NationalInventoryService:
         fullwidth_question_cells = 0
         garbled_records = 0
         unknown_region_records = 0
+        source_region_conflict_records = 0
+        source_region_conflict_capacity = Decimal("0")
+        reviewed_location_override_records = 0
+        reviewed_location_override_capacity = Decimal("0")
+        unresolved_region_conflict_records = 0
+        unresolved_region_conflict_capacity = Decimal("0")
         footer: InventoryCsvRecord | None = None
 
         with _DiskDuplicateTracker() as duplicates:
@@ -598,6 +910,7 @@ class NationalInventoryService:
                             location_totals=location_totals,
                             missing_cells=missing_cells,
                             duplicates=duplicates,
+                            location_overrides=location_overrides,
                         )
                         duplicate_records += metrics["duplicate_records"]
                         duplicate_capacity += metrics["duplicate_capacity_mw"]
@@ -611,6 +924,24 @@ class NationalInventoryService:
                         ]
                         garbled_records += metrics["garbled_records"]
                         unknown_region_records += metrics["unknown_region_records"]
+                        source_region_conflict_records += metrics[
+                            "source_region_conflict_records"
+                        ]
+                        source_region_conflict_capacity += metrics[
+                            "source_region_conflict_capacity_mw"
+                        ]
+                        reviewed_location_override_records += metrics[
+                            "reviewed_location_override_records"
+                        ]
+                        reviewed_location_override_capacity += metrics[
+                            "reviewed_location_override_capacity_mw"
+                        ]
+                        unresolved_region_conflict_records += metrics[
+                            "unresolved_region_conflict_records"
+                        ]
+                        unresolved_region_conflict_capacity += metrics[
+                            "unresolved_region_conflict_capacity_mw"
+                        ]
                     pending = record
 
                 if pending is not None and self._is_footer(pending):
@@ -623,6 +954,7 @@ class NationalInventoryService:
                         location_totals=location_totals,
                         missing_cells=missing_cells,
                         duplicates=duplicates,
+                        location_overrides=location_overrides,
                     )
                     duplicate_records += metrics["duplicate_records"]
                     duplicate_capacity += metrics["duplicate_capacity_mw"]
@@ -636,6 +968,37 @@ class NationalInventoryService:
                     ]
                     garbled_records += metrics["garbled_records"]
                     unknown_region_records += metrics["unknown_region_records"]
+                    source_region_conflict_records += metrics[
+                        "source_region_conflict_records"
+                    ]
+                    source_region_conflict_capacity += metrics[
+                        "source_region_conflict_capacity_mw"
+                    ]
+                    reviewed_location_override_records += metrics[
+                        "reviewed_location_override_records"
+                    ]
+                    reviewed_location_override_capacity += metrics[
+                        "reviewed_location_override_capacity_mw"
+                    ]
+                    unresolved_region_conflict_records += metrics[
+                        "unresolved_region_conflict_records"
+                    ]
+                    unresolved_region_conflict_capacity += metrics[
+                        "unresolved_region_conflict_capacity_mw"
+                    ]
+
+        override_quality = (
+            location_overrides.validate_complete()
+            if location_overrides is not None
+            else {
+                "configured": False,
+                "verified": True,
+                "local_path": None,
+                "entries": 0,
+                "applied_records": 0,
+                "applied_capacity_mw": 0.0,
+            }
+        )
 
         regions = self._region_records(
             region_totals, self.region_reference.canonical_regions
@@ -712,6 +1075,23 @@ class NationalInventoryService:
                 "fullwidth_question_mark_cells": fullwidth_question_cells,
                 "garbled_records": garbled_records,
                 "unknown_region_records": unknown_region_records,
+                "source_region_conflict_records": source_region_conflict_records,
+                "source_region_conflict_capacity_mw": _number(
+                    source_region_conflict_capacity
+                ),
+                "reviewed_location_override_records": (
+                    reviewed_location_override_records
+                ),
+                "reviewed_location_override_capacity_mw": _number(
+                    reviewed_location_override_capacity
+                ),
+                "unresolved_region_conflict_records": (
+                    unresolved_region_conflict_records
+                ),
+                "unresolved_region_conflict_capacity_mw": _number(
+                    unresolved_region_conflict_capacity
+                ),
+                "location_overrides": override_quality,
                 "missing_cells_by_column": dict(sorted(missing_cells.items())),
                 "coordinate_basis_counts": dict(sorted(coordinate_counts.items())),
                 "invalid_coordinate_cache_entries": invalid_cache_coordinates,
@@ -730,6 +1110,7 @@ class NationalInventoryService:
         location_totals: dict[tuple[str, str], _LocationAggregate],
         missing_cells: Counter[str],
         duplicates: _DiskDuplicateTracker,
+        location_overrides: ReviewedLocationOverrideSet | None,
     ) -> dict[str, Any]:
         values = record.values
         energy_source = _clean(values.get("발전원", ""))
@@ -741,19 +1122,46 @@ class NationalInventoryService:
         capacity = _decimal(values.get("설비용량", ""))
         duplicate = duplicates.is_duplicate(record.raw_values)
         region_raw = _clean(values.get("광역지역", ""))
-        region = canonical_region(region_raw, aliases=self.region_reference.aliases)
+        source_region = canonical_region(
+            region_raw, aliases=self.region_reference.aliases
+        )
+        source_subregion = _clean(values.get("세부지역", ""))
+        raw_conflict = bool(source_subregion) and source_region_conflict(
+            source_subregion,
+            source_region,
+            aliases=self.region_reference.aliases,
+        )
+        reviewed_override = (
+            location_overrides.apply(record, capacity)
+            if location_overrides is not None
+            else None
+        )
+        if reviewed_override is not None:
+            region = reviewed_override.new_region
+            subregion = reviewed_override.new_subregion
+            unresolved_conflict = False
+            coordinate_candidate = subregion
+        elif raw_conflict:
+            region = source_region
+            subregion = f"{region} 미확정 지역"
+            unresolved_conflict = True
+            coordinate_candidate = subregion
+        else:
+            region = source_region
+            subregion = canonical_location(
+                source_subregion,
+                region,
+                aliases=self.region_reference.aliases,
+                canonical_regions=self.region_reference.canonical_regions,
+            )
+            if not subregion:
+                subregion = region
+            unresolved_conflict = False
+            coordinate_candidate = source_subregion or subregion
+
         unknown_region = region not in self.region_reference.canonical_regions
         if unknown_region and region not in region_totals:
             region_totals[region] = _Aggregate()
-        source_subregion = _clean(values.get("세부지역", ""))
-        subregion = canonical_location(
-            source_subregion,
-            region,
-            aliases=self.region_reference.aliases,
-            canonical_regions=self.region_reference.canonical_regions,
-        )
-        if not subregion:
-            subregion = region
 
         total.add(capacity)
         region_totals[region].add(capacity)
@@ -763,14 +1171,11 @@ class NationalInventoryService:
         location.add(capacity)
         if source_subregion:
             location.source_locations.add(source_subregion)
-            location.source_region_conflict = (
-                location.source_region_conflict
-                or source_region_conflict(
-                    source_subregion,
-                    region,
-                    aliases=self.region_reference.aliases,
-                )
-            )
+        if coordinate_candidate:
+            location.coordinate_candidates.add(coordinate_candidate)
+        location.source_region_conflict = (
+            location.source_region_conflict or unresolved_conflict
+        )
 
         for column in REQUIRED_COLUMNS:
             if not _clean(values.get(column, "")):
@@ -789,7 +1194,40 @@ class NationalInventoryService:
             "fullwidth_question_mark_cells": fullwidth_question,
             "garbled_records": int(bool(replacement or fullwidth_question)),
             "unknown_region_records": int(unknown_region),
+            "source_region_conflict_records": int(raw_conflict),
+            "source_region_conflict_capacity_mw": (
+                capacity if raw_conflict and capacity is not None else Decimal("0")
+            ),
+            "reviewed_location_override_records": int(
+                reviewed_override is not None
+            ),
+            "reviewed_location_override_capacity_mw": (
+                capacity
+                if reviewed_override is not None and capacity is not None
+                else Decimal("0")
+            ),
+            "unresolved_region_conflict_records": int(unresolved_conflict),
+            "unresolved_region_conflict_capacity_mw": (
+                capacity
+                if unresolved_conflict and capacity is not None
+                else Decimal("0")
+            ),
         }
+
+    def _load_location_overrides(
+        self, actual_source_sha256: str
+    ) -> ReviewedLocationOverrideSet | None:
+        config = self.repository.config
+        if config.location_override_path is None:
+            return None
+        return ReviewedLocationOverrideSet.from_json(
+            config.location_override_path,
+            path_label=config.location_override_path_label
+            or str(config.location_override_path),
+            config=config,
+            actual_source_sha256=actual_source_sha256,
+            region_reference=self.region_reference,
+        )
 
     def _load_coordinate_cache(self) -> dict[str, Sequence[float]]:
         if self._coordinate_cache is not None:
@@ -889,7 +1327,11 @@ class NationalInventoryService:
         bases: Counter[str] = Counter()
         for (region, subregion), aggregate in sorted(totals.items()):
             exact_key = next(
-                (key for key in sorted(aggregate.source_locations) if key in exact),
+                (
+                    key
+                    for key in sorted(aggregate.coordinate_candidates)
+                    if key in exact
+                ),
                 None,
             )
             if exact_key is not None:
@@ -907,7 +1349,7 @@ class NationalInventoryService:
                                 canonical_regions=self.region_reference.canonical_regions,
                             )
                         ]
-                        for key in sorted(aggregate.source_locations)
+                        for key in sorted(aggregate.coordinate_candidates)
                         if normalize_location_key(
                             key,
                             region,
@@ -1081,6 +1523,8 @@ __all__ = [
     "KpxEpsisSolarInventoryRepository",
     "NationalInventoryConfig",
     "NationalInventoryService",
+    "ReviewedLocationOverride",
+    "ReviewedLocationOverrideSet",
     "REQUIRED_COLUMNS",
     "InventoryConfigurationError",
     "InventoryContentError",

@@ -80,18 +80,19 @@
     return `<div class="empty-state"><h2>${esc(title)}</h2><p>${esc(message)}</p></div>`;
   }
 
+  function displayRegion(region) {
+    if (!region || region === "unknown") return "지역 미확인";
+    return region === "전남광주통합특별시" ? "전남·광주" : region;
+  }
+
   function shortRegion(region) {
     return ({
       서울특별시: "서울", 부산광역시: "부산", 대구광역시: "대구", 인천광역시: "인천",
-      광주광역시: "광주", 전남광주통합특별시: "전남·광주", 대전광역시: "대전", 울산광역시: "울산", 세종특별자치시: "세종",
+      광주광역시: "광주", 대전광역시: "대전", 울산광역시: "울산", 세종특별자치시: "세종",
       경기도: "경기", 강원특별자치도: "강원", 충청북도: "충북", 충청남도: "충남",
       전북특별자치도: "전북", 전라남도: "전남", 경상북도: "경북", 경상남도: "경남",
       제주특별자치도: "제주", unknown: "지역 미확인",
-    })[region] || region;
-  }
-
-  function displayRegion(region) {
-    return !region || region === "unknown" ? "지역 미확인" : region;
+    })[region] || displayRegion(region);
   }
 
   function coveragePage(inventory = {}) {
@@ -103,7 +104,7 @@
       stats([
         ["전국 설비용량", number(summary.total_capacity_mw, 2), "MW"],
         ["설비 등록", int.format(Number(summary.generator_records) || 0), "건"],
-        ["설비용량 1위", leader?.region || "-", leader ? `${number(leader.capacity_mw, 2)} MW` : ""],
+        ["설비용량 1위", leader ? displayRegion(leader.region) : "-", leader ? `${number(leader.capacity_mw, 2)} MW` : ""],
       ]) +
       `<section class="national-layout">
         <article class="surface map-surface">
@@ -121,7 +122,7 @@
           <div class="map-scale" aria-hidden="true"><strong id="map-scale-title">설비용량</strong><span>낮음</span><span class="scale-colors"><i></i><i></i><i></i><i></i><i></i></span><span>높음</span></div>
         </article>
         <article class="surface region-surface">
-          <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>전국 ${int.format(regions.length)}개 시도의 규모와 순위를 비교합니다. 전남·광주는 2026년 7월 1일 통합 행정구역 기준입니다.</p></div></div>
+          <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>전국 ${int.format(regions.length)}개 시도의 규모와 순위를 비교합니다. 전남·광주는 2026년 7월 1일 통합 행정구역을 기준으로 함께 집계합니다.</p></div></div>
           <div id="region-list" class="region-list">${regionList(regions)}</div>
         </article>
       </section>
@@ -144,8 +145,8 @@
   }
 
   function regionOptions(regions) {
-    return [...regions].sort((a, b) => a.region.localeCompare(b.region, "ko"))
-      .map((row) => `<option value="${esc(row.region)}"${row.region === state.selectedRegion ? " selected" : ""}>${esc(row.region)}</option>`).join("");
+    return [...regions].sort((a, b) => displayRegion(a.region).localeCompare(displayRegion(b.region), "ko"))
+      .map((row) => `<option value="${esc(row.region)}"${row.region === state.selectedRegion ? " selected" : ""}>${esc(displayRegion(row.region))}</option>`).join("");
   }
 
   function nationalValue(row, metric = state.nationalMetric) {
@@ -276,13 +277,12 @@
     const maximum = showTrack
       ? Math.max(...rows.map((row) => detailNumericValue(row)), 1)
       : 1;
-    const rankLabel = state.detailSortKey === "name" ? "순서" : "순위";
     return `<div class="table-responsive detail-table-shell"><table class="data-table subregion-table">
-      <thead><tr><th>${rankLabel}</th>${searching ? "<th>시도</th>" : ""}${detailSortHeader("name", "세부지역")}${detailSortHeader("records", "등록건수", true)}${detailSortHeader("capacity", "설비용량(MW)", true)}</tr></thead>
+      <thead><tr><th>순위</th>${searching ? "<th>시도</th>" : ""}${detailSortHeader("name", "세부지역")}${detailSortHeader("records", "등록건수", true)}${detailSortHeader("capacity", "설비용량(MW)", true)}</tr></thead>
       <tbody>${rows.map((row, index) => `<tr>
         <td class="rank-cell">${index + 1}</td>
-        ${searching ? `<td><button type="button" class="text-button" data-detail-region="${esc(row.region)}" aria-label="${esc(row.region)} 상세 보기">${esc(shortRegion(row.region))}</button></td>` : ""}
-        <td><div class="name-line"><strong>${esc(cleanSubregion(row))}</strong>${row.source_region_conflict ? '<span class="status-tag caution">지역 확인 필요</span>' : ""}</div>${showTrack ? `<div class="inline-track"><span style="width:${Math.max(1, detailNumericValue(row) / maximum * 100).toFixed(2)}%"></span></div>` : ""}</td>
+        ${searching ? `<td><button type="button" class="text-button" data-detail-region="${esc(row.region)}" aria-label="${esc(displayRegion(row.region))} 상세 보기">${esc(shortRegion(row.region))}</button></td>` : ""}
+        <td><div class="name-line"><strong>${esc(cleanSubregion(row))}</strong>${row.source_region_conflict ? '<span class="status-tag caution">공식 주소 미확인</span>' : ""}</div>${showTrack ? `<div class="inline-track"><span style="width:${Math.max(1, detailNumericValue(row) / maximum * 100).toFixed(2)}%"></span></div>` : ""}</td>
         <td class="numeric">${int.format(Number(row.generator_records) || 0)}</td><td class="numeric">${number(row.capacity_mw, 2)}</td>
       </tr>`).join("")}</tbody>
     </table></div>`;
@@ -316,7 +316,8 @@
         generatorRecords: Number(row?.generator_records) || totals.generatorRecords,
         capacityMw: Number(row?.capacity_mw) || totals.capacityMw,
       };
-      document.getElementById("subregion-title").textContent = searching ? "전국 세부지역 검색 결과" : `${state.selectedRegion || "선택 지역"} 세부지역`;
+      const selectedRegionLabel = state.selectedRegion ? displayRegion(state.selectedRegion) : "선택 지역";
+      document.getElementById("subregion-title").textContent = searching ? "전국 세부지역 검색 결과" : `${selectedRegionLabel} 세부지역`;
       document.getElementById("subregion-caption").textContent = searching
         ? aliasMatch && rows.length
           ? `${aliasMatch.alias}는 ${aliasMatch.location}에 속합니다. 표는 ${cleanSubregion(rows[0])} 전체 등록 집계이며 ${detailSortDescription()}입니다.`
@@ -462,7 +463,7 @@
       onEachFeature: (feature, shape) => {
         const name = featureName(feature);
         const row = byName.get(name) || {};
-        shape.bindTooltip(() => `<strong>${esc(name)}</strong><div class="map-tooltip-metrics"><span><small>설비 등록</small><b>${esc(`${int.format(Number(row.generator_records) || 0)}건`)}</b></span><span><small>설비용량</small><b>${esc(`${number(row.capacity_mw, 2)} MW`)}</b></span></div>`, { sticky: true, direction: "top", className: "province-hover-tooltip", opacity: 1 });
+        shape.bindTooltip(() => `<strong>${esc(displayRegion(name))}</strong><div class="map-tooltip-metrics"><span><small>설비 등록</small><b>${esc(`${int.format(Number(row.generator_records) || 0)}건`)}</b></span><span><small>설비용량</small><b>${esc(`${number(row.capacity_mw, 2)} MW`)}</b></span></div>`, { sticky: true, direction: "top", className: "province-hover-tooltip", opacity: 1 });
         shape.on({
           mouseover: (event) => event.target.setStyle({ color: "#0a5b48", weight: 2, fillOpacity: .64 }),
           mouseout: () => layer.setStyle(style),
