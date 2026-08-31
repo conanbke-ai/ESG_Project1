@@ -2,10 +2,13 @@
   const app = document.getElementById("app");
   const view = document.body.dataset.view || "coverage";
   const int = new Intl.NumberFormat("ko-KR");
+  const korean = new Intl.Collator("ko", { numeric: true, sensitivity: "base" });
   const state = {
     nationalMetric: "capacity",
     selectedRegion: null,
     subregionQuery: "",
+    detailSortKey: "capacity",
+    detailSortDirection: "desc",
     tab: "comparison",
     region: "all",
     plantId: "all",
@@ -80,7 +83,7 @@
   function shortRegion(region) {
     return ({
       서울특별시: "서울", 부산광역시: "부산", 대구광역시: "대구", 인천광역시: "인천",
-      광주광역시: "광주", 전남광주통합특별시: "전남광주", 대전광역시: "대전", 울산광역시: "울산", 세종특별자치시: "세종",
+      광주광역시: "광주", 전남광주통합특별시: "전남·광주", 대전광역시: "대전", 울산광역시: "울산", 세종특별자치시: "세종",
       경기도: "경기", 강원특별자치도: "강원", 충청북도: "충북", 충청남도: "충남",
       전북특별자치도: "전북", 전라남도: "전남", 경상북도: "경북", 경상남도: "경남",
       제주특별자치도: "제주", unknown: "지역 미확인",
@@ -118,14 +121,22 @@
           <div class="map-scale" aria-hidden="true"><strong id="map-scale-title">설비용량</strong><span>낮음</span><span class="scale-colors"><i></i><i></i><i></i><i></i><i></i></span><span>높음</span></div>
         </article>
         <article class="surface region-surface">
-          <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>전국 ${int.format(regions.length)}개 시도의 규모와 순위를 비교합니다.</p></div></div>
+          <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>전국 ${int.format(regions.length)}개 시도의 규모와 순위를 비교합니다. 전남·광주는 2026년 7월 1일 통합 행정구역 기준입니다.</p></div></div>
           <div id="region-list" class="region-list">${regionList(regions)}</div>
         </article>
       </section>
       <section class="surface detail-surface" aria-labelledby="subregion-title">
         <div class="section-head detail-head">
           <div><h2 id="subregion-title"></h2><p id="subregion-caption"></p></div>
-          <label class="field-label search-field" for="subregion-search"><span>전국 세부지역 검색</span><input id="subregion-search" type="search" autocomplete="off" placeholder="예: 전남 여수시, 강원"></label>
+          <div class="detail-controls">
+            <label class="field-label search-field" for="subregion-search"><span>전국 세부지역 검색</span><input id="subregion-search" type="search" autocomplete="off" placeholder="예: 전남 여수시, 강원"></label>
+            <label class="field-label sort-field" for="subregion-sort"><span>정렬 기준</span><select id="subregion-sort">
+              <option value="capacity" selected>설비용량</option>
+              <option value="records">등록건수</option>
+              <option value="name">세부지역</option>
+            </select></label>
+            <label class="field-label direction-field" for="subregion-order"><span>정렬 방향</span><select id="subregion-order">${detailDirectionOptions()}</select></label>
+          </div>
         </div>
         <div id="subregion-summary"></div>
         <div id="subregion-table"></div>
@@ -195,6 +206,52 @@
     return [...regionSearchTerms(row.region), cleanSubregion(row), row.subregion, ...aliases];
   }
 
+  function detailDirectionOptions() {
+    const labels = state.detailSortKey === "name"
+      ? { desc: "가나다 역순", asc: "가나다순" }
+      : { desc: "높은 순", asc: "낮은 순" };
+    return ["desc", "asc"].map((direction) =>
+      `<option value="${direction}"${direction === state.detailSortDirection ? " selected" : ""}>${labels[direction]}</option>`
+    ).join("");
+  }
+
+  function detailNumericValue(row, key = state.detailSortKey) {
+    return key === "records" ? Number(row.generator_records) || 0 : Number(row.capacity_mw) || 0;
+  }
+
+  function compareDetailRows(left, right) {
+    const direction = state.detailSortDirection === "asc" ? 1 : -1;
+    const byName = korean.compare(cleanSubregion(left), cleanSubregion(right))
+      || korean.compare(displayRegion(left.region), displayRegion(right.region));
+    if (state.detailSortKey === "name") return direction * byName;
+    const byValue = detailNumericValue(left) - detailNumericValue(right);
+    return byValue ? direction * byValue : byName;
+  }
+
+  function detailSortDescription() {
+    if (state.detailSortKey === "name") {
+      return state.detailSortDirection === "asc" ? "세부지역 가나다순" : "세부지역 역순";
+    }
+    const metric = state.detailSortKey === "records" ? "등록건수" : "설비용량";
+    return `${metric} ${state.detailSortDirection === "asc" ? "낮은 순" : "높은 순"}`;
+  }
+
+  function detailAriaSort(key) {
+    if (state.detailSortKey !== key) return "";
+    return ` aria-sort="${state.detailSortDirection === "asc" ? "ascending" : "descending"}"`;
+  }
+
+  function detailSortHeader(key, label, numeric = false) {
+    const active = state.detailSortKey === key;
+    const indicator = active
+      ? state.detailSortDirection === "asc" ? "↑" : "↓"
+      : "↕";
+    const current = active
+      ? state.detailSortDirection === "asc" ? "오름차순" : "내림차순"
+      : "정렬 기준 선택";
+    return `<th${numeric ? ' class="numeric"' : ""}${detailAriaSort(key)}><button type="button" class="table-sort-button${active ? " is-active" : ""}" data-detail-sort="${key}" aria-label="${esc(`${label}, ${current}`)}">${esc(label)}<span aria-hidden="true">${indicator}</span></button></th>`;
+  }
+
   function detailRows(inventory, query = state.subregionQuery) {
     const normalized = normalizedSearch(query);
     return (inventory.locations || [])
@@ -205,7 +262,7 @@
           .toLocaleLowerCase("ko");
         return searchText.includes(normalized);
       })
-      .sort((a, b) => nationalValue(b) - nationalValue(a));
+      .sort(compareDetailRows);
   }
 
   function detailTable(rows, searching, aliasMatch = null) {
@@ -215,13 +272,17 @@
         : searching ? "시도명·약칭 또는 세부지역명을 바꿔 검색해 보세요." : "표시할 세부지역 정보가 없습니다.";
       return `<div class="detail-table-shell is-empty">${emptyState("세부지역 결과 없음", message)}</div>`;
     }
-    const maximum = Math.max(...rows.map((row) => nationalValue(row)), 1);
+    const showTrack = state.detailSortKey !== "name";
+    const maximum = showTrack
+      ? Math.max(...rows.map((row) => detailNumericValue(row)), 1)
+      : 1;
+    const rankLabel = state.detailSortKey === "name" ? "순서" : "순위";
     return `<div class="table-responsive detail-table-shell"><table class="data-table subregion-table">
-      <thead><tr><th>순위</th>${searching ? "<th>시도</th>" : ""}<th>세부지역</th><th class="numeric">등록건수</th><th class="numeric">설비용량(MW)</th></tr></thead>
+      <thead><tr><th>${rankLabel}</th>${searching ? "<th>시도</th>" : ""}${detailSortHeader("name", "세부지역")}${detailSortHeader("records", "등록건수", true)}${detailSortHeader("capacity", "설비용량(MW)", true)}</tr></thead>
       <tbody>${rows.map((row, index) => `<tr>
         <td class="rank-cell">${index + 1}</td>
         ${searching ? `<td><button type="button" class="text-button" data-detail-region="${esc(row.region)}" aria-label="${esc(row.region)} 상세 보기">${esc(shortRegion(row.region))}</button></td>` : ""}
-        <td><div class="name-line"><strong>${esc(cleanSubregion(row))}</strong>${row.source_region_conflict ? '<span class="status-tag caution">지역 확인 필요</span>' : ""}</div><div class="inline-track"><span style="width:${Math.max(1, nationalValue(row) / maximum * 100).toFixed(2)}%"></span></div></td>
+        <td><div class="name-line"><strong>${esc(cleanSubregion(row))}</strong>${row.source_region_conflict ? '<span class="status-tag caution">지역 확인 필요</span>' : ""}</div>${showTrack ? `<div class="inline-track"><span style="width:${Math.max(1, detailNumericValue(row) / maximum * 100).toFixed(2)}%"></span></div>` : ""}</td>
         <td class="numeric">${int.format(Number(row.generator_records) || 0)}</td><td class="numeric">${number(row.capacity_mw, 2)}</td>
       </tr>`).join("")}</tbody>
     </table></div>`;
@@ -258,12 +319,28 @@
       document.getElementById("subregion-title").textContent = searching ? "전국 세부지역 검색 결과" : `${state.selectedRegion || "선택 지역"} 세부지역`;
       document.getElementById("subregion-caption").textContent = searching
         ? aliasMatch && rows.length
-          ? `${aliasMatch.alias}는 ${aliasMatch.location}에 속합니다. 표는 ${cleanSubregion(rows[0])} 전체 등록 집계입니다.`
-          : `${rows.length}개 결과입니다. 시도를 선택하면 해당 지역의 전체 현황으로 이동합니다.`
-        : `${rows.length}개 세부지역의 등록건수와 설비용량을 비교합니다.`;
+          ? `${aliasMatch.alias}는 ${aliasMatch.location}에 속합니다. 표는 ${cleanSubregion(rows[0])} 전체 등록 집계이며 ${detailSortDescription()}입니다.`
+          : `${rows.length}개 결과를 ${detailSortDescription()}으로 표시합니다. 시도를 선택하면 해당 지역의 전체 현황으로 이동합니다.`
+        : `${rows.length}개 세부지역을 ${detailSortDescription()}으로 비교합니다.`;
       document.getElementById("subregion-summary").innerHTML = rows.length ? `<div class="selected-summary"><span><small>${searching ? "검색 결과 등록" : "설비 등록"}</small><strong>${int.format(summary.generatorRecords)}건</strong></span><span><small>${searching ? "검색 결과 용량" : "설비용량"}</small><strong>${number(summary.capacityMw, 2)} MW</strong></span></div>` : "";
       document.getElementById("subregion-table").innerHTML = detailTable(rows, searching, aliasMatch);
       document.querySelectorAll("[data-detail-region]").forEach((button) => button.addEventListener("click", () => selectRegion(button.dataset.detailRegion)));
+      document.querySelectorAll("[data-detail-sort]").forEach((button) => button.addEventListener("click", () => {
+        const key = button.dataset.detailSort;
+        const horizontalScroll = button.closest(".detail-table-shell")?.scrollLeft || 0;
+        if (state.detailSortKey === key) {
+          state.detailSortDirection = state.detailSortDirection === "asc" ? "desc" : "asc";
+        } else {
+          state.detailSortKey = key;
+          state.detailSortDirection = key === "name" ? "asc" : "desc";
+        }
+        sortSelect.value = state.detailSortKey;
+        directionSelect.innerHTML = detailDirectionOptions();
+        renderDetail();
+        const refreshedShell = document.querySelector("#subregion-table .detail-table-shell");
+        if (refreshedShell) refreshedShell.scrollLeft = horizontalScroll;
+        document.querySelector(`[data-detail-sort="${key}"]`)?.focus({ preventScroll: true });
+      }));
     }
 
     function selectRegion(region) {
@@ -298,6 +375,18 @@
       scheduleSearchRender(event.target.value);
     });
     searchInput.addEventListener("input", (event) => scheduleSearchRender(event.target.value));
+    const sortSelect = document.getElementById("subregion-sort");
+    const directionSelect = document.getElementById("subregion-order");
+    sortSelect.addEventListener("change", (event) => {
+      state.detailSortKey = event.target.value;
+      state.detailSortDirection = state.detailSortKey === "name" ? "asc" : "desc";
+      directionSelect.innerHTML = detailDirectionOptions();
+      renderDetail();
+    });
+    directionSelect.addEventListener("change", (event) => {
+      state.detailSortDirection = event.target.value;
+      renderDetail();
+    });
     document.querySelectorAll("[data-map-metric]").forEach((button) => button.addEventListener("click", () => {
       state.nationalMetric = button.dataset.mapMetric;
       document.querySelectorAll("[data-map-metric]").forEach((candidate) => {

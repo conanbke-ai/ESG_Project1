@@ -691,6 +691,31 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert "permanent: true" not in script
 
     assert "전국 세부지역 검색" in script
+    assert 'detailSortKey: "capacity"' in script
+    assert 'detailSortDirection: "desc"' in script
+    assert 'id="subregion-sort"' in script
+    assert 'id="subregion-order"' in script
+    assert '<option value="capacity" selected>설비용량</option>' in script
+    assert '<option value="records">등록건수</option>' in script
+    assert '<option value="name">세부지역</option>' in script
+    assert "compareDetailRows" in script
+    assert "detailDirectionOptions" in script
+    assert "detailSortDescription" in script
+    assert "detailSortHeader" in script
+    assert 'data-detail-sort="${key}"' in script
+    assert 'document.querySelectorAll("[data-detail-sort]")' in script
+    assert 'state.detailSortDirection === "asc" ? "desc" : "asc"' in script
+    assert 'button.closest(".detail-table-shell")?.scrollLeft || 0' in script
+    assert "refreshedShell.scrollLeft = horizontalScroll" in script
+    assert 'focus({ preventScroll: true })' in script
+    assert "table-sort-button" in script
+    assert ".table-sort-button" in styles
+    assert 'state.detailSortKey === "name" ? "asc" : "desc"' in script
+    assert 'directionSelect.addEventListener("change"' in script
+    assert 'aria-sort="${state.detailSortDirection' in script
+    assert ".detail-controls" in styles
+    assert "@media (max-width: 660px)" in styles
+    assert "전남·광주는 2026년 7월 1일 통합 행정구역 기준" in script
     assert "shortRegion(row.region)" in script
     assert "regionSearchTerms" in script
     assert "전라북도" in script
@@ -702,7 +727,7 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert "detailTable(rows, searching, aliasMatch)" in script
     assert "administrativeAliasMatch" in script
     assert "locationSearchTerms" in script
-    assert "표는 ${cleanSubregion(rows[0])} 전체 등록 집계입니다." in script
+    assert "표는 ${cleanSubregion(rows[0])} 전체 등록 집계이며" in script
     assert "현재 원천에는 해당 세부지역으로 등록된 설비 행이 없습니다." in script
     assert "검색 결과 등록" in script
     assert "검색 결과 용량" in script
