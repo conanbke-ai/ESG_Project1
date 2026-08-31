@@ -55,6 +55,13 @@ class NationwideModelDatasetBuilder:
         "지점번호": "station_id",
         "합산발전량(MWh)": "generation_mwh",
     }
+    safe_weather_mapping_methods = frozenset(
+        {
+            "administrative_area_exact",
+            "coordinate_nearest",
+            "reviewed_config_mapping",
+        }
+    )
 
     def __init__(
         self,
@@ -98,6 +105,14 @@ class NationwideModelDatasetBuilder:
             generation[GENERATION_COLUMNS + ["region", "station_id"]], aggregate=True
         )
 
+    def _read_optional_legacy_generation(
+        self, source_path: Path
+    ) -> pd.DataFrame | None:
+        """Use a retained legacy mapping only when the audit artifact exists."""
+
+        source = Path(source_path)
+        return self.read_legacy_generation(source) if source.is_file() else None
+
     def build(
         self,
         source_path: Path,
@@ -105,11 +120,11 @@ class NationwideModelDatasetBuilder:
         *,
         generation_paths: Iterable[Path] | None = None,
     ) -> ModelDatasetResult:
-        legacy_generation = self.read_legacy_generation(source_path)
         registry_path: Path | None = None
         quarantined_plants = 0
         if generation_paths is not None:
             paths = tuple(Path(path) for path in generation_paths)
+            legacy_generation = self._read_optional_legacy_generation(source_path)
             station_catalog = KmaStationCatalog.from_metadata(
                 self.weather_root / "META_관측지점정보.csv"
             )
@@ -129,6 +144,7 @@ class NationwideModelDatasetBuilder:
             quarantined_plants = int(registry["model_ready_status"].eq("quarantined").sum())
             generation = self._from_standardized_generation(paths, registry)
         else:
+            legacy_generation = self.read_legacy_generation(source_path)
             generation = legacy_generation
 
         years = sorted(generation["timestamp"].dt.year.unique())
@@ -206,7 +222,10 @@ class NationwideModelDatasetBuilder:
                 else "legacy_merged_target"
             ),
             "legacy_source_usage": (
-                "reviewed KOSPO plant-to-ASOS mapping seed only; never target or time/plant filter"
+                "audit-only KOSPO plant-to-ASOS candidate; never admitted without "
+                "independent official evidence or an explicit reviewed mapping"
+                if legacy_generation is not None
+                else "legacy mapping file absent; official partitions and reviewed evidence only"
             ),
             "weather_availability": {
                 "available_years": sorted(available_weather_years),
@@ -225,9 +244,11 @@ class NationwideModelDatasetBuilder:
                 "identity": "company + plant + energy_source",
                 "administrative_region": "public address parsed separately from weather station",
                 "weather_mapping": (
-                    "version-controlled reviewed mapping, reviewed legacy, <=50 km coordinate "
-                    "nearest, or unambiguous exact municipality"
+                    "version-controlled reviewed mapping, <=50 km official coordinate nearest, "
+                    "or unambiguous exact municipality whose station record covers the "
+                    "complete generation date range"
                 ),
+                "legacy_mapping": "audit-only candidate; never high confidence or model eligible",
                 "ambiguous_mapping": "quarantine; never silently assign nearest city",
                 "quarantined_plants": quarantined_plants,
             },
@@ -298,9 +319,30 @@ class NationwideModelDatasetBuilder:
         paths: Iterable[Path],
         registry: pd.DataFrame,
     ) -> pd.DataFrame:
-        eligible_registry = registry.loc[
+        safe_mask = (
             registry["model_ready_status"].eq("eligible")
-        ].copy()
+            & registry["weather_station_id"].notna()
+            & registry["weather_mapping_method"].isin(
+                self.safe_weather_mapping_methods
+            )
+        )
+        if "weather_mapping_review_required" in registry:
+            safe_mask &= ~registry["weather_mapping_review_required"].fillna(True).astype(bool)
+        reviewed = registry["weather_mapping_method"].eq("reviewed_config_mapping")
+        for column in ("weather_mapping_evidence_url", "weather_mapping_rationale"):
+            if column not in registry:
+                safe_mask &= ~reviewed
+            else:
+                normalized = (
+                    registry[column]
+                    .fillna("")
+                    .astype(str)
+                    .str.strip()
+                    .str.casefold()
+                )
+                present = ~normalized.isin({"", "none", "null", "nan"})
+                safe_mask &= ~reviewed | present
+        eligible_registry = registry.loc[safe_mask].copy()
         eligible_registry["plant"] = [
             self.metadata.canonical_plant(company, plant)
             for company, plant in eligible_registry[["company", "plant"]].itertuples(
@@ -313,7 +355,11 @@ class NationwideModelDatasetBuilder:
             .itertuples(index=False, name=None)
         )
         if not eligible_keys:
-            raise ValueError("No plants have an auditable KMA station mapping")
+            raise ValueError(
+                "No plants have an auditable KMA station mapping; legacy station "
+                "seeds require explicit reviewed evidence and unknown mapping methods "
+                "are rejected"
+            )
         parts: list[pd.DataFrame] = []
         for partition_order, path in enumerate(paths):
             source = pd.read_csv(

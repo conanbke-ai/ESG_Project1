@@ -6,15 +6,18 @@ import json
 from pathlib import Path
 from typing import Any
 
+from solar_forecast.artifacts.manifest import replace_file_atomic
 from solar_forecast.reporting.model_analytics import ModelAnalyticsService
 from solar_forecast.reporting.national_inventory import build_national_inventory
+from solar_forecast.reporting.province_boundaries import validate_province_boundaries
 
 
 @dataclass(frozen=True)
 class DashboardBuildResult:
     data_path: Path
-    boundary_path: Path | None
+    boundary_path: Path
     solar_dashboard: Path
+    forecast_dashboard: Path
     analytics_dashboard: Path
     national_generator_records: int
     national_capacity_mw: float
@@ -53,13 +56,14 @@ class DashboardBuilder:
         }
 
         self._publish_static_assets()
-        data_path = self._write_payload(payload)
         boundary_path = self._copy_province_boundaries(raw_inventory)
+        data_path = self._write_payload(payload)
         anomaly_signals = model_analysis["anomalies"]["data_quality_signals"]
         return DashboardBuildResult(
             data_path=data_path,
             boundary_path=boundary_path,
             solar_dashboard=self.output_dir / "solar_dashboard.html",
+            forecast_dashboard=self.output_dir / "forecast.html",
             analytics_dashboard=self.output_dir / "model_analysis.html",
             national_generator_records=int(
                 national_inventory["summary"]["generator_records"]
@@ -121,6 +125,9 @@ class DashboardBuilder:
             },
             "regions": regions,
             "locations": locations,
+            "location_search_aliases": dict(
+                inventory.get("location_search_aliases", {})
+            ),
         }
 
     def _write_payload(self, payload: dict[str, Any]) -> Path:
@@ -131,7 +138,7 @@ class DashboardBuilder:
             json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False),
             encoding="utf-8",
         )
-        temporary.replace(data_path)
+        replace_file_atomic(temporary, data_path)
         return data_path
 
     def _publish_static_assets(self) -> None:
@@ -142,6 +149,7 @@ class DashboardBuilder:
             return
         relative_paths = (
             Path("solar_dashboard.html"),
+            Path("forecast.html"),
             Path("model_analysis.html"),
             Path("plant_region_report_perm.html"),
             Path("assets/dashboard.css"),
@@ -155,11 +163,11 @@ class DashboardBuilder:
             target.parent.mkdir(parents=True, exist_ok=True)
             temporary = target.with_name(target.name + ".part")
             temporary.write_bytes(source.read_bytes())
-            temporary.replace(target)
+            replace_file_atomic(temporary, target)
 
     def _copy_province_boundaries(
         self, national_inventory: dict[str, Any]
-    ) -> Path | None:
+    ) -> Path:
         source_label = national_inventory.get("source", {}).get(
             "boundary_path", "map/json/geoJson.json"
         )
@@ -167,16 +175,29 @@ class DashboardBuilder:
         if not source.is_absolute():
             source = self.project_root / source
         if not source.is_file():
-            return None
+            raise FileNotFoundError(
+                f"Required province boundary source is missing: {source}"
+            )
         target = self.output_dir / "data/korea_provinces.geojson"
         target.parent.mkdir(parents=True, exist_ok=True)
         temporary = target.with_suffix(".geojson.part")
         boundaries = json.loads(source.read_text(encoding="utf-8"))
+        metadata = boundaries.get("metadata", {})
+        validate_province_boundaries(
+            boundaries,
+            require_complete=str(metadata.get("dataset_id", "")).startswith("sgis_"),
+        )
         temporary.write_text(
-            json.dumps(boundaries, ensure_ascii=False, indent=2, allow_nan=False),
+            json.dumps(
+                boundaries,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                allow_nan=False,
+            )
+            + "\n",
             encoding="utf-8",
         )
-        temporary.replace(target)
+        replace_file_atomic(temporary, target)
         return target
 
 

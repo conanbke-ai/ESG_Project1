@@ -152,8 +152,9 @@ holdout을 둘 다 개선할 때만 공통 입력 계약의 한 구성요소로 
 단일 노드에서 검증한 현재 처리 규모와 Parquet/Polars/분산 처리 전환 기준은
 [`SCALABLE_DATA_ENGINEERING.md`](SCALABLE_DATA_ENGINEERING.md)에 정리합니다.
 
-웹 계층은 `dashboard/solar_dashboard.html`과 `dashboard/model_analysis.html`이
-`dashboard/assets/`를 공유하는 정적 구조입니다. 수치와 표는 HTML에 복사하지 않고
+웹 계층은 `dashboard/solar_dashboard.html`, `dashboard/forecast.html`,
+`dashboard/model_analysis.html`이 `dashboard/assets/`를 공유하는 정적 구조입니다. 전국 현황,
+Test 구간 발전량 예측, 모델 성능 비교·이상 분석을 서로 다른 진입점으로 분리합니다. 수치와 표는 HTML에 복사하지 않고
 `DashboardBuilder`가 생성한 JSON에서 읽으므로 데이터 갱신 시 화면 코드와 통계가 분리됩니다.
 공개 JSON에는 로컬 경로, SHA-256, 인코딩, registry 검사명 같은 운영자 정보를 넣지 않습니다.
-과거 `plant_region_report_perm.html`은 새 분석 화면으로 이동하는 호환 경로입니다.
+과거 `plant_region_report_perm.html`은 성능 분석 화면으로 이동하는 호환 경로입니다.

@@ -204,7 +204,36 @@ def _run_build_dashboard(args: argparse.Namespace) -> None:
         f"{result.data_quality_signals} solar data signals"
     )
     print(f"Solar dashboard: {result.solar_dashboard}")
+    print(f"Forecast dashboard: {result.forecast_dashboard}")
     print(f"Model analytics dashboard: {result.analytics_dashboard}")
+
+
+def _run_prepare_boundaries(args: argparse.Namespace) -> None:
+    from solar_forecast.reporting import (
+        SgisBoundarySource,
+        SgisProvinceBoundaryConverter,
+    )
+
+    converter = SgisProvinceBoundaryConverter(
+        simplify_meters=args.simplify_meters,
+        precision=args.precision,
+    )
+    payload = converter.convert(
+        Path(args.source_shp),
+        Path(args.output),
+        source_archive_path=Path(args.source_archive),
+        source=SgisBoundarySource(
+            provider=args.provider,
+            source_url=args.source_url,
+            reference_date=args.reference_date,
+            archive_sha256=args.archive_sha256,
+            shapefile_sha256=args.shapefile_sha256,
+        ),
+    )
+    print(
+        f"Official province boundaries: {len(payload['features'])} regions -> "
+        f"{Path(args.output)}"
+    )
 
 
 def _run_serve_dashboard(args: argparse.Namespace) -> None:
@@ -341,6 +370,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     dashboard.add_argument("--output-dir", default="dashboard")
     dashboard.set_defaults(func=_run_build_dashboard)
+
+    prepare_boundaries = commands.add_parser(
+        "prepare-boundaries",
+        help="Convert an official SGIS province Shapefile to validated dashboard GeoJSON",
+    )
+    prepare_boundaries.add_argument("--source-shp", required=True)
+    prepare_boundaries.add_argument("--source-archive", required=True)
+    prepare_boundaries.add_argument("--output", default="map/json/geoJson.json")
+    prepare_boundaries.add_argument("--reference-date", required=True)
+    prepare_boundaries.add_argument("--archive-sha256", required=True)
+    prepare_boundaries.add_argument("--shapefile-sha256", required=True)
+    prepare_boundaries.add_argument(
+        "--provider", default="국가데이터처 통계지리정보서비스(SGIS)"
+    )
+    prepare_boundaries.add_argument(
+        "--source-url",
+        default="https://www.data.go.kr/data/15129688/fileData.do",
+    )
+    prepare_boundaries.add_argument("--simplify-meters", type=float, default=150.0)
+    prepare_boundaries.add_argument("--precision", type=int, default=6)
+    prepare_boundaries.set_defaults(func=_run_prepare_boundaries)
 
     serve_dashboard = commands.add_parser(
         "serve-dashboard",

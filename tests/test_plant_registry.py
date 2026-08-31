@@ -1,10 +1,12 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from solar_forecast.collectors.metadata import PlantMetadata, PlantMetadataCatalog
 from solar_forecast.features.registry import (
     KmaStationCatalog,
+    NationwidePlantRegistryBuilder,
     ReviewedStationMapping,
     ReviewedStationMappingCatalog,
     parse_administrative_area,
@@ -89,6 +91,112 @@ def test_reviewed_station_mapping_catalog_is_explicit_and_auditable():
     assert catalog.get("krc", "영암1차") is None
 
 
+@pytest.mark.parametrize(
+    ("evidence_url", "rationale"),
+    [
+        ("", ""),
+        (None, "reviewed"),
+        ("https://example.test", None),
+        ("None", "reviewed"),
+    ],
+)
+def test_reviewed_station_mapping_requires_evidence_and_rationale(
+    evidence_url: object,
+    rationale: object,
+):
+    with pytest.raises(ValueError, match="evidence_url and rationale"):
+        ReviewedStationMapping(
+            "kospo",
+            "무근거",
+            168,
+            evidence_url,  # type: ignore[arg-type]
+            rationale,  # type: ignore[arg-type]
+        )
+
+
+def test_legacy_station_seed_is_audit_only_and_cannot_make_a_plant_eligible(
+    tmp_path: Path,
+):
+    partition = tmp_path / "plant.csv.gz"
+    pd.DataFrame(
+        {
+            "timestamp": ["2024-01-01T00:00:00"],
+            "company": ["kospo"],
+            "plant": ["무근거 태양광"],
+            "energy_source": ["solar"],
+            "capacity_mw": [1.0],
+            "tilt_deg": [None],
+            "latitude": [None],
+            "longitude": [None],
+            "address": [None],
+        }
+    ).to_csv(partition, index=False, compression="gzip")
+    legacy = pd.DataFrame(
+        {
+            "company": ["kospo"],
+            "plant": ["무근거 태양광"],
+            "station_id": [168],
+        }
+    )
+
+    registry = NationwidePlantRegistryBuilder(
+        PlantMetadataCatalog([]),
+        _stations(),
+    ).build([partition], tmp_path / "registry.csv", legacy_mapping=legacy)
+
+    row = registry.iloc[0]
+    assert row["model_ready_status"] == "quarantined"
+    assert row["weather_mapping_method"] == "unresolved"
+    assert row["legacy_weather_station_candidate_id"] == 168
+    assert row["legacy_weather_station_candidate_status"] == "audit_only_unreviewed"
+    assert "audit candidate" in row["model_ready_reason"]
+
+
+def test_reviewed_mapping_requires_one_station_record_to_cover_generation_dates():
+    stations = _stations().stations.copy()
+    stations["station_valid_from"] = pd.to_datetime(["2025-04-25", "1900-01-01"])
+    stations["station_valid_to"] = pd.to_datetime([None, "2024-12-31"])
+    catalog = KmaStationCatalog(stations)
+
+    outside = catalog.resolve(
+        address="전라남도 광양시 중동",
+        latitude=None,
+        longitude=None,
+        reviewed_station_id=266,
+        generation_start="2013-01-01",
+        generation_end="2025-02-28",
+    )
+    partial = catalog.resolve(
+        address="전라남도 여수시 중앙동",
+        latitude=None,
+        longitude=None,
+        reviewed_station_id=168,
+        generation_start="2013-01-01",
+        generation_end="2025-02-28",
+    )
+    continued = stations.loc[stations["station_id"].eq(168)].copy()
+    continued["station_valid_from"] = pd.Timestamp("2025-01-01")
+    continued["station_valid_to"] = pd.NaT
+    covered_stations = pd.concat([stations, continued], ignore_index=True)
+    covered = KmaStationCatalog(covered_stations).resolve(
+        address="전라남도 여수시 중앙동",
+        latitude=None,
+        longitude=None,
+        reviewed_station_id=168,
+        generation_start="2013-01-01",
+        generation_end="2025-02-28",
+    )
+
+    assert outside.station_id is None
+    assert outside.review_required
+    assert outside.method == "reviewed_mapping_invalid"
+    assert partial.station_id is None
+    assert partial.review_required
+    assert covered.station_id == 168
+    assert covered.method == "reviewed_config_mapping"
+    assert not covered.review_required
+
+
 def test_nationwide_builder_does_not_filter_to_legacy_company_or_date(tmp_path: Path):
     partitions = []
     for company, plant, timestamp in (
@@ -119,7 +227,7 @@ def test_nationwide_builder_does_not_filter_to_legacy_company_or_date(tmp_path: 
             "admin_city": ["사하구", "광양시"],
             "weather_station_id": [159, 266],
             "weather_station_name": ["부산", "광양시"],
-            "weather_mapping_method": ["reviewed_legacy_mapping", "administrative_area_exact"],
+            "weather_mapping_method": ["administrative_area_exact", "administrative_area_exact"],
             "weather_mapping_confidence": ["high", "high"],
             "weather_mapping_review_required": [False, False],
             "model_ready_status": ["eligible", "eligible"],
@@ -130,6 +238,79 @@ def test_nationwide_builder_does_not_filter_to_legacy_company_or_date(tmp_path: 
     assert set(result["company"]) == {"kospo", "koen"}
     assert result["timestamp"].min() == pd.Timestamp("2019-01-01")
     assert result["timestamp"].max() == pd.Timestamp("2025-01-01")
+
+
+@pytest.mark.parametrize(
+    "mapping_method",
+    ["reviewed_legacy_mapping", "unknown_future_mapping", None],
+)
+def test_nationwide_builder_rejects_unapproved_mapping_methods(
+    tmp_path: Path,
+    mapping_method: object,
+):
+    partition = tmp_path / "legacy.csv.gz"
+    pd.DataFrame(
+        {
+            "timestamp": ["2024-01-01"],
+            "company": ["kospo"],
+            "plant_id": ["kospo:구형"],
+            "plant": ["구형"],
+            "energy_source": ["solar"],
+            "generation_mwh": [1.0],
+        }
+    ).to_csv(partition, index=False, compression="gzip")
+    registry = pd.DataFrame(
+        {
+            "company": ["kospo"],
+            "plant": ["구형"],
+            "energy_source": ["solar"],
+            "weather_station_id": [168],
+            "weather_mapping_method": [mapping_method],
+            "weather_mapping_review_required": [False],
+            "model_ready_status": ["eligible"],
+        }
+    )
+
+    builder = NationwideModelDatasetBuilder(tmp_path, PlantMetadataCatalog([]))
+    with pytest.raises(ValueError, match="legacy station seeds require"):
+        builder._from_standardized_generation([partition], registry)
+
+
+def test_nationwide_builder_rejects_null_reviewed_evidence(tmp_path: Path):
+    partition = tmp_path / "reviewed.csv.gz"
+    pd.DataFrame(
+        {
+            "timestamp": ["2024-01-01"],
+            "company": ["kospo"],
+            "plant_id": ["kospo:검토"],
+            "plant": ["검토"],
+            "energy_source": ["solar"],
+            "generation_mwh": [1.0],
+        }
+    ).to_csv(partition, index=False, compression="gzip")
+    registry = pd.DataFrame(
+        {
+            "company": ["kospo"],
+            "plant": ["검토"],
+            "energy_source": ["solar"],
+            "weather_station_id": [168],
+            "weather_mapping_method": ["reviewed_config_mapping"],
+            "weather_mapping_review_required": [False],
+            "weather_mapping_evidence_url": [None],
+            "weather_mapping_rationale": ["reviewed"],
+            "model_ready_status": ["eligible"],
+        }
+    )
+
+    builder = NationwideModelDatasetBuilder(tmp_path, PlantMetadataCatalog([]))
+    with pytest.raises(ValueError, match="explicit reviewed evidence"):
+        builder._from_standardized_generation([partition], registry)
+
+
+def test_official_partitions_do_not_require_a_legacy_mapping_file(tmp_path: Path):
+    builder = NationwideModelDatasetBuilder(tmp_path, PlantMetadataCatalog([]))
+
+    assert builder._read_optional_legacy_generation(tmp_path / "missing-val.csv") is None
 
 
 def test_nationwide_builder_replaces_cumulative_revision_instead_of_summing_it(tmp_path: Path):
@@ -158,7 +339,7 @@ def test_nationwide_builder_replaces_cumulative_revision_instead_of_summing_it(t
             "admin_city": ["제주시"],
             "weather_station_id": [185],
             "weather_station_name": ["고산"],
-            "weather_mapping_method": ["reviewed_legacy_mapping"],
+            "weather_mapping_method": ["administrative_area_exact"],
             "weather_mapping_confidence": ["high"],
             "weather_mapping_review_required": [False],
             "model_ready_status": ["eligible"],
@@ -196,7 +377,7 @@ def test_nationwide_builder_prefers_explicit_latest_snapshot_date(tmp_path: Path
             "admin_city": ["해남군"],
             "weather_station_id": [261],
             "weather_station_name": ["해남"],
-            "weather_mapping_method": ["reviewed_legacy_mapping"],
+            "weather_mapping_method": ["administrative_area_exact"],
             "weather_mapping_confidence": ["high"],
             "weather_mapping_review_required": [False],
             "model_ready_status": ["eligible"],

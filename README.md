@@ -78,11 +78,12 @@ python app.py prepare-data
 `candidates/krc_yeongam/candidate_manifest.json`에 행 수·기간·결측·음수·중복·물리 상한과 함께 기록합니다.
 각 파티션은 한 원본 파일 단위로 처리하고 완성된 임시 파일만 원자적으로 교체합니다. manifest에는
 입력·출력 byte와 SHA-256을 기록해 같은 파일명의 수정본과 재처리 lineage를 추적합니다.
-이후 공식 표준 발전량을 발전소·시간 단위로 재집계하고, 기존 병합본에서는 발전소별 ASOS 지점
-매핑만 가져와 단일 호환본 `file/standardized/model_ready.csv.gz`와 학습용 회사×연도 파티션
-`file/standardized/model_ready_parts/`를 생성합니다. 현재 품질·기상 매핑을 통과한 Gold는
-2,525,434행·46개 발전소(태양광 43, 풍력 2, 소수력 1)이고, 22개 발전소는 근거 없는 기상 결합
-대신 registry에 격리합니다. 2026년 기상 연간 파일이 아직 없어 해당 발전량 2,832행·2개소는
+이후 공식 표준 발전량을 발전소·시간 단위로 재집계하고, 기존 병합본의 ASOS 지점번호는 승인
+근거가 아닌 audit-only 후보로만 보존합니다. 공식 주소·좌표, 발전기간 전체를 덮는 KMA 지점 이력,
+근거가 있는 reviewed mapping을 통과한 행으로 단일 호환본 `file/standardized/model_ready.csv.gz`와
+학습용 회사×연도 파티션 `file/standardized/model_ready_parts/`를 생성합니다. 현재 Gold는
+718,531행·24개 발전소(태양광 22, 풍력 2)이고, 태양광 43개와 소수력 1개를 포함한 44개 자산은
+근거 없는 기상 결합 대신 registry에 격리합니다. 2026년 기상 연간 파일이 아직 없어 해당 발전량 2,832행·2개소는
 Silver에는 보존하고 Gold에서만 보류합니다.
 기존 병합 타깃과 공식 원본의
 차이는 `legacy_pipeline_quality_report.csv`에 별도로 기록합니다. 생성물은
@@ -91,7 +92,7 @@ Silver에는 보존하고 Gold에서만 보류합니다.
 같은 실행에서 `plant_quality_report.csv`와 `quality_manifest.json`도 생성합니다. 발전소별 시간
 커버리지, 음수, 용량초과, 주간 0, 양의 값 flatline, 기상 결측, 일별 형태 일관성, 지역 peer
 상관을 기록하되 공개 데이터만으로 센서·설비 고장을 확정하지 않습니다.
-현재 46개 Gold 발전소 중 `low` 40개, 사람 검토가 필요한 `review` 6개, `high` 0개입니다. 전남은
+현재 24개 Gold 발전소 중 `low` 19개, 사람 검토가 필요한 `review` 5개, `high` 0개입니다. 전남은
 태양광 8개소·273,955행과 풍력 2개소·17,520행, 전북은 태양광 2개소·22,824행입니다. 상세 원인과
 제공자별 건수는 [`docs/DATA_COLLECTION_AUDIT.md`](docs/DATA_COLLECTION_AUDIT.md)에 있습니다.
 
@@ -151,16 +152,33 @@ python app.py collect --sources komipo --start-date 2026-08-01 --end-date 2026-0
 ## 로컬 대시보드
 
 기존 루트별 정적 HTML과 모델 체크포인트 폴더를 분리했습니다. 웹 산출물의 단일 위치는
-`dashboard/`이며, 두 화면은 같은 사용자용 JSON과 CSS/JS를 공유하되 역할을 명확히 분리합니다.
+`dashboard/`이며, 세 화면은 같은 사용자용 JSON과 CSS/JS를 공유하되 역할을 명확히 분리합니다.
 
 - `solar_dashboard.html`: 학습 데이터 보유 여부와 무관한 전국 태양광 발전설비 현황
-- `model_analysis.html`: 모델 비교, 지역·발전소별 오차, 예측 잔차와 데이터 이상 신호
+- `forecast.html`: 발전소별 Test 구간의 실제 발전량과 선택 모델 예측 시계열
+- `model_analysis.html`: 모델 비교, 지역·발전소별 성능, 예측 잔차와 데이터 이상 신호
 
 과거 `plant_region_report_perm.html` 주소는 새 분석 화면으로 이동하는 호환 진입점만 유지합니다.
 
 ```powershell
 python app.py build-dashboard
 python app.py serve-dashboard --port 5500
+```
+
+공식 시도 경계를 다시 만들 때만 GIS 선택 의존성을 설치합니다. 다운로드 archive와 시도
+Shapefile의 hash를 명시하고, 실제 변환에 사용한 `.shp/.shx/.dbf/.prj`가 검증된 archive 안의
+동명 구성요소와 byte 단위로 같은지 확인합니다. archive·구성요소 hash가 다르거나 `BASE_DATE`가
+기준일과 다르거나 17개 시도가 완전하지 않거나 대표 도서 소속이 틀리면 게시 파일을 교체하지
+않습니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[geo]"
+python app.py prepare-boundaries `
+  --source-shp "C:\path\to\bnd_sido_00_2025_2Q.shp" `
+  --source-archive "C:\path\to\sgis_boundary_2025_2Q.zip" `
+  --reference-date 2025-06-30 `
+  --archive-sha256 f1cf0f9de453ac7eaacb273f39cee52851183372b9ddfda428a967c3a670b2c6 `
+  --shapefile-sha256 8edb33f1f633002a41f9bc407943cbebf0c2d8d5b3c18bd3fa5eb41aabe7e77e
 ```
 
 그다음 `http://127.0.0.1:5500/solar_dashboard.html`을 엽니다. 메인 화면은 한국전력거래소
@@ -171,16 +189,27 @@ EPSIS에서 `발전원=태양에너지`로 직접 다시 내려받은 2026-08-05
 원본의 320개 세부지역 표기는 시행일이 기록된 행정구역 reference를 적용해 270개 표준 지역으로
 보존합니다. 2026-07-01 기준 과거 `광주`·`전남`과 새 명칭을 `전남광주통합특별시`로 합치되
 총 건수·용량은 바꾸지 않습니다. 메인 지도는 세부지역 점을 한꺼번에 찍지 않고 광역
-단계구분도만 보여줍니다. 검색은 선택 시도에 갇히지 않고 시도명·약칭·세부지역명을 전국에서
-찾으며, 결과는 고정 높이 내부 스크롤 영역에서 갱신되어 입력 중 화면이 움직이지 않습니다.
+단계구분도만 보여줍니다. 경계는 국가데이터처 SGIS 2025년 2분기 공식 Shapefile을 WGS84로
+변환한 결과이며, 원본 hash와 백령·대청·연평·울릉도 소속 검사를 통과해야 게시됩니다. 검색은
+선택 시도에 갇히지 않고 시도명·약칭·세부지역명·검토된 자연지명을 전국에서 찾으며, 결과는
+고정 높이 내부 스크롤 영역에서 갱신되어 입력 중 화면이 움직이지 않습니다. `백령도` 검색은
+인천광역시 옹진군 전체 집계임을 명시하고, `울릉도`처럼 공식 행정구역은 있지만 EPSIS 세부지역
+행이 없는 경우에는 설비를 임의 생성하지 않고 그 사실을 표시합니다.
 EPSIS 원천의 광역지역과 세부지역이 여전히 다른 16개 집계는 임의로 재배정하지 않고
 `지역 확인 필요`로 표시합니다. 행정구역·울릉도·독도·공식 허가주소 보강 판단은
 [`docs/NATIONAL_REGION_REFERENCE_AUDIT.md`](docs/NATIONAL_REGION_REFERENCE_AUDIT.md)에 있습니다.
+수동 발전소 별칭·좌표 캐시·기상관측소 매핑을 공식 자료로 교체할 수 있는 범위는
+[`docs/OFFICIAL_SOURCE_REPLACEMENT_AUDIT.md`](docs/OFFICIAL_SOURCE_REPLACEMENT_AUDIT.md)에
+정리했습니다.
 이 행은 물리적 발전소 고유 식별자가 아닌 발전기·등록 레코드이므로 화면에서
 `발전소 개소`라고 과장하지 않습니다. CP949 Bronze 원본, 다운로드 시각, 기준일, SHA-256,
 제외 범위는 `config/national_solar_inventory.json`에서 버전 관리합니다.
 
-`예측 성능 분석` 화면은 XGBoost와 CNN-BiLSTM의 `timestamp + plant_id` 공통 Test 행을 다시
+`발전량 예측` 화면은 지역·발전소·모델을 선택해 정식 Test 구간의 실제값과 저장된 예측값을
+같은 축에서 표시합니다. 이는 미래 운영예보가 아니며, 예보 발행시각이 보존된 기상예보 입력을
+연결하기 전에는 미래 발전량을 생성하거나 화면에 꾸며내지 않습니다.
+
+`모델 성능 분석` 화면은 XGBoost와 CNN-BiLSTM의 `timestamp + plant_id` 공통 Test 행을 다시
 정렬한 경우에만 모델 우열과 지역·발전소 순위를 표시합니다. 모든 정식 실행을 평가 계약별로 묶어
 가장 최신의 호환 XGBoost·CNN-BiLSTM 쌍을 고르며, 스모크 실행, 실패 실행, 서로 다른 평가기간,
 구형·혼합 발전원 결과는 제외합니다. NMAE는 설비용량이 확인된 공통 표본으로 계산하고 적용률을
@@ -196,8 +225,8 @@ EPSIS 원천의 광역지역과 세부지역이 여전히 다른 16개 집계는
 `serve-dashboard`는 `dashboard/`를 문서 루트로 지정하므로 어느 디렉터리에서 실행해도 같은 URL이
 동작합니다. VS Code Live Server처럼 프로젝트 루트를 제공하는 기존 서버도 지원하도록 루트의
 `solar_dashboard.html`과 과거 `map/html/solar_dashboard.html`에는 호환 이동 페이지를 둡니다.
-루트 `model_analysis.html`과 과거 `plant_region_report_perm.html`도 같은 방식으로 현재 분석 화면에
-연결합니다.
+루트 `forecast.html`, `model_analysis.html`과 과거 `plant_region_report_perm.html`도 같은 방식으로
+현재 화면에 연결합니다.
 `--output-dir`을 별도로 지정하면 HTML·CSS·JavaScript·JSON·GeoJSON을 함께 게시합니다.
 
 루트의 빈 `xgboost/`와 `cnn_bilstm/`를 제품 구조로 사용하지 않습니다. 모든 모델 구현은
@@ -250,6 +279,11 @@ rolling-origin fold로 추가 컬럼을 검증했습니다. 뒤쪽 10% Calibrati
 결측 stress test용으로 Gold 데이터에 계속 보존합니다. 이 수치는 정식 Test 성능이 아니라
 컬럼 선택용 Validation 평균입니다.
 
+이 ablation은 legacy ASOS fail-closed 적용 전의 18개 안정 표본에서 얻은 기준선입니다. 현재
+22개 태양광 Gold로 바뀐 뒤에는 고정 최적값으로 간주하지 않으며 `evaluate-features`와 모델별
+Optuna를 다시 실행해 Validation 결과로 재선정합니다. 기존 수치는 탐색 시작점과 비교 기준으로만
+사용하고 새 데이터에 하드코딩하지 않습니다.
+
 모델은 발전소별로 다른 피처 목록을 받지 않습니다. 모든 발전소가 위 26개 공통 컬럼을 같은 순서로
 사용하고, 결측이어도 컬럼 자체는 유지합니다. 시퀀스는 `plant_id` 경계를 넘지 않으며, 현재 모델은
 용량·설치각·관측소 좌표 같은 공통 정적 피처로 발전소 차이를 설명합니다. `plant_id` 자체는 현재
@@ -262,7 +296,7 @@ rolling-origin fold로 추가 컬럼을 검증했습니다. 뒤쪽 10% Calibrati
 보존하되 학습에서 제외하고, 발전량 타깃 결측은 정답을 만들어 넣지 않습니다. 강수 공란은 다른
 핵심 센서가 정상인 무강수 문맥에서만 0, 일조·일사 공란은 계산상 야간일 때만 0으로 해석합니다.
 그 밖의 결측과 초기 168시간 history 결측은 그대로 유지합니다. 현재 전국 Gold는 history 결측을
-이유로 행을 버리지 않으며 2,525,434행을 보존합니다.
+이유로 행을 버리지 않으며 718,531행을 보존합니다.
 
 - XGBoost: 중앙값으로 덮지 않고 `NaN`을 전달해 트리가 Train에서 결측 기본 분기 방향을
   학습합니다. 분할별 피처 결측률을 `preprocessing.json`에 남깁니다.
@@ -273,9 +307,9 @@ rolling-origin fold로 추가 컬럼을 검증했습니다. 뒤쪽 10% Calibrati
 - 메모리 상한: 회사×연도 gzip 파티션을 100,000행 chunk로 읽고 필요한 컬럼과
   `energy_source=solar`, `quality_train_eligible=true`를 먼저 적용합니다. 수치는 `float32`로
   축소하고 예상 프레임이 1,536MB를 넘으면 임의 샘플링 없이 `MemoryError`로 중단합니다.
-- 실측: 32개 파티션 2,525,434행을 스캔해 2,401,306개 학습가능 태양광 행을 유지했고,
-  XGBoost의 26개 피처와 문맥 컬럼을 포함한 DataFrame은 409.93MB였습니다. 입력 gzip은
-  126,723,824 byte였고 1,536MB hard limit 아래에서 임의 샘플링 없이 완료했습니다.
+- 실측: 27개 파티션 718,531행을 스캔해 701,011개 학습가능 태양광 행·22개 발전소를 유지했고,
+  XGBoost의 26개 피처와 문맥 컬럼을 포함한 DataFrame은 118.33MB였습니다. 입력 gzip은
+  44,745,838 byte였고 1,536MB hard limit 아래에서 임의 샘플링 없이 완료했습니다.
 - 시간 분할: 모든 발전소에 같은 전역 날짜 경계를 적용합니다. Train 60%, Validation 15%,
   Calibration 10%, Test 15%이며 각 경계 앞에 최대 lookback 168시간을 비웁니다.
 - 역할 분리: Validation은 조기 종료·피처·Hybrid gate 선택, Calibration은 잔차 임계값 고정,
@@ -443,6 +477,6 @@ python app.py evaluate-features --folds 3 --validation-window-hours 2160 --gap-h
 - 기상청 기상자료개방포털 ASOS 시간자료
 - 한국남동발전·한국남부발전·한국동서발전·한국서부발전 공개 태양광 발전량 및 메타데이터
 - 한국농어촌공사 영암 태양광 2020~2025 주기성 과거파일(후보 staging; 2022~2025만 개체 식별 가능)
-- SimpleMaps 대한민국 경계 데이터
+- 국가데이터처 SGIS 행정구역 통계 및 경계(2025년 2분기 시도 경계)
 
 발전사별 원본 기준일이 다를 수 있으므로 모델 비교용 데이터셋은 네 출처가 모두 존재하는 공통 기간으로 고정합니다. 운영 예측에는 관측 ASOS와 별도로 예측 발행시각이 보존된 기상예보 데이터가 필요합니다.

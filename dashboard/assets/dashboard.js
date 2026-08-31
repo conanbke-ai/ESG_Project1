@@ -9,6 +9,7 @@
     tab: "comparison",
     region: "all",
     plantId: "all",
+    forecastModelId: "all",
   };
   const metrics = {
     nmae_capacity: { label: "용량 정규화 MAE", short: "NMAE", unit: "%", better: "lower", digits: 2 },
@@ -25,6 +26,10 @@
       const analysis = data.model_analysis || emptyAnalysis();
       app.innerHTML = analysisPage(analysis);
       setupAnalysis(analysis);
+    } else if (view === "forecast") {
+      const analysis = data.model_analysis || emptyAnalysis();
+      app.innerHTML = forecastPage(analysis);
+      setupForecast(analysis);
     } else {
       let boundaries = null;
       try {
@@ -171,12 +176,31 @@
     return [region, shortRegion(region), ...(aliases[region] || [])];
   }
 
+  function normalizedSearch(value) {
+    return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ko");
+  }
+
+  function administrativeAliasMatch(inventory, query = state.subregionQuery) {
+    const normalized = normalizedSearch(query);
+    if (!normalized) return null;
+    const match = Object.entries(inventory.location_search_aliases || {})
+      .find(([alias]) => normalizedSearch(alias) === normalized);
+    return match ? { alias: match[0], location: match[1] } : null;
+  }
+
+  function locationSearchTerms(inventory, row) {
+    const aliases = Object.entries(inventory.location_search_aliases || {})
+      .filter(([, location]) => location === row.subregion)
+      .map(([alias]) => alias);
+    return [...regionSearchTerms(row.region), cleanSubregion(row), row.subregion, ...aliases];
+  }
+
   function detailRows(inventory, query = state.subregionQuery) {
-    const normalized = String(query).trim().replace(/\s+/g, " ").toLocaleLowerCase("ko");
+    const normalized = normalizedSearch(query);
     return (inventory.locations || [])
       .filter((row) => {
         if (!normalized) return row.region === state.selectedRegion;
-        const searchText = [...regionSearchTerms(row.region), cleanSubregion(row), row.subregion]
+        const searchText = locationSearchTerms(inventory, row)
           .join(" ")
           .toLocaleLowerCase("ko");
         return searchText.includes(normalized);
@@ -184,8 +208,13 @@
       .sort((a, b) => nationalValue(b) - nationalValue(a));
   }
 
-  function detailTable(rows, searching) {
-    if (!rows.length) return `<div class="detail-table-shell is-empty">${emptyState("세부지역 결과 없음", searching ? "시도명·약칭 또는 세부지역명을 바꿔 검색해 보세요." : "표시할 세부지역 정보가 없습니다.")}</div>`;
+  function detailTable(rows, searching, aliasMatch = null) {
+    if (!rows.length) {
+      const message = aliasMatch
+        ? `${aliasMatch.alias}는 ${aliasMatch.location}에 속하지만 현재 원천에는 해당 세부지역으로 등록된 설비 행이 없습니다.`
+        : searching ? "시도명·약칭 또는 세부지역명을 바꿔 검색해 보세요." : "표시할 세부지역 정보가 없습니다.";
+      return `<div class="detail-table-shell is-empty">${emptyState("세부지역 결과 없음", message)}</div>`;
+    }
     const maximum = Math.max(...rows.map((row) => nationalValue(row)), 1);
     return `<div class="table-responsive detail-table-shell"><table class="data-table subregion-table">
       <thead><tr><th>순위</th>${searching ? "<th>시도</th>" : ""}<th>세부지역</th><th class="numeric">등록건수</th><th class="numeric">설비용량(MW)</th></tr></thead>
@@ -217,6 +246,7 @@
       const row = byName.get(state.selectedRegion);
       const searching = Boolean(String(state.subregionQuery).trim());
       const rows = detailRows(inventory);
+      const aliasMatch = administrativeAliasMatch(inventory);
       const totals = rows.reduce((summary, item) => ({
         generatorRecords: summary.generatorRecords + (Number(item.generator_records) || 0),
         capacityMw: summary.capacityMw + (Number(item.capacity_mw) || 0),
@@ -227,10 +257,12 @@
       };
       document.getElementById("subregion-title").textContent = searching ? "전국 세부지역 검색 결과" : `${state.selectedRegion || "선택 지역"} 세부지역`;
       document.getElementById("subregion-caption").textContent = searching
-        ? `${rows.length}개 결과입니다. 시도를 선택하면 해당 지역의 전체 현황으로 이동합니다.`
+        ? aliasMatch && rows.length
+          ? `${aliasMatch.alias}는 ${aliasMatch.location}에 속합니다. 표는 ${cleanSubregion(rows[0])} 전체 등록 집계입니다.`
+          : `${rows.length}개 결과입니다. 시도를 선택하면 해당 지역의 전체 현황으로 이동합니다.`
         : `${rows.length}개 세부지역의 등록건수와 설비용량을 비교합니다.`;
-      document.getElementById("subregion-summary").innerHTML = `<div class="selected-summary"><span><small>${searching ? "검색 결과 등록" : "설비 등록"}</small><strong>${int.format(summary.generatorRecords)}건</strong></span><span><small>${searching ? "검색 결과 용량" : "설비용량"}</small><strong>${number(summary.capacityMw, 2)} MW</strong></span></div>`;
-      document.getElementById("subregion-table").innerHTML = detailTable(rows, searching);
+      document.getElementById("subregion-summary").innerHTML = rows.length ? `<div class="selected-summary"><span><small>${searching ? "검색 결과 등록" : "설비 등록"}</small><strong>${int.format(summary.generatorRecords)}건</strong></span><span><small>${searching ? "검색 결과 용량" : "설비용량"}</small><strong>${number(summary.capacityMw, 2)} MW</strong></span></div>` : "";
+      document.getElementById("subregion-table").innerHTML = detailTable(rows, searching, aliasMatch);
       document.querySelectorAll("[data-detail-region]").forEach((button) => button.addEventListener("click", () => selectRegion(button.dataset.detailRegion)));
     }
 
@@ -318,7 +350,7 @@
     L.control.zoom({ position: "bottomright" }).addTo(map);
     const attribution = L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
     attribution.addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>');
-    attribution.addAttribution("경계 © SimpleMaps");
+    attribution.addAttribution('경계 &copy; <a href="https://www.data.go.kr/data/15129688/fileData.do" target="_blank" rel="noopener">국가데이터처 SGIS</a>');
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       opacity: .62,
       maxZoom: 19,
@@ -369,22 +401,137 @@
   function evaluationContext(evaluation = {}) {
     const parts = [];
     if (evaluation.from && evaluation.to) parts.push(`${date(evaluation.from)} ~ ${date(evaluation.to)}`);
-    if (finite(evaluation.horizon_hours)) parts.push(`${number(evaluation.horizon_hours)}시간 예측`);
-    if (finite(evaluation.common_samples)) parts.push(`공통 평가 ${int.format(Number(evaluation.common_samples))}건`);
+    if (finite(evaluation.horizon_hours) && Number(evaluation.horizon_hours) > 0) parts.push(`${number(evaluation.horizon_hours)}시간 예측`);
+    if (finite(evaluation.common_samples) && Number(evaluation.common_samples) > 0) parts.push(`공통 평가 ${int.format(Number(evaluation.common_samples))}건`);
     return parts.join(" · ");
   }
 
+  function forecastModels(analysis) {
+    const points = normalizeSeries(analysis);
+    return (analysis.models || []).filter((model) =>
+      points.some((point) => finite(point.predictions?.[model.id]))
+    );
+  }
+
+  function forecastModelOptions(analysis) {
+    return forecastModels(analysis).map((model) =>
+      `<option value="${esc(model.id)}"${model.id === state.forecastModelId ? " selected" : ""}>${esc(model.label)}</option>`
+    ).join("");
+  }
+
+  function regionsForForecast(analysis) {
+    return [...new Set(normalizeSeries(analysis).map((row) => row.region).filter(Boolean))]
+      .sort((a, b) => displayRegion(a).localeCompare(displayRegion(b), "ko"));
+  }
+
+  function forecastRegionOptions(analysis) {
+    return '<option value="all">전국</option>' + regionsForForecast(analysis).map((region) =>
+      `<option value="${esc(region)}"${region === state.region ? " selected" : ""}>${esc(displayRegion(region))}</option>`
+    ).join("");
+  }
+
+  function plantsForForecast(analysis) {
+    const result = new Map();
+    normalizeSeries(analysis).forEach((row) => {
+      if (row.plant_id && (state.region === "all" || row.region === state.region)) {
+        result.set(String(row.plant_id), row.plant || String(row.plant_id));
+      }
+    });
+    return [...result.entries()]
+      .map(([plant_id, plant]) => ({ plant_id, plant }))
+      .sort((a, b) => a.plant.localeCompare(b.plant, "ko"));
+  }
+
+  function forecastPlantOptions(analysis) {
+    return '<option value="all">발전소 선택</option>' + plantsForForecast(analysis).map((row) =>
+      `<option value="${esc(row.plant_id)}"${row.plant_id === state.plantId ? " selected" : ""}>${esc(row.plant)}</option>`
+    ).join("");
+  }
+
+  function forecastPage(analysis) {
+    const models = forecastModels(analysis);
+    if (!models.some((model) => model.id === state.forecastModelId)) {
+      state.forecastModelId = models[0]?.id || "all";
+    }
+    const header = intro(
+      "테스트 구간 발전량 예측 결과",
+      "정식 평가에 사용된 과거 Test 구간의 실제 발전량과 모델 예측값을 발전소별로 확인합니다.",
+      evaluationContext(analysis.evaluation),
+    ) +
+      `<p class="forecast-note">현재·미래 운영 예측이 아니라 저장된 Test 평가 결과입니다. 예보 발행시각이 보존된 기상예보 입력이 연결되기 전에는 미래 발전량을 표시하지 않습니다.</p>` +
+      (analysis.status !== "ready" && analysis.message ? `<p class="status-message">${esc(analysis.message)}</p>` : "");
+    if (!models.length) {
+      return header + `<section id="forecast-content" class="forecast-content">${emptyState("예측 결과가 없습니다", analysis.message || "정식 모델의 Test 예측이 완료되면 발전소별 시계열을 표시합니다.")}</section>`;
+    }
+    return header + `<section class="analysis-toolbar forecast-toolbar" aria-label="발전량 예측 조건">
+        <label class="field-label" for="forecast-region"><span>지역</span><select id="forecast-region">${forecastRegionOptions(analysis)}</select></label>
+        <label class="field-label" for="forecast-plant"><span>발전소</span><select id="forecast-plant">${forecastPlantOptions(analysis)}</select></label>
+        <label class="field-label" for="forecast-model"><span>예측 모델</span><select id="forecast-model">${forecastModelOptions(analysis)}</select></label>
+      </section>
+      <section id="forecast-content" class="forecast-content"></section>`;
+  }
+
+  function setupForecast(analysis) {
+    const content = document.getElementById("forecast-content");
+    const regionSelect = document.getElementById("forecast-region");
+    if (!regionSelect) return;
+    const render = () => { content.innerHTML = forecastView(analysis); };
+    regionSelect.addEventListener("change", (event) => {
+      state.region = event.target.value;
+      state.plantId = "all";
+      document.getElementById("forecast-plant").innerHTML = forecastPlantOptions(analysis);
+      render();
+    });
+    document.getElementById("forecast-plant").addEventListener("change", (event) => {
+      state.plantId = event.target.value;
+      render();
+    });
+    document.getElementById("forecast-model").addEventListener("change", (event) => {
+      state.forecastModelId = event.target.value;
+      render();
+    });
+    render();
+  }
+
+  function forecastView(analysis) {
+    const models = forecastModels(analysis);
+    const model = models.find((candidate) => candidate.id === state.forecastModelId);
+    if (!model) {
+      return emptyState("예측 결과가 없습니다", analysis.message || "정식 모델의 Test 예측이 완료되면 발전소별 시계열을 표시합니다.");
+    }
+    if (state.plantId === "all") {
+      return `<section class="surface forecast-series">${emptyState("발전소를 선택해 주세요", "상단에서 지역과 발전소를 선택하면 실제 발전량과 선택 모델의 예측값을 표시합니다.")}</section>`;
+    }
+    const selected = plantsForForecast(analysis).find((row) => row.plant_id === state.plantId);
+    const label = selected?.plant || state.plantId;
+    const points = normalizeSeries(analysis).filter((row) =>
+      (state.region === "all" || row.region === state.region) &&
+      row.plant_id === state.plantId &&
+      finite(row.predictions?.[model.id])
+    );
+    if (!points.length) {
+      return emptyState("선택 조건의 예측 결과가 없습니다", "다른 발전소나 모델을 선택해 확인해 주세요.");
+    }
+    const horizon = finite(analysis.evaluation?.horizon_hours) ? number(analysis.evaluation.horizon_hours) : "-";
+    return stats([
+      ["선택 모델", model.label || model.id],
+      ["표시 시점", int.format(points.length), "건"],
+      ["예측 범위", horizon, finite(analysis.evaluation?.horizon_hours) ? "시간" : ""],
+    ]) +
+      `<section class="surface forecast-series"><div class="section-head"><div><h2>${esc(label)} 발전량 예측</h2><p>Test 구간에서 가장 최근의 연속 최대 168시간을 실제 발전량과 ${esc(model.label || model.id)} 예측값으로 표시합니다.</p></div></div>${lineChart(points, [model], label)}</section>`;
+  }
+
   function analysisPage(analysis) {
-    return intro("태양광 발전량 예측 성능 분석", "모델별 예측 정확도를 비교하고 지역·발전소의 취약 구간과 이상 신호를 살펴봅니다.", evaluationContext(analysis.evaluation)) +
+    return intro("태양광 모델 성능 비교·분석", "동일한 평가 표본에서 모델 정확도를 비교하고 지역·발전소별 오차와 이상 신호를 살펴봅니다.", evaluationContext(analysis.evaluation)) +
       (analysis.status !== "ready" && analysis.message ? `<p class="status-message">${esc(analysis.message)}</p>` : "") +
       `<section class="analysis-toolbar" aria-label="분석 조건">
         <label class="field-label" for="analysis-region"><span>지역</span><select id="analysis-region">${analysisRegionOptions(analysis)}</select></label>
         <label class="field-label" for="analysis-plant"><span>발전소</span><select id="analysis-plant">${analysisPlantOptions(analysis)}</select></label>
       </section>
-      <div class="analysis-tabs" role="tablist" aria-label="예측 분석 보기">
+      <div class="analysis-tabs" role="tablist" aria-label="모델 성능 분석 보기">
         <button type="button" role="tab" id="tab-comparison" aria-controls="analysis-content" aria-selected="true" data-tab="comparison">모델 비교</button>
         <button type="button" role="tab" id="tab-performance" aria-controls="analysis-content" aria-selected="false" data-tab="performance">지역·발전소 성능</button>
-        <button type="button" role="tab" id="tab-anomalies" aria-controls="analysis-content" aria-selected="false" data-tab="anomalies">이상 신호</button>
+        <button type="button" role="tab" id="tab-anomalies" aria-controls="analysis-content" aria-selected="false" data-tab="anomalies">이상·오차 분석</button>
       </div>
       <section id="analysis-content" class="analysis-content" role="tabpanel" aria-labelledby="tab-comparison"></section>`;
   }
@@ -462,8 +609,10 @@
 
   function setupAnalysis(analysis) {
     const content = document.getElementById("analysis-content");
+    const toolbar = document.querySelector(".analysis-toolbar");
     const tabs = [...document.querySelectorAll("[data-tab]")];
     const render = () => {
+      toolbar.hidden = state.tab === "comparison";
       content.innerHTML = state.tab === "performance" ? performanceView(analysis) : state.tab === "anomalies" ? anomalyView(analysis) : comparisonView(analysis);
       content.setAttribute("aria-labelledby", `tab-${state.tab}`);
       bindAnalysisLinks(analysis, render);
@@ -527,11 +676,10 @@
     const allModels = analysis.models || [];
     const models = allModels.filter((model) => Object.keys(metrics).some((key) => metricValue(model, key) !== null));
     const comparable = models.filter((model) => model.comparable !== false);
-    if (!models.length) return emptyState("모델 평가 결과가 없습니다", analysis.message || "모델 평가가 완료되면 네 가지 성능 지표가 함께 표시됩니다.") + predictionSection(analysis);
+    if (!models.length) return emptyState("모델 평가 결과가 없습니다", analysis.message || "모델 평가가 완료되면 네 가지 성능 지표가 함께 표시됩니다.");
     if (comparable.length < 2) {
       return emptyState("모델 간 비교 결과가 없습니다", analysis.message || "동일한 테스트 표본의 모델이 두 개 이상 확보되면 네 가지 지표 비교가 활성화됩니다.") +
-        `<section class="surface analysis-section"><div class="section-head"><div><h2>확인 가능한 개별 결과</h2><p>평가 구간이 같지 않아 모델 간 순위나 막대 비교에는 사용하지 않습니다.</p></div></div>${modelTable(models)}</section>` +
-        predictionSection(analysis);
+        `<section class="surface analysis-section"><div class="section-head"><div><h2>확인 가능한 개별 결과</h2><p>평가 구간이 같지 않아 모델 간 순위나 막대 비교에는 사용하지 않습니다.</p></div></div>${modelTable(models)}</section>`;
     }
     const commonSamples = finite(analysis.evaluation?.common_samples) ? Number(analysis.evaluation.common_samples) : 0;
     const horizon = finite(analysis.evaluation?.horizon_hours) ? number(analysis.evaluation.horizon_hours) : "-";
@@ -542,7 +690,7 @@
     ]);
     result += `<section class="metric-overview-grid" aria-label="모델별 네 가지 성능 지표">${Object.keys(metrics).map((key) => metricPanel(comparable, key)).join("")}</section>`;
     result += `<section class="surface analysis-section"><div class="section-head"><div><h2>모델별 전체 평가 지표</h2><p>NMAE, MAE, RMSE, R²를 같은 평가 구간에서 함께 확인합니다.</p></div></div>${modelTable(models)}</section>`;
-    return result + predictionSection(analysis);
+    return result;
   }
 
   function metricPanel(models, key) {
@@ -563,14 +711,6 @@
 
   function modelTable(models) {
     return `<div class="table-responsive"><table class="data-table"><thead><tr><th>모델</th><th class="numeric">NMAE</th><th class="numeric">용량 적용률</th><th class="numeric">MAE</th><th class="numeric">RMSE</th><th class="numeric">R²</th><th class="numeric">평가 표본</th></tr></thead><tbody>${models.map((model) => `<tr><td><strong>${esc(model.label)}</strong>${model.comparable === false ? '<span class="status-tag neutral">비교 제외</span>' : ""}</td><td class="numeric">${esc(metricText("nmae_capacity", metricValue(model, "nmae_capacity")))}</td><td class="numeric">${finite(model.metrics?.capacity_coverage) ? `${number(Number(model.metrics.capacity_coverage) * 100, 1)}%` : "-"}</td><td class="numeric">${esc(metricText("mae", metricValue(model, "mae")))}</td><td class="numeric">${esc(metricText("rmse", metricValue(model, "rmse")))}</td><td class="numeric">${esc(metricText("r2", metricValue(model, "r2")))}</td><td class="numeric">${finite(model.metrics?.n_samples) ? int.format(Number(model.metrics.n_samples)) : "-"}</td></tr>`).join("")}</tbody></table></div>`;
-  }
-
-  function predictionSection(analysis) {
-    if (state.plantId === "all") return `<section class="surface analysis-section"><div class="section-head"><div><h2>실제 발전량과 예측값</h2><p>지역과 발전소를 선택해 시간대별 차이를 확인합니다.</p></div></div>${emptyState("발전소를 선택해 주세요", "상단 발전소 목록에서 확인할 발전소를 선택하면 시계열이 표시됩니다.")}</section>`;
-    const selected = plantsForAnalysis(analysis).find((row) => row.plant_id === state.plantId);
-    const label = selected?.plant || state.plantId;
-    const points = normalizeSeries(analysis).filter((row) => (state.region === "all" || row.region === state.region) && row.plant_id === state.plantId);
-    return `<section class="surface analysis-section"><div class="section-head"><div><h2>${esc(label)} 실제·예측 비교</h2><p>평가 구간 중 최대 168개 시점을 표시합니다.</p></div></div>${points.length ? lineChart(points, analysis.models || [], label) : emptyState("시계열 결과 없음", "선택한 발전소의 평가 시계열이 아직 없습니다.")}</section>`;
   }
 
   function normalizeSeries(analysis) {

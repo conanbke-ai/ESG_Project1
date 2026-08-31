@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-28T23:55:14+09:00",
+    "generated_at": "2026-08-31T11:34:55+09:00",
     "scope": "전국 태양광 설비 현황과 정식 모델 평가 결과"
   },
   "national_inventory": {
@@ -2008,7 +2008,18 @@
         "capacity_mw": 185.862835,
         "source_region_conflict": false
       }
-    ]
+    ],
+    "location_search_aliases": {
+      "대청도": "인천광역시 옹진군",
+      "대청면": "인천광역시 옹진군",
+      "독도": "경상북도 울릉군",
+      "백령도": "인천광역시 옹진군",
+      "백령면": "인천광역시 옹진군",
+      "연평도": "인천광역시 옹진군",
+      "연평면": "인천광역시 옹진군",
+      "울릉군": "경상북도 울릉군",
+      "울릉도": "경상북도 울릉군"
+    }
   },
   "model_analysis": {
     "status": "empty",
@@ -2061,31 +2072,7 @@
             "capacity_exceeded_rate": 0.0,
             "positive_flatline_rate": 0.0136197697276046,
             "temporal_profile_consistency": 0.7441962929594563,
-            "peer_pattern_correlation": -0.0463687836904861
-          }
-        },
-        {
-          "plant_id": "kospo:신인천 1_2단계 주차장",
-          "region": "인천광역시",
-          "plant": "신인천 1_2단계 주차장",
-          "severity": "review",
-          "signal_types": [
-            "설비용량 초과 패턴"
-          ],
-          "summary": "설비용량 초과 패턴",
-          "observations": 37128,
-          "period": {
-            "from": "2020-12-05T00:00:00",
-            "to": "2025-02-28T23:00:00"
-          },
-          "metrics": {
-            "hourly_coverage": 1.0,
-            "missing_weather_rate": 0.0005656108597285,
-            "daylight_zero_rate": 0.0690863862505653,
-            "capacity_exceeded_rate": 0.030408317173023,
-            "positive_flatline_rate": 0.0,
-            "temporal_profile_consistency": 0.9610663528949868,
-            "peer_pattern_correlation": 0.6211258514040675
+            "peer_pattern_correlation": 0.0072083763394618
           }
         },
         {

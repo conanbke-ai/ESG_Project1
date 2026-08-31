@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
+geo = ["pyshp>=2.3,<3", "pyproj>=3.7,<4", "shapely>=2.1,<3"]
 
 [project.scripts]
 solar-forecast = "solar_forecast.cli:main"

@@ -68,6 +68,7 @@ def _write_static_dashboard(root: Path) -> dict[str, str]:
     (static_root / "assets").mkdir(parents=True, exist_ok=True)
     static_files = {
         "solar_dashboard.html": "<html>national</html>",
+        "forecast.html": "<html>forecast</html>",
         "model_analysis.html": "<html>analytics</html>",
         "plant_region_report_perm.html": "<html>redirect</html>",
         "assets/dashboard.css": "body {}",
@@ -76,6 +77,17 @@ def _write_static_dashboard(root: Path) -> dict[str, str]:
     for relative_path, content in static_files.items():
         (static_root / relative_path).write_text(content, encoding="utf-8")
     return static_files
+
+
+def test_dashboard_builder_fails_fast_when_required_map_boundary_is_missing(
+    tmp_path: Path,
+):
+    builder = DashboardBuilder(tmp_path, tmp_path / "published")
+
+    with pytest.raises(FileNotFoundError, match="province boundary source is missing"):
+        builder._copy_province_boundaries(
+            {"source": {"boundary_path": "map/json/missing.geojson"}}
+        )
 
 
 def _write_model_run(
@@ -187,6 +199,10 @@ def test_dashboard_builder_publishes_clean_user_contract_without_registry(tmp_pa
         "scope",
     }
     assert payload["national_inventory"]["summary"]["generator_records"] == 1
+    assert (
+        payload["national_inventory"]["location_search_aliases"]["백령도"]
+        == "인천광역시 옹진군"
+    )
     region = next(
         row
         for row in payload["national_inventory"]["regions"]
@@ -207,6 +223,7 @@ def test_dashboard_builder_publishes_clean_user_contract_without_registry(tmp_pa
     assert result.national_capacity_mw == 1.25
     assert result.model_analysis_status == "empty"
     assert result.data_quality_signals == 1
+    assert result.forecast_dashboard == tmp_path / "published/forecast.html"
     assert result.analytics_dashboard == tmp_path / "published/model_analysis.html"
     assert result.mapping_report == result.analytics_dashboard
     assert result.boundary_path == tmp_path / "published/data/korea_provinces.geojson"
@@ -613,6 +630,7 @@ def test_dashboard_frontend_has_no_retired_developer_quality_view():
     root = Path(__file__).resolve().parents[1]
     script = (root / "dashboard/assets/dashboard.js").read_text(encoding="utf-8")
     analysis = (root / "dashboard/model_analysis.html").read_text(encoding="utf-8")
+    forecast = (root / "dashboard/forecast.html").read_text(encoding="utf-8")
 
     for retired in (
         "plant_id_unique",
@@ -624,6 +642,7 @@ def test_dashboard_frontend_has_no_retired_developer_quality_view():
     ):
         assert retired not in script
         assert retired not in analysis
+        assert retired not in forecast
     assert "model_analysis" in script
     assert "source_region_conflict" in script
     assert ".slice(0, 3)" not in script
@@ -634,6 +653,8 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     script = (root / "dashboard/assets/dashboard.js").read_text(encoding="utf-8")
     styles = (root / "dashboard/assets/dashboard.css").read_text(encoding="utf-8")
     coverage = (root / "dashboard/solar_dashboard.html").read_text(encoding="utf-8")
+    forecast = (root / "dashboard/forecast.html").read_text(encoding="utf-8")
+    analysis = (root / "dashboard/model_analysis.html").read_text(encoding="utf-8")
 
     assert "analysis-metric" not in script
     assert "state.metric" not in script
@@ -648,6 +669,8 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert "zoomSnap: .1" in script
     assert "openstreetmap.org" in script
     assert "tile.openstreetmap.org" in coverage
+    assert "국가데이터처 SGIS" in script
+    assert "SimpleMaps" not in script
     assert "province-hover-tooltip" in script
     assert "map-tooltip-metrics" in script
     assert "설비 등록</small>" in script
@@ -663,7 +686,11 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert 'KR46: "전남광주통합특별시"' in script
     assert "data-detail-region" in script
     assert "<th>시도</th>" in script
-    assert "detailTable(rows, searching)" in script
+    assert "detailTable(rows, searching, aliasMatch)" in script
+    assert "administrativeAliasMatch" in script
+    assert "locationSearchTerms" in script
+    assert "표는 ${cleanSubregion(rows[0])} 전체 등록 집계입니다." in script
+    assert "현재 원천에는 해당 세부지역으로 등록된 설비 행이 없습니다." in script
     assert "검색 결과 등록" in script
     assert "검색 결과 용량" in script
     assert 'addEventListener("compositionstart"' in script
@@ -677,3 +704,18 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert ".summary-value" in styles
     assert "comparable.length < 2" in script
     assert 'role="region" aria-label="전국 시도별 태양광 설비 분포 지도"' in script
+    assert 'data-view="forecast"' in forecast
+    assert "forecastPage" in script
+    assert "setupForecast" in script
+    assert "forecastModelOptions" in script
+    assert "현재·미래 운영 예측이 아니라 저장된 Test 평가 결과" in script
+    assert "plantsForForecast" in script
+    assert "normalizeSeries(analysis).forEach" in script
+    assert 'toolbar.hidden = state.tab === "comparison"' in script
+    assert ".analysis-toolbar[hidden]" in styles
+    assert "display: none" in styles
+    assert "predictionSection" not in script
+    assert "발전량 예측" in coverage
+    assert "성능 비교·분석" in coverage
+    assert "발전량 예측" in analysis
+    assert "성능 비교·분석" in analysis

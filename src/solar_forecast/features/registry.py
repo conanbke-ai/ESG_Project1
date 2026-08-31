@@ -55,6 +55,13 @@ MUNICIPALITY_PROVINCE_OVERRIDES = {
 ADDRESS_ONLY_REVIEW_MUNICIPALITIES = {"옹진군"}
 
 
+def _normalized_mapping_text(value: object) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return "" if text.casefold() in {"", "none", "null", "nan"} else text
+
+
 @dataclass(frozen=True)
 class AdministrativeArea:
     province: str | None
@@ -81,6 +88,31 @@ class ReviewedStationMapping:
     evidence_url: str
     rationale: str
 
+    def __post_init__(self) -> None:
+        company = _normalized_mapping_text(self.company)
+        plant = _normalized_mapping_text(self.plant)
+        evidence_url = _normalized_mapping_text(self.evidence_url)
+        rationale = _normalized_mapping_text(self.rationale)
+        if not company or not plant:
+            raise ValueError("Reviewed weather mapping requires company and plant")
+        if not evidence_url or not rationale:
+            raise ValueError(
+                "Reviewed weather mapping requires evidence_url and rationale"
+            )
+        try:
+            station_id = int(self.station_id)
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "Reviewed weather mapping requires a positive station_id"
+            ) from error
+        if station_id <= 0:
+            raise ValueError("Reviewed weather mapping requires a positive station_id")
+        object.__setattr__(self, "company", company)
+        object.__setattr__(self, "plant", plant)
+        object.__setattr__(self, "station_id", station_id)
+        object.__setattr__(self, "evidence_url", evidence_url)
+        object.__setattr__(self, "rationale", rationale)
+
 
 class ReviewedStationMappingCatalog:
     """Version-controlled, auditable exceptions for plants without local ASOS."""
@@ -101,11 +133,11 @@ class ReviewedStationMappingCatalog:
         payload = json.loads(source.read_text(encoding="utf-8"))
         return cls(
             ReviewedStationMapping(
-                company=str(row["company"]),
-                plant=str(row["plant"]),
-                station_id=int(row["station_id"]),
-                evidence_url=str(row["evidence_url"]),
-                rationale=str(row["rationale"]),
+                company=row.get("company"),
+                plant=row.get("plant"),
+                station_id=row.get("station_id"),
+                evidence_url=row.get("evidence_url"),
+                rationale=row.get("rationale"),
             )
             for row in payload.get("mappings", [])
         )
@@ -163,10 +195,13 @@ class KmaStationCatalog:
         missing = required - set(source.columns)
         if missing:
             raise ValueError(f"KMA station metadata columns are missing: {sorted(missing)}")
-        if "시작일" in source:
-            source["시작일"] = pd.to_datetime(source["시작일"], errors="coerce")
-            source = source.sort_values("시작일", kind="stable")
-        source = source.drop_duplicates("지점", keep="last")
+        for column in ("시작일", "종료일"):
+            if column not in source:
+                source[column] = pd.NaT
+            source[column] = pd.to_datetime(source[column], errors="coerce")
+        source = source.sort_values(["지점", "시작일"], kind="stable").drop_duplicates(
+            ["지점", "시작일", "종료일"], keep="last"
+        )
         rows: list[dict[str, object]] = []
         for values in source.to_dict("records"):
             area = parse_administrative_area(values["지점주소"])
@@ -177,6 +212,8 @@ class KmaStationCatalog:
                     "station_address": str(values["지점주소"]).strip(),
                     "station_latitude": pd.to_numeric(values["위도"], errors="coerce"),
                     "station_longitude": pd.to_numeric(values["경도"], errors="coerce"),
+                    "station_valid_from": values["시작일"],
+                    "station_valid_to": values["종료일"],
                     "admin_province": area.province,
                     "admin_city": area.city,
                     "admin_locality": area.locality,
@@ -184,9 +221,24 @@ class KmaStationCatalog:
             )
         return cls(pd.DataFrame(rows))
 
-    def by_id(self, station_id: int) -> pd.Series | None:
+    def by_id(
+        self,
+        station_id: int,
+        *,
+        generation_start: object = None,
+        generation_end: object = None,
+    ) -> pd.Series | None:
         rows = self.stations.loc[self.stations["station_id"].eq(int(station_id))]
-        return rows.iloc[0] if len(rows) == 1 else None
+        rows = self._covering_stations(
+            rows,
+            generation_start=generation_start,
+            generation_end=generation_end,
+        )
+        if rows.empty:
+            return None
+        if "station_valid_from" in rows:
+            rows = rows.sort_values("station_valid_from", kind="stable")
+        return rows.iloc[-1]
 
     def resolve(
         self,
@@ -194,28 +246,67 @@ class KmaStationCatalog:
         address: object,
         latitude: object,
         longitude: object,
-        legacy_station_id: int | None = None,
-        reviewed_mapping_method: str = "reviewed_legacy_mapping",
+        reviewed_station_id: int | None = None,
+        generation_start: object = None,
+        generation_end: object = None,
     ) -> StationMatch:
-        if legacy_station_id is not None:
-            station = self.by_id(legacy_station_id)
+        if reviewed_station_id is not None:
+            station = self.by_id(
+                reviewed_station_id,
+                generation_start=generation_start,
+                generation_end=generation_end,
+            )
             if station is not None:
                 return StationMatch(
                     int(station["station_id"]),
                     str(station["station_name"]),
                     self._distance(latitude, longitude, station),
-                    reviewed_mapping_method,
+                    "reviewed_config_mapping",
                     "high",
                     False,
                 )
+            return StationMatch(
+                None,
+                None,
+                None,
+                "reviewed_mapping_invalid",
+                "none",
+                True,
+                "reviewed ASOS station does not exist or cover the complete generation date range",
+            )
 
         lat = pd.to_numeric(latitude, errors="coerce")
         lon = pd.to_numeric(longitude, errors="coerce")
         if pd.notna(lat) and pd.notna(lon) and 124 <= lat <= 132 and 32 <= lon <= 39:
             lat, lon = lon, lat
         if pd.notna(lat) and pd.notna(lon):
-            candidates = self.stations.dropna(subset=["station_latitude", "station_longitude"]).copy()
-            candidates["distance_km"] = candidates.apply(
+            histories = self._covering_stations(
+                self.stations,
+                generation_start=generation_start,
+                generation_end=generation_end,
+            )
+            coordinate_rows = histories[
+                ["station_latitude", "station_longitude"]
+            ].notna().all(axis=1)
+            coordinate_complete = coordinate_rows.groupby(
+                histories["station_id"], sort=False
+            ).all()
+            histories = histories.loc[
+                histories["station_id"].isin(
+                    coordinate_complete.index[coordinate_complete]
+                )
+            ].copy()
+            if histories.empty:
+                return StationMatch(
+                    None,
+                    None,
+                    None,
+                    "unresolved",
+                    "none",
+                    True,
+                    "no ASOS station covers the complete generation date range",
+                )
+            histories["distance_km"] = histories.apply(
                 lambda row: _haversine_km(
                     float(lat),
                     float(lon),
@@ -223,6 +314,13 @@ class KmaStationCatalog:
                     float(row["station_longitude"]),
                 ),
                 axis=1,
+            )
+            worst_distance = histories.groupby("station_id", sort=False)[
+                "distance_km"
+            ].max()
+            candidates = self._latest_station_rows(histories)
+            candidates["distance_km"] = candidates["station_id"].map(
+                worst_distance
             )
             station = candidates.sort_values("distance_km", kind="stable").iloc[0]
             distance = float(station["distance_km"])
@@ -247,14 +345,34 @@ class KmaStationCatalog:
 
         area = parse_administrative_area(address)
         if area.province and area.city:
-            candidates = self.stations.loc[
-                self.stations["admin_province"].eq(area.province)
-                & self.stations["admin_city"].eq(area.city)
+            active_stations = self._covering_stations(
+                self.stations,
+                generation_start=generation_start,
+                generation_end=generation_end,
+            )
+            exact_rows = (
+                active_stations["admin_province"].eq(area.province)
+                & active_stations["admin_city"].eq(area.city)
+            )
+            exact_ids = exact_rows.groupby(
+                active_stations["station_id"], sort=False
+            ).all()
+            candidates = active_stations.loc[
+                active_stations["station_id"].isin(exact_ids.index[exact_ids])
             ]
             if len(candidates) > 1 and area.locality:
-                locality = candidates.loc[candidates["admin_locality"].eq(area.locality)]
-                if len(locality) == 1:
+                locality_rows = candidates["admin_locality"].eq(area.locality)
+                locality_ids = locality_rows.groupby(
+                    candidates["station_id"], sort=False
+                ).all()
+                locality = candidates.loc[
+                    candidates["station_id"].isin(
+                        locality_ids.index[locality_ids]
+                    )
+                ]
+                if locality["station_id"].nunique() == 1:
                     candidates = locality
+            candidates = self._latest_station_rows(candidates)
             if len(candidates) == 1 and area.city not in ADDRESS_ONLY_REVIEW_MUNICIPALITIES:
                 station = candidates.iloc[0]
                 return StationMatch(
@@ -284,6 +402,86 @@ class KmaStationCatalog:
             True,
             "public metadata is insufficient for a defensible ASOS mapping",
         )
+
+    @classmethod
+    def _covering_stations(
+        cls,
+        stations: pd.DataFrame,
+        *,
+        generation_start: object,
+        generation_end: object,
+    ) -> pd.DataFrame:
+        if stations.empty or "station_valid_from" not in stations:
+            return stations
+        start = pd.to_datetime(generation_start, errors="coerce")
+        end = pd.to_datetime(generation_end, errors="coerce")
+        if pd.isna(start) and pd.isna(end):
+            return stations
+        valid_from = pd.to_datetime(stations["station_valid_from"], errors="coerce")
+        valid_to = (
+            pd.to_datetime(stations["station_valid_to"], errors="coerce")
+            if "station_valid_to" in stations
+            else pd.Series(pd.NaT, index=stations.index, dtype="datetime64[ns]")
+        )
+        mask = pd.Series(True, index=stations.index)
+        earliest = start if pd.notna(start) else end
+        latest = end if pd.notna(end) else start
+        coverage_ids = [
+            station_id
+            for station_id, indexes in stations.groupby(
+                "station_id", sort=False
+            ).groups.items()
+            if cls._intervals_cover_range(
+                valid_from.loc[indexes],
+                valid_to.loc[indexes],
+                earliest,
+                latest,
+            )
+        ]
+        mask &= stations["station_id"].isin(coverage_ids)
+        if pd.notna(latest):
+            mask &= valid_from.isna() | valid_from.le(latest)
+        if pd.notna(earliest):
+            mask &= valid_to.isna() | valid_to.ge(earliest)
+        return stations.loc[mask]
+
+    @staticmethod
+    def _intervals_cover_range(
+        valid_from: pd.Series,
+        valid_to: pd.Series,
+        earliest: pd.Timestamp,
+        latest: pd.Timestamp,
+    ) -> bool:
+        intervals = sorted(
+            zip(valid_from.tolist(), valid_to.tolist()),
+            key=lambda interval: pd.Timestamp.min
+            if pd.isna(interval[0])
+            else interval[0],
+        )
+        cursor = earliest
+        for interval_start, interval_end in intervals:
+            interval_start = (
+                pd.Timestamp.min if pd.isna(interval_start) else interval_start
+            )
+            interval_end = pd.Timestamp.max if pd.isna(interval_end) else interval_end
+            if interval_end < cursor:
+                continue
+            if interval_start > cursor + pd.Timedelta(days=1):
+                return False
+            if interval_end >= latest:
+                return True
+            cursor = max(cursor, interval_end)
+        return False
+
+    @staticmethod
+    def _latest_station_rows(stations: pd.DataFrame) -> pd.DataFrame:
+        if stations.empty:
+            return stations
+        if "station_valid_from" not in stations:
+            return stations.drop_duplicates("station_id", keep="last")
+        return stations.sort_values(
+            "station_valid_from", kind="stable"
+        ).drop_duplicates("station_id", keep="last")
 
     @staticmethod
     def _distance(latitude: object, longitude: object, station: pd.Series) -> float | None:
@@ -368,13 +566,6 @@ class NationwidePlantRegistryBuilder:
                 }
             )
 
-        colocated: dict[str, set[int]] = {}
-        for profile in enriched_profiles:
-            station_id = legacy.get((str(profile["company"]), str(profile["plant"])))
-            address_key = self._address_key(profile["address"])
-            if station_id is not None and address_key:
-                colocated.setdefault(address_key, set()).add(station_id)
-
         rows: list[dict[str, object]] = []
         for profile in enriched_profiles:
             company = str(profile["company"])
@@ -387,23 +578,26 @@ class NationwidePlantRegistryBuilder:
             longitude = profile["longitude"]
             area = profile["area"]
             reviewed = self.reviewed_mappings.get(company, plant)
-            legacy_station_id = reviewed.station_id if reviewed else legacy.get((company, plant))
-            reviewed_method = "reviewed_legacy_mapping"
-            if reviewed:
-                reviewed_method = "reviewed_config_mapping"
-            elif legacy_station_id is None:
-                colocated_ids = colocated.get(self._address_key(address), set())
-                if len(colocated_ids) == 1:
-                    legacy_station_id = next(iter(colocated_ids))
-                    reviewed_method = "reviewed_colocated_address"
+            legacy_candidate_id = legacy.get((company, plant))
+            legacy_station = (
+                self.stations.by_id(legacy_candidate_id)
+                if legacy_candidate_id is not None
+                else None
+            )
             match = self.stations.resolve(
                 address=address,
                 latitude=latitude,
                 longitude=longitude,
-                legacy_station_id=legacy_station_id,
-                reviewed_mapping_method=reviewed_method,
+                reviewed_station_id=reviewed.station_id if reviewed else None,
+                generation_start=profile["generation_start"],
+                generation_end=profile["generation_end"],
             )
             eligible = match.station_id is not None and not match.review_required
+            model_ready_reason = None if eligible else match.reason
+            if not eligible and legacy_candidate_id is not None:
+                model_ready_reason = (
+                    f"{model_ready_reason}; " if model_ready_reason else ""
+                ) + "legacy ASOS station is retained only as an unreviewed audit candidate"
             rows.append(
                 {
                     "plant_id": f"{company}:{plant}",
@@ -425,13 +619,29 @@ class NationwidePlantRegistryBuilder:
                     "weather_mapping_review_required": match.review_required,
                     "weather_mapping_evidence_url": reviewed.evidence_url if reviewed else None,
                     "weather_mapping_rationale": reviewed.rationale if reviewed else None,
+                    "legacy_weather_station_candidate_id": legacy_candidate_id,
+                    "legacy_weather_station_candidate_name": (
+                        str(legacy_station["station_name"])
+                        if legacy_station is not None
+                        else None
+                    ),
+                    "legacy_weather_station_candidate_distance_km": (
+                        self.stations._distance(latitude, longitude, legacy_station)
+                        if legacy_station is not None
+                        else None
+                    ),
+                    "legacy_weather_station_candidate_status": (
+                        "audit_only_unreviewed"
+                        if legacy_candidate_id is not None
+                        else None
+                    ),
                     "generation_start": profile["generation_start"],
                     "generation_end": profile["generation_end"],
                     "source_plant_aliases": profile["source_plant_aliases"],
                     "source_observation_rows": profile["source_observation_rows"],
                     "source_partition_count": profile["source_partition_count"],
                     "model_ready_status": "eligible" if eligible else "quarantined",
-                    "model_ready_reason": None if eligible else match.reason,
+                    "model_ready_reason": model_ready_reason,
                 }
             )
         result = pd.DataFrame(rows).sort_values(
@@ -441,12 +651,6 @@ class NationwidePlantRegistryBuilder:
         destination.parent.mkdir(parents=True, exist_ok=True)
         result.to_csv(destination, index=False, encoding="utf-8-sig")
         return result
-
-    @staticmethod
-    def _address_key(address: object) -> str:
-        if address is None or pd.isna(address):
-            return ""
-        return re.sub(r"[^0-9가-힣]", "", str(address))
 
     def _scan(self, paths: Iterable[Path]) -> list[dict[str, object]]:
         profiles: dict[tuple[str, str, str], dict[str, object]] = {}

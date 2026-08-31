@@ -167,10 +167,70 @@ def test_effective_dated_reference_merges_legacy_gwangju_jeonnam_names():
     assert reference.effective_date == "2026-07-01"
     assert reference.aliases["광주광역시"] == "전남광주통합특별시"
     assert reference.aliases["전라남도"] == "전남광주통합특별시"
+    assert (
+        reference.location_search_aliases["백령도"]
+        == "인천광역시 옹진군"
+    )
+    assert (
+        reference.location_search_aliases["울릉도"]
+        == "경상북도 울릉군"
+    )
     assert canonical_region("전남") == "전남광주통합특별시"
     assert canonical_location(
         "전라남도 영암군", "전남광주통합특별시"
     ) == "전남광주통합특별시 영암군"
+
+
+def test_natural_place_aliases_do_not_reassign_generator_name_substrings(tmp_path):
+    source = tmp_path / "islands.csv"
+    rows = [
+        [
+            "연천사업자",
+            "연천백령1호 태양광발전소",
+            "1",
+            "0.5",
+            "비회원",
+            "비중앙",
+            "태양에너지",
+            "신재생",
+            "발전사업",
+            "경기",
+            "경기도 연천군",
+        ],
+        [
+            "옹진사업자",
+            "영흥 태양광발전소",
+            "1",
+            "1.0",
+            "비회원",
+            "비중앙",
+            "태양에너지",
+            "신재생",
+            "발전사업",
+            "인천",
+            "인천광역시 옹진군",
+        ],
+        ["", "통합", "2", "1.5", "", "", "", "", "", "", ""],
+    ]
+    digest = _write_csv(source, rows)
+
+    inventory = NationalInventoryService.from_config(
+        _config(source, digest), project_root=tmp_path, coordinate_cache={}
+    ).build()["national_inventory"]
+    locations = {
+        (row["region"], row["subregion"]): row
+        for row in inventory["locations"]
+    }
+
+    assert locations[("경기도", "경기도 연천군")]["generator_records"] == 1
+    assert (
+        locations[("인천광역시", "인천광역시 옹진군")][
+            "generator_records"
+        ]
+        == 1
+    )
+    assert inventory["location_search_aliases"]["백령도"] == "인천광역시 옹진군"
+    assert not any("울릉군" in row["subregion"] for row in inventory["locations"])
 
 
 def test_utf8_replacement_character_metric_and_sha256_failure(tmp_path):

@@ -129,6 +129,18 @@ PROVINCE_CENTROIDS: dict[str, tuple[float, float]] = {
     "제주특별자치도": (33.4996, 126.5312),
 }
 
+LOCATION_SEARCH_ALIASES: dict[str, str] = {
+    "백령도": "인천광역시 옹진군",
+    "백령면": "인천광역시 옹진군",
+    "대청도": "인천광역시 옹진군",
+    "대청면": "인천광역시 옹진군",
+    "연평도": "인천광역시 옹진군",
+    "연평면": "인천광역시 옹진군",
+    "울릉도": "경상북도 울릉군",
+    "울릉군": "경상북도 울릉군",
+    "독도": "경상북도 울릉군",
+}
+
 FOOTER_CAPACITY_TOLERANCE_MW = Decimal("0.000001")
 
 
@@ -155,6 +167,7 @@ class AdministrativeRegionReference:
     canonical_regions: tuple[str, ...]
     aliases: Mapping[str, str]
     province_centroids: Mapping[str, tuple[float, float]]
+    location_search_aliases: Mapping[str, str] = field(default_factory=dict)
     provider: str = "행정안전부 행정표준코드관리시스템"
     source_url: str = "https://www.code.go.kr/stdcode/regCodeL.do"
     effective_date: str = "2026-07-01"
@@ -165,6 +178,7 @@ class AdministrativeRegionReference:
             canonical_regions=CANONICAL_REGIONS,
             aliases=dict(REGION_ALIASES),
             province_centroids=dict(PROVINCE_CENTROIDS),
+            location_search_aliases=dict(LOCATION_SEARCH_ALIASES),
         )
 
     @classmethod
@@ -183,6 +197,7 @@ class AdministrativeRegionReference:
             str(item).strip() for item in payload.get("canonical_regions", [])
         )
         aliases_value = payload.get("aliases", {})
+        location_aliases_value = payload.get("location_search_aliases", {})
         centroids_value = payload.get("province_centroids", {})
         if not canonical or len(set(canonical)) != len(canonical):
             raise InventoryConfigurationError(
@@ -203,6 +218,25 @@ class AdministrativeRegionReference:
                 "administrative aliases target unknown regions: "
                 + ", ".join(invalid_targets)
             )
+        if not isinstance(location_aliases_value, dict):
+            raise InventoryConfigurationError(
+                "location_search_aliases must be an object"
+            )
+        location_search_aliases = {
+            _clean(alias): _clean(target)
+            for alias, target in location_aliases_value.items()
+            if _clean(alias)
+        }
+        for alias, target in location_search_aliases.items():
+            target_region = canonical_region(
+                _first_token(target), aliases=aliases
+            )
+            if target_region not in canonical or not target.startswith(
+                target_region + " "
+            ):
+                raise InventoryConfigurationError(
+                    f"location search alias has an invalid target: {alias} -> {target}"
+                )
         if not isinstance(centroids_value, dict):
             raise InventoryConfigurationError(
                 "province_centroids must be an object"
@@ -219,6 +253,7 @@ class AdministrativeRegionReference:
             canonical_regions=canonical,
             aliases=aliases,
             province_centroids=centroids,
+            location_search_aliases=location_search_aliases,
             provider=str(payload.get("provider", cls.provider)),
             source_url=str(payload.get("source_url", cls.source_url)),
             effective_date=str(payload.get("effective_date", cls.effective_date)),
@@ -660,6 +695,9 @@ class NationalInventoryService:
             },
             "regions": regions,
             "locations": locations,
+            "location_search_aliases": dict(
+                sorted(self.region_reference.location_search_aliases.items())
+            ),
             "quality": {
                 "schema_valid": True,
                 "required_columns": list(REQUIRED_COLUMNS),

@@ -237,6 +237,24 @@ nav a[aria-current="page"] { color: #fff; background: var(--green); }
   border-radius: 13px;
   background: var(--surface);
 }
+
+.analysis-toolbar[hidden] {
+  display: none;
+}
+.forecast-toolbar { grid-template-columns: repeat(3, minmax(180px, 280px)); }
+.forecast-note {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #ead8aa;
+  border-radius: 10px;
+  color: #6f4a05;
+  background: var(--amber-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.forecast-content { min-height: 320px; }
+.forecast-series { min-height: 360px; }
+.forecast-series > .empty-state { min-height: 318px; }
 .analysis-tabs { display: flex; gap: 4px; padding: 4px; border-bottom: 1px solid var(--line); }
 .analysis-tabs button {
   padding: 10px 15px;
@@ -352,6 +370,7 @@ nav a[aria-current="page"] { color: #fff; background: var(--green); }
   .page-intro .page-context { margin-top: 10px; text-align: left; }
   .analysis-grid { grid-template-columns: 1fr; }
   .analysis-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .forecast-toolbar { grid-template-columns: 1fr; }
   .region-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 

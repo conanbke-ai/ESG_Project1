@@ -31,12 +31,18 @@ EPSIS 기준일 2026-08-05가 행정구역 변경 시행일보다 뒤인데도 `
 | `map/json/coord_cache.json` | EPSIS 세부지역 표시 좌표 보조 | 과거 Kakao 지오코딩 캐시. 687키 중 1개 좌표 오류와 오염 키가 있어 행정 master로 사용 금지 |
 | `file/KMA_data_file/META_관측지점정보.csv` | 기상관측소 위치 | 울릉도 지점 115의 주소·좌표를 확인할 수 있지만 전국 행정구역 master는 아님 |
 | `file/standardized/plant_registry.csv` | 확보한 학습 발전소 매핑 | 68개 자산 전용. 전국 EPSIS 등록설비를 채우는 용도로 사용 금지 |
-| `map/json/geoJson.json` | 17개 구 시도 표시 경계 | SimpleMaps 영어 속성의 1급 경계. 울릉도는 포함하지만 독도·시군구 경계는 없음 |
+| `map/json/geoJson.json` | 공식 시도 표시 경계 | SGIS 2025년 2분기 시도 경계를 WGS84로 변환. source hash·기준일·도서 소속 회귀검사 포함 |
 
-런타임 지도는 Google이 아니라 OpenStreetMap 배경 타일과 SimpleMaps 경계를 사용한다. 배경지도
-라벨은 시각적 참고일 뿐 집계 키로 사용하지 않는다. 구 경계의 `KR29`와 `KR46`은 같은 최신
-행정구역명으로 연결해 선택·색상·통계를 일치시키며, 공식 최신 경계를 확보하면 로컬 GeoJSON을
-교체한다.
+런타임 지도는 Google이 아니라 OpenStreetMap 배경 타일과 공식 SGIS 경계를 사용한다. 배경지도
+라벨은 시각적 참고일 뿐 집계 키로 사용하지 않는다. SGIS의 2025년 2분기 17개 시도 Shapefile을
+EPSG:4326으로 변환하고, 150m topology-preserving 단순화와 원본 archive·Shapefile SHA-256을
+GeoJSON metadata에 남긴다. 구 경계의 `KR29`와 `KR46`은 같은 최신 행정구역명으로 연결해
+선택·색상·통계를 일치시킨다.
+
+기존 SimpleMaps 경계는 백령도·대청도·연평도와 강화도권 일부를 `KR41` 경기도 polygon에 넣어
+옹진군 통계가 정상이어도 지도 hover가 경기로 보였다. 새 게시 검사는 백령도·대청도·연평도가
+`KR28` 인천, 울릉도가 `KR47` 경북에 오직 한 번 포함되는지 확인한다. 자연지명 검색 별칭은
+행정구역 탐색에만 쓰며 EPSIS 발전기 행을 이름만으로 재배정하지 않는다.
 
 ## 울릉·독도 판단
 
@@ -87,6 +93,10 @@ file/standardized/plant_location_mapping.parquet
 검색어를, `plant_location_mapping`은 원본 주소·좌표와 결정 코드·근거·품질상태를 보관한다.
 울릉도 같은 자연지명은 검색 별칭으로 `경상북도 울릉군`에 연결하되, EPSIS 설비가 없으면 0건인
 지역 reference와 설비 fact를 섞지 않는다.
+
+수동 발전소 별칭·Kakao 좌표 캐시·legacy ASOS seed를 공식 자료로 대체할 수 있는 범위와 안전한
+승인 조건은 [`OFFICIAL_SOURCE_REPLACEMENT_AUDIT.md`](OFFICIAL_SOURCE_REPLACEMENT_AUDIT.md)에
+기록했다.
 
 ## 검색 화면 안정화
 
