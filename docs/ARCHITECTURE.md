@@ -63,7 +63,8 @@ facade로만 유지합니다.
 - `PlantMetadataCatalog`: 공식 설비현황을 발전소/호기 단위로 매칭하되 불확실한 총용량 복제를 금지
 - `KmaAsosNormalizer`: 선택된 ASOS 기상요소와 관측지점 좌표를 영문 공통 계약으로 변환
 - `LeakageSafeFeatureEngineer`: 실제 시각 차이를 기준으로 24/168시간 lag와 24시간 이동 7일 평균 생성
-- `GenerationQualityPolicy`: 음수·용량초과·주간 0·flatline·기상 범위 위반을 원인별 flag로 분리
+- `GenerationQualityPolicy`: 음수·용량초과·주간 0·flatline·기상 범위 위반과 일 총량의 고정 야간
+  버킷 적재를 원인별 flag로 분리하고, 시간 정답으로 복원할 수 없는 집계형 발전소만 hard gate
 - `PlantQualityProfiler`: 발전소별 커버리지·형태 일관성·peer 상관을 보고하되 고장을 확정하지 않음
 - `FeatureAblationService`: Calibration/Test를 예약한 purged rolling-origin 평균으로 후보 컬럼 승격 여부 결정
 - `TemporalSplitter`: 발전소별 관측률과 무관하게 공통 날짜 경계·purge gap·독립 Calibration을 적용

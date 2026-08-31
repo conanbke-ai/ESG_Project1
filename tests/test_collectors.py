@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from solar_forecast.collectors.config import CollectionConfig, load_source_catalog
+from solar_forecast.collectors.archive import HistoricalGenerationStandardizationService
 from solar_forecast.collectors.kma import KmaAsosHourlyCollector
 from solar_forecast.collectors.koen_browser import KoenBrowserDownloader
 from solar_forecast.collectors.csv_artifacts import inspect_csv_artifact, write_standardized_csv
@@ -16,6 +17,7 @@ from solar_forecast.collectors.normalization import (
     DailyWideGenerationNormalizer,
     EwpTrainingNormalizer,
     GENERATION_COLUMNS,
+    KOSPO_ARCHIVE_INTERVAL_SCHEMA,
     IWEST_RENEWABLE_SCHEMA,
     IWEST_WIDE_SCHEMA,
     KOSPO_WIDE_SCHEMA,
@@ -123,6 +125,13 @@ def test_koen_normalizer_corrects_legacy_mislabeled_mwh_values():
     row.update({f"{hour}시 발전량(MWh)": 35_000 for hour in range(1, 25)})
     result = KoenGenerationNormalizer().transform(__import__("pandas").DataFrame([row]))
     assert result["generation_mwh"].eq(35.0).all()
+    assert result.attrs["generation_unit_resolution"] == {
+        "declared_source_unit": "mwh",
+        "resolved_source_unit": "kwh",
+        "method": "legacy_header_scale_correction",
+        "capacity_factor_p99": None,
+        "capacity_factor_max": None,
+    }
 
 
 def test_ewp_normalizer_keeps_latest_duplicate_and_builds_time_features():
@@ -184,6 +193,131 @@ def test_daily_wide_normalizer_keeps_static_capacity_and_global_plant_id():
     result = DailyWideGenerationNormalizer(IWEST_WIDE_SCHEMA).transform(pandas.DataFrame([row]))
     assert result.iloc[0]["plant_id"] == "iwest:A"
     assert result.iloc[0]["capacity_mw"] == pytest.approx(2.5)
+
+
+def test_kospo_interval_normalizer_corrects_decisive_wh_scale_header_defect():
+    pandas = __import__("pandas")
+    row = {
+        "년월일": "2025-01-01",
+        "_source_plant": "익산 다송리",
+        "호기": "A",
+        "설비용량(kW)": 893,
+        "총량(kWh)": 7_200_000,
+    }
+    row.update({column: 0 for column in KOSPO_ARCHIVE_INTERVAL_SCHEMA.hour_columns})
+    for column in KOSPO_ARCHIVE_INTERVAL_SCHEMA.hour_columns[8:17]:
+        row[column] = 800_000
+
+    result = DailyWideGenerationNormalizer(KOSPO_ARCHIVE_INTERVAL_SCHEMA).transform(
+        pandas.DataFrame([row]),
+        source_file="한국남부발전(주)_[익산 다송리] 태양광발전실적_20250808.csv",
+    )
+
+    assert result["generation_mwh"].max() == pytest.approx(0.8)
+    assert result["capacity_mw"].eq(0.893).all()
+    resolution = result.attrs["generation_unit_resolution"]
+    assert resolution["declared_source_unit"] == "kwh"
+    assert resolution["resolved_source_unit"] == "wh"
+    assert resolution["method"] == "capacity_factor_1000x_correction"
+    assert resolution["capacity_factor_max"] == pytest.approx(0.8 / 0.893)
+
+
+def test_kospo_interval_normalizer_preserves_physically_plausible_kwh_values():
+    pandas = __import__("pandas")
+    row = {
+        "년월일": "2025-01-01",
+        "_source_plant": "정상 태양광",
+        "호기": "A",
+        "설비용량(kW)": 893,
+        "총량(kWh)": 19_200,
+    }
+    row.update({column: 800 for column in KOSPO_ARCHIVE_INTERVAL_SCHEMA.hour_columns})
+
+    result = DailyWideGenerationNormalizer(KOSPO_ARCHIVE_INTERVAL_SCHEMA).transform(
+        pandas.DataFrame([row])
+    )
+
+    assert result["generation_mwh"].eq(0.8).all()
+    resolution = result.attrs["generation_unit_resolution"]
+    assert resolution["resolved_source_unit"] == "kwh"
+    assert resolution["method"] == "declared_header"
+
+
+def test_daily_total_reconciliation_fails_closed_on_incomplete_source_row():
+    pandas = __import__("pandas")
+    row = {
+        "년월일": "2025-01-01",
+        "_source_plant": "불완전 태양광",
+        "호기": "A",
+        "설비용량(kW)": 893,
+        "총량(kWh)": 800,
+    }
+    row.update({column: 0 for column in KOSPO_ARCHIVE_INTERVAL_SCHEMA.hour_columns})
+    row[KOSPO_ARCHIVE_INTERVAL_SCHEMA.hour_columns[12]] = pandas.NA
+
+    with pytest.raises(ValueError, match="requires all 24 hourly buckets"):
+        DailyWideGenerationNormalizer(KOSPO_ARCHIVE_INTERVAL_SCHEMA).transform(
+            pandas.DataFrame([row])
+        )
+
+
+def test_actual_dasong_export_reconciles_both_daily_total_unit_segments():
+    source = (
+        Path(__file__).parents[1]
+        / "file"
+        / "solar_data_file"
+        / "한국남부발전"
+        / "한국남부발전(주)_[익산 다송리] 태양광발전실적_20250808.csv"
+    )
+
+    result = DailyWideGenerationNormalizer(KOSPO_ARCHIVE_INTERVAL_SCHEMA).read(source)
+
+    assert len(result) == 14_064
+    assert result["generation_mwh"].max() == pytest.approx(0.813553)
+    resolution = result.attrs["generation_unit_resolution"]
+    assert resolution["resolved_source_unit"] == "wh"
+    daily_total = resolution["daily_total"]
+    assert daily_total["status"] == "mixed"
+    assert daily_total["evidence_unit_counts"] == {"kwh": 258, "wh": 312}
+    assert daily_total["resolved_unit_counts"] == {"kwh": 274, "wh": 312}
+    assert daily_total["zero_rows"] == 16
+    assert daily_total["unreconciled_rows"] == 0
+    assert daily_total["resolved_unit_date_ranges"] == {
+        "kwh": {"start": "2024-01-01", "end": "2024-09-30"},
+        "wh": {"start": "2024-10-01", "end": "2025-08-08"},
+    }
+
+
+def test_generation_manifest_records_capacity_based_unit_resolution(tmp_path):
+    pandas = __import__("pandas")
+    source_root = tmp_path / "solar_data_file"
+    source_dir = source_root / "한국남부발전"
+    source_dir.mkdir(parents=True)
+    source = source_dir / "한국남부발전(주)_[익산 다송리] 태양광발전실적_20250808.csv"
+    row = {
+        "년월일": "2025-01-01",
+        "호기": "A",
+        "설비용량(kW)": 893,
+        "총량(kWh)": 19_200_000,
+    }
+    row.update({column: 800_000 for column in KOSPO_ARCHIVE_INTERVAL_SCHEMA.hour_columns})
+    pandas.DataFrame([row]).to_csv(source, index=False, encoding="cp949")
+
+    run = HistoricalGenerationStandardizationService(
+        source_root,
+        tmp_path / "standardized",
+    ).run()
+
+    assert len(run.partitions) == 1
+    partition = run.partitions[0]
+    assert partition.declared_source_unit == "kwh"
+    assert partition.resolved_source_unit == "wh"
+    assert partition.unit_resolution_method == "capacity_factor_1000x_correction"
+    assert partition.unit_capacity_factor_max == pytest.approx(0.8 / 0.893)
+    assert partition.daily_total_resolution["status"] == "consistent"
+    assert partition.daily_total_resolution["resolved_unit_counts"] == {"wh": 1}
+    standardized = pandas.read_csv(partition.destination, encoding="utf-8-sig")
+    assert standardized["generation_mwh"].eq(0.8).all()
 
 
 def test_iwest_renewable_standardization_retains_wind_with_energy_source():

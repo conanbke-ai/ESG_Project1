@@ -32,6 +32,7 @@ QUALITY_COLUMNS = [
     "quality_capacity_exceeded",
     "quality_daylight_zero",
     "quality_flatline",
+    "quality_daily_aggregate_profile",
     "quality_invalid_weather",
     "quality_missing_weather",
 ]
@@ -44,6 +45,10 @@ class PhysicalQualityConfig:
     capacity_tolerance: float = 1.2
     daylight_irradiance_threshold: float = 0.05
     flatline_min_hours: int = 4
+    aggregate_profile_min_active_days: int = 30
+    aggregate_profile_single_positive_ratio: float = 0.95
+    aggregate_profile_dominant_hour_ratio: float = 0.95
+    aggregate_profile_night_hours: tuple[int, ...] = (22, 23, 0, 1, 2, 3, 4, 5)
 
     def __post_init__(self) -> None:
         if self.capacity_tolerance <= 1:
@@ -52,6 +57,29 @@ class PhysicalQualityConfig:
             raise ValueError("daylight_irradiance_threshold cannot be negative")
         if self.flatline_min_hours < 2:
             raise ValueError("flatline_min_hours must be at least two")
+        if self.aggregate_profile_min_active_days < 1:
+            raise ValueError("aggregate_profile_min_active_days must be positive")
+        for name, value in (
+            (
+                "aggregate_profile_single_positive_ratio",
+                self.aggregate_profile_single_positive_ratio,
+            ),
+            (
+                "aggregate_profile_dominant_hour_ratio",
+                self.aggregate_profile_dominant_hour_ratio,
+            ),
+        ):
+            if not 0 < value <= 1:
+                raise ValueError(f"{name} must be in (0, 1]")
+        if (
+            not self.aggregate_profile_night_hours
+            or len(set(self.aggregate_profile_night_hours))
+            != len(self.aggregate_profile_night_hours)
+            or any(hour < 0 or hour > 23 for hour in self.aggregate_profile_night_hours)
+        ):
+            raise ValueError(
+                "aggregate_profile_night_hours must contain unique hours between 0 and 23"
+            )
 
 
 class GenerationQualityPolicy:
@@ -125,17 +153,24 @@ class GenerationQualityPolicy:
             solar & daylight & result["generation_mwh"].eq(0).fillna(False)
         )
         result["quality_flatline"] = self._flatline_flags(result, daylight)
+        result["quality_daily_aggregate_profile"] = self._daily_aggregate_profile_flags(
+            result
+        )
 
-        # Only physically impossible target values are automatically excluded.
-        # Capacity excess, daylight zero and flatline remain review flags because
-        # metadata errors, curtailment and planned outages can look identical.
+        # Impossible target values and source-level daily aggregates cannot be
+        # valid hourly labels. Capacity excess, daylight zero and flatline stay
+        # review-only because metadata errors, curtailment and planned outages
+        # can look identical at row level.
         result["quality_train_eligible"] = ~(
-            result["quality_missing_generation"] | result["quality_negative_generation"]
+            result["quality_missing_generation"]
+            | result["quality_negative_generation"]
+            | result["quality_daily_aggregate_profile"]
         )
         review_columns = [
             "quality_capacity_exceeded",
             "quality_daylight_zero",
             "quality_flatline",
+            "quality_daily_aggregate_profile",
             "quality_invalid_weather",
             "quality_missing_weather",
         ]
@@ -160,6 +195,112 @@ class GenerationQualityPolicy:
             flags.loc[group.loc[group_flags, "_original_index"]] = True
         return flags
 
+    def _daily_aggregate_profile_flags(self, frame: pd.DataFrame) -> pd.Series:
+        """Flag solar plants whose daily totals were placed in one night bucket.
+
+        A few public exports expose a daily total through an hourly-shaped file.
+        Reconstructing the missing intraday curve would fabricate target labels,
+        so every row for a decisively detected plant is excluded. The combined
+        thresholds deliberately avoid treating isolated short winter days,
+        outages, or sparse sensors as daily aggregates.
+        """
+
+        flags = pd.Series(False, index=frame.index)
+        solar = frame["energy_source"].astype(str).eq("solar")
+        profile = self._daily_aggregate_profile_evidence(frame)
+        suspicious = profile.index[profile["detected"]]
+        if len(suspicious):
+            flags.loc[solar & frame["plant_id"].isin(suspicious)] = True
+        return flags
+
+    def _daily_aggregate_profile_evidence(self, frame: pd.DataFrame) -> pd.DataFrame:
+        columns = [
+            "aggregate_active_days",
+            "aggregate_single_positive_day_ratio",
+            "aggregate_dominant_hour",
+            "aggregate_dominant_hour_ratio",
+            "detected",
+        ]
+        solar = frame["energy_source"].astype(str).eq("solar")
+        working = frame.loc[solar, ["plant_id", "timestamp", "generation_mwh"]].copy()
+        if working.empty:
+            return pd.DataFrame(columns=columns)
+        working["_date"] = working["timestamp"].dt.normalize()
+        working["_hour"] = working["timestamp"].dt.hour
+        working["_generation"] = pd.to_numeric(
+            working["generation_mwh"], errors="coerce"
+        )
+        positive_hours = working.loc[
+            working["_generation"].gt(0), ["plant_id", "_date", "_hour"]
+        ].drop_duplicates(["plant_id", "_date", "_hour"])
+        if positive_hours.empty:
+            return pd.DataFrame(columns=columns)
+
+        daily = (
+            positive_hours.groupby(["plant_id", "_date"], observed=True)
+            .size()
+            .rename("positive_hours")
+            .reset_index()
+        )
+        active_days = daily.groupby("plant_id", observed=True).size().rename("active_days")
+        single_days = daily.loc[daily["positive_hours"].eq(1), ["plant_id", "_date"]]
+        if single_days.empty:
+            profile = active_days.to_frame()
+            profile["single_days"] = 0
+            profile["dominant_days"] = 0
+            profile["_hour"] = np.nan
+        else:
+            single_counts = (
+                single_days.groupby("plant_id", observed=True).size().rename("single_days")
+            )
+            single_hours = single_days.merge(
+                positive_hours,
+                on=["plant_id", "_date"],
+                how="inner",
+                validate="one_to_many",
+            )
+            dominant = (
+                single_hours.groupby(["plant_id", "_hour"], observed=True)
+                .size()
+                .rename("dominant_days")
+                .reset_index()
+                .sort_values(
+                    ["plant_id", "dominant_days", "_hour"],
+                    ascending=[True, False, True],
+                    kind="stable",
+                )
+                .drop_duplicates("plant_id", keep="first")
+                .set_index("plant_id")
+            )
+            profile = pd.concat([active_days, single_counts], axis=1).fillna(0)
+            profile = profile.join(dominant[["dominant_days", "_hour"]], how="left")
+        profile["single_positive_ratio"] = profile["single_days"].div(
+            profile["active_days"]
+        )
+        # Divide by all active days, not only single-positive days. This makes
+        # the dominant-hour threshold an independent, stricter safeguard.
+        profile["dominant_hour_ratio"] = profile["dominant_days"].div(
+            profile["active_days"]
+        )
+        profile["detected"] = (
+            profile["active_days"].ge(self.config.aggregate_profile_min_active_days)
+            & profile["single_positive_ratio"].ge(
+                self.config.aggregate_profile_single_positive_ratio
+            )
+            & profile["dominant_hour_ratio"].ge(
+                self.config.aggregate_profile_dominant_hour_ratio
+            )
+            & profile["_hour"].isin(self.config.aggregate_profile_night_hours)
+        )
+        return profile.rename(
+            columns={
+                "active_days": "aggregate_active_days",
+                "single_positive_ratio": "aggregate_single_positive_day_ratio",
+                "_hour": "aggregate_dominant_hour",
+                "dominant_hour_ratio": "aggregate_dominant_hour_ratio",
+            }
+        )[columns]
+
     @staticmethod
     def _quality_codes(frame: pd.DataFrame) -> pd.Series:
         pairs = (
@@ -168,6 +309,7 @@ class GenerationQualityPolicy:
             ("quality_capacity_exceeded", "capacity_exceeded"),
             ("quality_daylight_zero", "daylight_zero"),
             ("quality_flatline", "flatline"),
+            ("quality_daily_aggregate_profile", "daily_aggregate_profile"),
             ("quality_invalid_weather", "invalid_weather"),
             ("quality_missing_weather", "missing_weather"),
         )
@@ -189,10 +331,16 @@ class PlantQualityProfiler:
         audited = self.policy.apply(frame)
         temporal_consistency = self._temporal_profile_consistency(audited)
         peer_consistency = self._peer_pattern_consistency(audited)
+        aggregate_evidence = self.policy._daily_aggregate_profile_evidence(audited)
         rows: list[dict[str, object]] = []
         for plant_id, group in audited.groupby("plant_id", sort=True, observed=True):
             start, end = group["timestamp"].min(), group["timestamp"].max()
             expected = max(1, int((end - start) / pd.Timedelta(hours=1)) + 1)
+            aggregate = (
+                aggregate_evidence.loc[plant_id]
+                if plant_id in aggregate_evidence.index
+                else None
+            )
             row: dict[str, object] = {
                 "company": str(group["company"].iloc[0]) if "company" in group else "unknown",
                 "plant_id": str(plant_id),
@@ -215,6 +363,30 @@ class PlantQualityProfiler:
                 ),
                 "flatline_rate": float(group["quality_flatline"].mean()),
                 "positive_flatline_rate": self._positive_flatline_rate(group),
+                "daily_aggregate_profile_detected": bool(
+                    group["quality_daily_aggregate_profile"].any()
+                ),
+                "aggregate_active_days": (
+                    int(aggregate["aggregate_active_days"])
+                    if aggregate is not None
+                    else 0
+                ),
+                "aggregate_single_positive_day_ratio": (
+                    float(aggregate["aggregate_single_positive_day_ratio"])
+                    if aggregate is not None
+                    else np.nan
+                ),
+                "aggregate_dominant_hour": (
+                    int(aggregate["aggregate_dominant_hour"])
+                    if aggregate is not None
+                    and pd.notna(aggregate["aggregate_dominant_hour"])
+                    else np.nan
+                ),
+                "aggregate_dominant_hour_ratio": (
+                    float(aggregate["aggregate_dominant_hour_ratio"])
+                    if aggregate is not None
+                    else np.nan
+                ),
                 "invalid_weather_rate": float(group["quality_invalid_weather"].mean()),
                 "missing_weather_rate": float(group["quality_missing_weather"].mean()),
                 "temporal_profile_consistency": temporal_consistency.get(str(plant_id), np.nan),
@@ -294,7 +466,8 @@ class PlantQualityProfiler:
     @staticmethod
     def _sensor_risk(row: dict[str, object]) -> str:
         if (
-            float(row["missing_generation_rate"]) >= 0.10
+            bool(row["daily_aggregate_profile_detected"])
+            or float(row["missing_generation_rate"]) >= 0.10
             or float(row["flatline_rate"]) >= 0.05
             or float(row["negative_generation_rate"]) > 0
             or float(row["hourly_coverage"]) < 0.80
@@ -315,6 +488,8 @@ class PlantQualityProfiler:
 
     @staticmethod
     def _recommendation(row: dict[str, object]) -> str:
+        if bool(row["daily_aggregate_profile_detected"]):
+            return "exclude plant from hourly training; retain as daily aggregate evidence"
         if (
             float(row["negative_generation_rate"]) > 0
             or float(row["missing_generation_rate"]) >= 0.10
@@ -380,19 +555,35 @@ class QualityAuditService:
         high = int(report["sensor_risk"].eq("high").sum())
         review = int(report["sensor_risk"].eq("review").sum())
         artifacts = int(report["preprocessing_artifact_suspected"].sum())
+        aggregate_profile = report["daily_aggregate_profile_detected"].fillna(False).astype(bool)
         manifest = {
             "created_at": datetime.now().isoformat(),
             "report": str(report_path),
             "plants": len(report),
             "sensor_risk": report["sensor_risk"].value_counts().to_dict(),
             "preprocessing_artifact_plants": artifacts,
+            "daily_aggregate_profile_plants": {
+                "count": int(aggregate_profile.sum()),
+                "plant_ids": sorted(
+                    report.loc[aggregate_profile, "plant_id"].astype(str).tolist()
+                ),
+            },
             "policy": {
                 "capacity_tolerance": self.profiler.policy.config.capacity_tolerance,
                 "daylight_irradiance_threshold": self.profiler.policy.config.daylight_irradiance_threshold,
                 "flatline_min_hours": self.profiler.policy.config.flatline_min_hours,
+                "daily_aggregate_profile": {
+                    "minimum_active_days": self.profiler.policy.config.aggregate_profile_min_active_days,
+                    "minimum_single_positive_day_ratio": self.profiler.policy.config.aggregate_profile_single_positive_ratio,
+                    "minimum_dominant_night_hour_ratio": self.profiler.policy.config.aggregate_profile_dominant_hour_ratio,
+                    "night_hours": list(
+                        self.profiler.policy.config.aggregate_profile_night_hours
+                    ),
+                    "action": "exclude_entire_plant_from_hourly_training",
+                },
                 "negative_generation": "invalid_missing_not_zero",
                 "target_missing": "not_imputed_by_quality_policy",
-                "contextual_flags": "not_automatically_removed",
+                "contextual_flags": "not_automatically_removed_except_daily_aggregate_profile",
             },
         }
         manifest_path = output_dir / (

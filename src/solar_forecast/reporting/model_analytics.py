@@ -1042,12 +1042,18 @@ class ModelAnalyticsService:
         required = {"plant", "region", "energy_source", "sensor_risk"}
         if not required.issubset(frame.columns):
             return []
-        solar = frame.loc[
-            frame["energy_source"].astype(str).str.lower().eq("solar")
-            & frame["sensor_risk"].astype(str).str.lower().isin(
-                {"review", "high", "pipeline_artifact"}
-            )
-        ].copy()
+        solar_source = frame["energy_source"].astype(str).str.lower().eq("solar")
+        elevated_risk = frame["sensor_risk"].astype(str).str.lower().isin(
+            {"review", "high", "pipeline_artifact"}
+        )
+        weather_gap = (
+            pd.to_numeric(frame.get("missing_weather_rate"), errors="coerce")
+            .ge(0.30)
+            .fillna(False)
+            if "missing_weather_rate" in frame
+            else pd.Series(False, index=frame.index)
+        )
+        solar = frame.loc[solar_source & (elevated_risk | weather_gap)].copy()
         signals = [self._quality_signal(row) for _, row in solar.iterrows()]
         return sorted(signals, key=lambda item: (item["region"], item["plant"]))
 
@@ -1065,6 +1071,8 @@ class ModelAnalyticsService:
             )
         }
         labels: list[str] = []
+        if self._truthy(row.get("daily_aggregate_profile_detected")):
+            labels.append("일 총량형 시간 버킷")
         if self._at_least(values["missing_weather_rate"], 0.30):
             labels.append("기상 관측 공백")
         if self._at_least(values["daylight_zero_rate"], 0.30):
@@ -1083,7 +1091,12 @@ class ModelAnalyticsService:
             "plant_id": self._text(row.get("plant_id")),
             "region": self._text(row.get("region")) or "지역 미확인",
             "plant": self._text(row.get("plant")) or "발전소 미확인",
-            "severity": "review",
+            "severity": (
+                "high"
+                if (self._text(row.get("sensor_risk")) or "").lower()
+                in {"high", "pipeline_artifact"}
+                else "review"
+            ),
             "signal_types": labels,
             "summary": " · ".join(labels),
             "observations": self._integer(row.get("rows")),
@@ -1116,6 +1129,14 @@ class ModelAnalyticsService:
         except (TypeError, ValueError):
             return None
         return number if math.isfinite(number) else None
+
+    @staticmethod
+    def _truthy(value: object) -> bool:
+        if value is None or pd.isna(value):
+            return False
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "y"}
+        return bool(value)
 
     @staticmethod
     def _integer(value: object) -> int | None:

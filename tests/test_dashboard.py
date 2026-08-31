@@ -159,7 +159,8 @@ def test_dashboard_builder_publishes_clean_user_contract_without_registry(tmp_pa
                 "rows": 1000,
                 "start": "2024-01-01T00:00:00",
                 "end": "2024-12-31T23:00:00",
-                "sensor_risk": "review",
+                "sensor_risk": "high",
+                "daily_aggregate_profile_detected": True,
                 "missing_weather_rate": 0.4,
                 "daylight_zero_rate": 0.1,
                 "capacity_exceeded_rate": 0.0,
@@ -174,6 +175,15 @@ def test_dashboard_builder_publishes_clean_user_contract_without_registry(tmp_pa
                 "energy_source": "wind",
                 "rows": 1000,
                 "sensor_risk": "review",
+            },
+            {
+                "plant_id": "solar:weather-gap",
+                "plant": "기상 결측 태양광",
+                "region": "전북특별자치도",
+                "energy_source": "solar",
+                "rows": 500,
+                "sensor_risk": "low",
+                "missing_weather_rate": 0.51,
             },
         ]
     )
@@ -215,14 +225,17 @@ def test_dashboard_builder_publishes_clean_user_contract_without_registry(tmp_pa
         for signal in payload["model_analysis"]["anomalies"][
             "data_quality_signals"
         ]
-    ] == ["검토 태양광"]
+    ] == ["검토 태양광", "기상 결측 태양광"]
     assert payload["model_analysis"]["anomalies"]["data_quality_signals"][0][
         "plant_id"
     ] == "solar:review"
+    signal = payload["model_analysis"]["anomalies"]["data_quality_signals"][0]
+    assert signal["severity"] == "high"
+    assert "일 총량형 시간 버킷" in signal["signal_types"]
     assert result.national_generator_records == 1
     assert result.national_capacity_mw == 1.25
     assert result.model_analysis_status == "empty"
-    assert result.data_quality_signals == 1
+    assert result.data_quality_signals == 2
     assert result.forecast_dashboard == tmp_path / "published/forecast.html"
     assert result.analytics_dashboard == tmp_path / "published/model_analysis.html"
     assert result.mapping_report == result.analytics_dashboard

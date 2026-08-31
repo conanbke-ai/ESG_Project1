@@ -17,6 +17,7 @@ from solar_forecast.features.engineering import (
     SOLAR_GEOMETRY_FEATURES,
 )
 from solar_forecast.pipeline.dataset import DatasetRepository
+from solar_forecast.pipeline.preprocessing import REQUIRED_MODEL_QUALITY_FILTER
 
 
 @dataclass(frozen=True)
@@ -67,8 +68,14 @@ class FeatureAblationService:
         frame = frame.dropna(subset=["timestamp", "generation_mwh"])
         if "energy_source" in frame:
             frame = frame.loc[frame["energy_source"].eq("solar")]
-        if "quality_train_eligible" in frame:
-            frame = frame.loc[self._as_bool(frame["quality_train_eligible"])]
+        if REQUIRED_MODEL_QUALITY_FILTER not in frame:
+            raise ValueError(
+                "Feature ablation requires the Gold training eligibility column: "
+                f"{REQUIRED_MODEL_QUALITY_FILTER}"
+            )
+        frame = frame.loc[self._as_bool(frame[REQUIRED_MODEL_QUALITY_FILTER])]
+        if frame.empty:
+            raise ValueError("No training-eligible solar rows remain for feature ablation")
         folds, reserved = self._rolling_folds(
             frame["timestamp"],
             n_splits=n_splits,
@@ -185,6 +192,7 @@ class FeatureAblationService:
             "reserved_intervals": reserved,
             "gap_hours": gap_hours,
             "missing_value_policy": "xgboost_native_nan",
+            "quality_filter_column": REQUIRED_MODEL_QUALITY_FILTER,
             "test_usage": "none; Calibration and Test intervals are reserved after feature selection",
             "selected_contract": selected_name,
             "selected_features": list(selected_features),

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-31T11:34:55+09:00",
+    "generated_at": "2026-08-31T13:41:22+09:00",
     "scope": "전국 태양광 설비 현황과 정식 모델 평가 결과"
   },
   "national_inventory": {
@@ -2076,16 +2076,89 @@
           }
         },
         {
+          "plant_id": "kospo:영월철도부지",
+          "region": "강원특별자치도",
+          "plant": "영월철도부지",
+          "severity": "review",
+          "signal_types": [
+            "기상 관측 공백"
+          ],
+          "summary": "기상 관측 공백",
+          "observations": 60624,
+          "period": {
+            "from": "2018-04-01T00:00:00",
+            "to": "2025-02-28T23:00:00"
+          },
+          "metrics": {
+            "hourly_coverage": 1.0,
+            "missing_weather_rate": 0.5315881499076274,
+            "daylight_zero_rate": null,
+            "capacity_exceeded_rate": 0.0,
+            "positive_flatline_rate": 0.0,
+            "temporal_profile_consistency": 0.9601850861733552,
+            "peer_pattern_correlation": 0.4114312852286724
+          }
+        },
+        {
+          "plant_id": "kospo:이천D(백사면B)",
+          "region": "경기도",
+          "plant": "이천D(백사면B)",
+          "severity": "review",
+          "signal_types": [
+            "기상 관측 공백"
+          ],
+          "summary": "기상 관측 공백",
+          "observations": 35544,
+          "period": {
+            "from": "2021-02-09T00:00:00",
+            "to": "2025-02-28T23:00:00"
+          },
+          "metrics": {
+            "hourly_coverage": 1.0,
+            "missing_weather_rate": 0.5044733288318703,
+            "daylight_zero_rate": null,
+            "capacity_exceeded_rate": 0.0,
+            "positive_flatline_rate": 0.0,
+            "temporal_profile_consistency": 0.9595852480432172,
+            "peer_pattern_correlation": null
+          }
+        },
+        {
+          "plant_id": "koen:구미정수장",
+          "region": "경상북도",
+          "plant": "구미정수장",
+          "severity": "review",
+          "signal_types": [
+            "기상 관측 공백"
+          ],
+          "summary": "기상 관측 공백",
+          "observations": 32856,
+          "period": {
+            "from": "2022-01-01T00:00:00",
+            "to": "2025-09-30T23:00:00"
+          },
+          "metrics": {
+            "hourly_coverage": 1.0,
+            "missing_weather_rate": 0.4094838081324568,
+            "daylight_zero_rate": 0.0532016565785281,
+            "capacity_exceeded_rate": 0.0,
+            "positive_flatline_rate": 0.0,
+            "temporal_profile_consistency": 0.9674330881037198,
+            "peer_pattern_correlation": null
+          }
+        },
+        {
           "plant_id": "koen:여수태양광",
           "region": "전라남도",
           "plant": "여수태양광",
-          "severity": "review",
+          "severity": "high",
           "signal_types": [
+            "일 총량형 시간 버킷",
             "주간 0발전 패턴",
             "설비용량 초과 패턴",
             "동일지역 패턴 차이"
           ],
-          "summary": "주간 0발전 패턴 · 설비용량 초과 패턴 · 동일지역 패턴 차이",
+          "summary": "일 총량형 시간 버킷 · 주간 0발전 패턴 · 설비용량 초과 패턴 · 동일지역 패턴 차이",
           "observations": 29280,
           "period": {
             "from": "2022-01-01T00:00:00",
@@ -2107,10 +2180,9 @@
           "plant": "다송리",
           "severity": "review",
           "signal_types": [
-            "기상 관측 공백",
-            "설비용량 초과 패턴"
+            "기상 관측 공백"
           ],
-          "summary": "기상 관측 공백 · 설비용량 초과 패턴",
+          "summary": "기상 관측 공백",
           "observations": 14064,
           "period": {
             "from": "2024-01-01T00:00:00",
@@ -2120,10 +2192,58 @@
             "hourly_coverage": 1.0,
             "missing_weather_rate": 0.5101678043230944,
             "daylight_zero_rate": null,
-            "capacity_exceeded_rate": 0.5063282138794084,
+            "capacity_exceeded_rate": 0.0,
             "positive_flatline_rate": 0.0,
-            "temporal_profile_consistency": 0.9649055471977792,
+            "temporal_profile_consistency": 0.9649055480151968,
             "peer_pattern_correlation": null
+          }
+        },
+        {
+          "plant_id": "iwest:삼랑진 태양광 (FIT)",
+          "region": "전북특별자치도",
+          "plant": "삼랑진 태양광 (FIT)",
+          "severity": "review",
+          "signal_types": [
+            "기상 관측 공백"
+          ],
+          "summary": "기상 관측 공백",
+          "observations": 8760,
+          "period": {
+            "from": "2023-01-01T00:00:00",
+            "to": "2023-12-31T23:00:00"
+          },
+          "metrics": {
+            "hourly_coverage": 1.0,
+            "missing_weather_rate": 0.502283105022831,
+            "daylight_zero_rate": null,
+            "capacity_exceeded_rate": 0.0,
+            "positive_flatline_rate": 0.0,
+            "temporal_profile_consistency": 0.9666350726742636,
+            "peer_pattern_correlation": null
+          }
+        },
+        {
+          "plant_id": "kospo:신풍리 태양광(제주)",
+          "region": "제주특별자치도",
+          "plant": "신풍리 태양광(제주)",
+          "severity": "review",
+          "signal_types": [
+            "기상 관측 공백"
+          ],
+          "summary": "기상 관측 공백",
+          "observations": 40944,
+          "period": {
+            "from": "2021-05-01T00:00:00",
+            "to": "2025-12-31T23:00:00"
+          },
+          "metrics": {
+            "hourly_coverage": 1.0,
+            "missing_weather_rate": 0.5254493942946463,
+            "daylight_zero_rate": null,
+            "capacity_exceeded_rate": 0.0,
+            "positive_flatline_rate": 0.0,
+            "temporal_profile_consistency": 0.9423155267071796,
+            "peer_pattern_correlation": 0.7664204441081258
           }
         }
       ]

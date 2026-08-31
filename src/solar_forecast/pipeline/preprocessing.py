@@ -7,6 +7,21 @@ import numpy as np
 import pandas as pd
 
 
+REQUIRED_MODEL_QUALITY_FILTER = "quality_train_eligible"
+
+
+def require_model_quality_filter(values: Mapping[str, object]) -> str:
+    """Fail closed when a forecasting job tries to bypass the Gold quality gate."""
+
+    configured = str(values.get("quality_filter_column") or "").strip()
+    if configured != REQUIRED_MODEL_QUALITY_FILTER:
+        raise ValueError(
+            "Forecast model jobs must set quality_filter_column="
+            f"{REQUIRED_MODEL_QUALITY_FILTER!r}; the filter cannot be disabled or replaced"
+        )
+    return configured
+
+
 @dataclass(frozen=True)
 class PreprocessResult:
     frame: pd.DataFrame

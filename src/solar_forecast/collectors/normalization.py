@@ -127,6 +127,20 @@ class KoenGenerationNormalizer:
         result = result.sort_values(["timestamp", "plant_id"], kind="stable").reset_index(drop=True)
         if result.duplicated(["timestamp", "plant_id"]).any():
             raise ValueError("Normalized KOEN data contains duplicate timestamp/plant_id keys")
+        declared_unit = next(iter(units))
+        result.attrs["generation_unit_resolution"] = {
+            "declared_source_unit": declared_unit,
+            "resolved_source_unit": (
+                "kwh" if declared_unit == "kwh" or legacy_mislabeled_kwh else declared_unit
+            ),
+            "method": (
+                "legacy_header_scale_correction"
+                if legacy_mislabeled_kwh
+                else "declared_header"
+            ),
+            "capacity_factor_p99": None,
+            "capacity_factor_max": None,
+        }
         return result
 
     def write(self, source: Path, destination: Path) -> Path:
@@ -232,6 +246,10 @@ class DailyWideSchema:
     plant_column: str
     hour_columns: tuple[str, ...]
     source_unit: str
+    source_unit_alternatives: tuple[str, ...] = ()
+    daily_total_column: str | None = None
+    daily_total_unit: str | None = None
+    daily_total_unit_alternatives: tuple[str, ...] = ()
     unit_column: str | None = None
     id_columns: tuple[str, ...] = ()
     capacity_column: str | None = None
@@ -253,15 +271,219 @@ class DailyWideGenerationNormalizer:
 
     unit_divisors = {"wh": 1_000_000, "kwh": 1_000, "mwh": 1}
     capacity_divisors = {"w": 1_000_000, "kw": 1_000, "mw": 1}
+    extreme_capacity_factor_threshold = 100.0
+    plausible_capacity_factor_max = 1.2
+    daily_total_tolerance_mwh = 0.001
 
     def __init__(self, schema: DailyWideSchema):
         if len(schema.hour_columns) != 24:
             raise ValueError("A daily-wide schema must declare exactly 24 hourly columns")
         if schema.source_unit.lower() not in self.unit_divisors:
             raise ValueError(f"Unsupported source energy unit: {schema.source_unit}")
+        alternatives = tuple(unit.lower() for unit in schema.source_unit_alternatives)
+        unsupported = sorted(set(alternatives) - set(self.unit_divisors))
+        if unsupported:
+            raise ValueError(f"Unsupported alternative source energy units: {unsupported}")
+        if schema.source_unit.lower() in alternatives or len(set(alternatives)) != len(alternatives):
+            raise ValueError("Alternative source energy units must be unique and exclude source_unit")
+        if alternatives and not schema.capacity_column:
+            raise ValueError("Source-unit alternatives require a capacity column for physical validation")
+        if bool(schema.daily_total_column) != bool(schema.daily_total_unit):
+            raise ValueError("Daily total column and unit must be configured together")
+        daily_total_units = tuple(
+            unit.lower() for unit in schema.daily_total_unit_alternatives
+        )
+        if schema.daily_total_unit:
+            declared_total_unit = schema.daily_total_unit.lower()
+            unsupported_totals = sorted(
+                {declared_total_unit, *daily_total_units} - set(self.unit_divisors)
+            )
+            if unsupported_totals:
+                raise ValueError(f"Unsupported daily total energy units: {unsupported_totals}")
+            if (
+                declared_total_unit in daily_total_units
+                or len(set(daily_total_units)) != len(daily_total_units)
+            ):
+                raise ValueError(
+                    "Alternative daily total units must be unique and exclude daily_total_unit"
+                )
+        elif daily_total_units:
+            raise ValueError("Daily total alternatives require a daily total column and unit")
         if schema.capacity_column and schema.capacity_unit.lower() not in self.capacity_divisors:
             raise ValueError(f"Unsupported capacity unit: {schema.capacity_unit}")
         self.schema = schema
+
+    @classmethod
+    def _capacity_factor_metrics(
+        cls,
+        source_values: pd.Series,
+        capacity_mw: pd.Series,
+        source_unit: str,
+    ) -> tuple[float | None, float | None]:
+        valid = source_values.notna() & source_values.ge(0) & capacity_mw.notna() & capacity_mw.gt(0)
+        if not valid.any():
+            return None, None
+        ratios = (
+            source_values.loc[valid]
+            / cls.unit_divisors[source_unit]
+            / capacity_mw.loc[valid]
+        )
+        return float(ratios.quantile(0.99)), float(ratios.max())
+
+    def _resolve_source_unit(
+        self,
+        source_values: pd.Series,
+        capacity_mw: pd.Series,
+    ) -> dict[str, object]:
+        declared = self.schema.source_unit.lower()
+        declared_p99, declared_max = self._capacity_factor_metrics(
+            source_values,
+            capacity_mw,
+            declared,
+        )
+        resolution: dict[str, object] = {
+            "declared_source_unit": declared,
+            "resolved_source_unit": declared,
+            "method": "declared_header",
+            "capacity_factor_p99": declared_p99,
+            "capacity_factor_max": declared_max,
+        }
+        if (
+            not self.schema.source_unit_alternatives
+            or declared_p99 is None
+            or declared_p99 < self.extreme_capacity_factor_threshold
+        ):
+            return resolution
+
+        plausible: list[tuple[str, float | None, float | None]] = []
+        for candidate in self.schema.source_unit_alternatives:
+            candidate = candidate.lower()
+            candidate_p99, candidate_max = self._capacity_factor_metrics(
+                source_values,
+                capacity_mw,
+                candidate,
+            )
+            if candidate_max is not None and candidate_max <= self.plausible_capacity_factor_max:
+                plausible.append((candidate, candidate_p99, candidate_max))
+        if len(plausible) != 1:
+            raise ValueError(
+                "Declared hourly energy unit is physically impossible, but no unique safe "
+                f"alternative was found: declared={declared}, p99_capacity_factor={declared_p99:.3f}"
+            )
+        resolved, resolved_p99, resolved_max = plausible[0]
+        return {
+            "declared_source_unit": declared,
+            "resolved_source_unit": resolved,
+            "method": "capacity_factor_1000x_correction",
+            "capacity_factor_p99": resolved_p99,
+            "capacity_factor_max": resolved_max,
+            "declared_capacity_factor_p99": declared_p99,
+            "declared_capacity_factor_max": declared_max,
+        }
+
+    def _reconcile_daily_totals(
+        self,
+        source: pd.DataFrame,
+        resolved_hourly_unit: str,
+    ) -> dict[str, object] | None:
+        total_column = self.schema.daily_total_column
+        declared_total_unit = self.schema.daily_total_unit
+        if not total_column or not declared_total_unit:
+            return None
+
+        hourly = source[list(self.schema.hour_columns)].apply(pd.to_numeric, errors="coerce")
+        hourly_source_sum = hourly.sum(axis=1, min_count=len(self.schema.hour_columns))
+        hourly_mwh = hourly_source_sum / self.unit_divisors[resolved_hourly_unit]
+        daily_total = pd.to_numeric(source[total_column], errors="coerce")
+        complete = hourly_mwh.notna() & daily_total.notna()
+        incomplete = ~complete
+        if incomplete.any():
+            sample_indexes = list(source.index[incomplete][:3])
+            raise ValueError(
+                "Daily-total unit reconciliation requires all 24 hourly buckets and the "
+                f"declared total; rows={int(incomplete.sum())}, sample_indexes={sample_indexes}"
+            )
+        zero = complete & hourly_mwh.eq(0) & daily_total.eq(0)
+        evaluable = complete & ~zero
+        candidate_units = (
+            declared_total_unit.lower(),
+            *(unit.lower() for unit in self.schema.daily_total_unit_alternatives),
+        )
+        errors = pd.DataFrame(
+            {
+                unit: (hourly_mwh - daily_total / self.unit_divisors[unit]).abs()
+                for unit in candidate_units
+            },
+            index=source.index,
+        )
+        within_tolerance = errors.le(self.daily_total_tolerance_mwh)
+        match_count = within_tolerance.sum(axis=1)
+        best_unit = errors.idxmin(axis=1)
+        unique_match = evaluable & match_count.eq(1)
+        ambiguous = evaluable & match_count.gt(1)
+        unreconciled = evaluable & match_count.eq(0)
+        if unreconciled.any():
+            sample_indexes = list(source.index[unreconciled][:3])
+            raise ValueError(
+                "Hourly generation does not reconcile to the declared daily total under any "
+                f"reviewed unit interpretation; rows={int(unreconciled.sum())}, "
+                f"sample_indexes={sample_indexes}"
+            )
+
+        date_values = pd.to_datetime(source[self.schema.date_column], errors="coerce")
+        resolved_by_row = pd.Series(pd.NA, index=source.index, dtype="string")
+        resolved_by_row.loc[evaluable] = best_unit.loc[evaluable]
+        if zero.any():
+            chronological = pd.DataFrame(
+                {"date": date_values, "unit": resolved_by_row},
+                index=source.index,
+            ).sort_values("date", kind="stable")
+            chronological["unit"] = (
+                chronological["unit"]
+                .ffill()
+                .bfill()
+                .fillna(declared_total_unit.lower())
+            )
+            resolved_by_row.loc[zero] = chronological.loc[zero, "unit"]
+
+        evidence_counts: dict[str, int] = {}
+        unit_counts: dict[str, int] = {}
+        unit_ranges: dict[str, dict[str, str | None]] = {}
+        for unit in candidate_units:
+            evidence = unique_match & best_unit.eq(unit)
+            evidence_count = int(evidence.sum())
+            if evidence_count:
+                evidence_counts[unit] = evidence_count
+            selected = complete & resolved_by_row.eq(unit)
+            count = int(selected.sum())
+            if not count:
+                continue
+            unit_counts[unit] = count
+            dates = date_values.loc[selected].dropna()
+            unit_ranges[unit] = {
+                "start": dates.min().date().isoformat() if not dates.empty else None,
+                "end": dates.max().date().isoformat() if not dates.empty else None,
+            }
+        status = "not_evaluable"
+        if len(unit_counts) == 1:
+            status = "consistent"
+        elif len(unit_counts) > 1:
+            status = "mixed"
+        return {
+            "column": total_column,
+            "declared_unit": declared_total_unit.lower(),
+            "status": status,
+            "source_rows": int(len(source)),
+            "complete_rows": int(complete.sum()),
+            "incomplete_rows": int(incomplete.sum()),
+            "zero_rows": int(zero.sum()),
+            "ambiguous_rows": int(ambiguous.sum()),
+            "unreconciled_rows": int(unreconciled.sum()),
+            "evidence_unit_counts": evidence_counts,
+            "resolved_unit_counts": unit_counts,
+            "resolved_unit_date_ranges": unit_ranges,
+            "absolute_tolerance_mwh": self.daily_total_tolerance_mwh,
+        }
 
     def read(self, path: Path) -> pd.DataFrame:
         source = read_csv_with_fallback(path)
@@ -312,6 +534,8 @@ class DailyWideGenerationNormalizer:
         identity_columns = list(dict.fromkeys(identity_columns))
         static_columns = list(dict.fromkeys(static_columns))
         required = set(identity_columns) | set(self.schema.hour_columns) | set(static_columns)
+        if self.schema.daily_total_column:
+            required.add(self.schema.daily_total_column)
         missing = required - set(source.columns)
         if missing:
             raise ValueError(f"{self.schema.company} columns are missing: {sorted(missing)}")
@@ -338,8 +562,22 @@ class DailyWideGenerationNormalizer:
         long["plant_id"] = self.schema.company + ":" + id_parts[0]
         for part in id_parts[1:]:
             long["plant_id"] = long["plant_id"] + "#" + part
-        divisor = self.unit_divisors[self.schema.source_unit.lower()]
-        long["generation_mwh"] = pd.to_numeric(long["generation_source"], errors="coerce") / divisor
+        long["capacity_mw"] = pd.NA
+        if self.schema.capacity_column:
+            capacity_divisor = self.capacity_divisors[self.schema.capacity_unit.lower()]
+            long["capacity_mw"] = (
+                pd.to_numeric(long[self.schema.capacity_column], errors="coerce") / capacity_divisor
+            )
+        source_values = pd.to_numeric(long["generation_source"], errors="coerce")
+        unit_resolution = self._resolve_source_unit(source_values, long["capacity_mw"])
+        divisor = self.unit_divisors[str(unit_resolution["resolved_source_unit"])]
+        daily_total_resolution = self._reconcile_daily_totals(
+            source,
+            str(unit_resolution["resolved_source_unit"]),
+        )
+        if daily_total_resolution is not None:
+            unit_resolution["daily_total"] = daily_total_resolution
+        long["generation_mwh"] = source_values / divisor
         long["company"] = self.schema.company
         source_labels = (
             long[self.schema.energy_source_column]
@@ -350,12 +588,6 @@ class DailyWideGenerationNormalizer:
         long["energy_source"] = classified.where(
             classified.ne("unknown"), self.schema.energy_source
         )
-        long["capacity_mw"] = pd.NA
-        if self.schema.capacity_column:
-            capacity_divisor = self.capacity_divisors[self.schema.capacity_unit.lower()]
-            long["capacity_mw"] = (
-                pd.to_numeric(long[self.schema.capacity_column], errors="coerce") / capacity_divisor
-            )
         for output, source_column in (
             ("tilt_deg", self.schema.tilt_column),
             ("latitude", self.schema.latitude_column),
@@ -384,6 +616,7 @@ class DailyWideGenerationNormalizer:
         result = result.sort_values(["timestamp", "plant_id"], kind="stable").reset_index(drop=True)
         if result.duplicated(["timestamp", "plant_id"]).any():
             raise ValueError(f"Normalized {self.schema.company} data contains duplicate hourly keys")
+        result.attrs["generation_unit_resolution"] = unit_resolution
         return result
 
     def write(self, source: Path, destination: Path) -> Path:
@@ -530,6 +763,17 @@ KOSPO_ARCHIVE_INTERVAL_SCHEMA = DailyWideSchema(
     unit_column="호기",
     hour_columns=tuple(f"{hour}-{hour + 1}시 발전량(kWh)" for hour in range(24)),
     source_unit="kwh",
+    # One official export variant keeps the kWh header but emits hourly values
+    # at Wh scale. Resolve that documented ambiguity only when the declared
+    # interpretation is over 100x capacity and the Wh interpretation remains
+    # within a conservative one-hour physical bound.
+    source_unit_alternatives=("wh",),
+    daily_total_column="총량(kWh)",
+    daily_total_unit="kwh",
+    # The Iksan Dasong export changes this column from kWh-scale totals to
+    # Wh-scale totals on 2024-10-01 without changing its header. The hourly
+    # buckets remain Wh-scale on both sides of that boundary.
+    daily_total_unit_alternatives=("wh",),
     capacity_column="설비용량(kW)",
     capacity_unit="kw",
     plant_from_filename=True,

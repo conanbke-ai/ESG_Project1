@@ -2,11 +2,20 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
+from solar_forecast.evaluation.feature_ablation import FeatureAblationService
+from solar_forecast.models.cnn_bilstm import CnnBiLstmTrainer
 from solar_forecast.models.cnn.config import SequenceConfig
+from solar_forecast.models.xgboost import XGBoostTrainer
 from solar_forecast.pipeline import PipelineConfig, run_pipeline
 from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository, discover_latest_file
-from solar_forecast.pipeline.preprocessing import TrainFittedMedianImputer, preprocess_dataset
+from solar_forecast.pipeline.preprocessing import (
+    TrainFittedMedianImputer,
+    preprocess_dataset,
+    require_model_quality_filter,
+)
+from solar_forecast.settings import ModelJobConfig
 
 
 def test_preprocessing_selects_numeric_and_cleans_rows():
@@ -61,6 +70,48 @@ def test_training_loader_pushes_filters_and_float32_conversion_into_chunks(tmp_p
     assert frame["feature"].dtype == np.float32
     assert report.scanned_rows == 3
     assert report.retained_rows == 1
+
+
+def test_forecast_model_quality_gate_cannot_be_disabled_or_replaced(tmp_path):
+    for configured in (None, "", "some_other_flag"):
+        with pytest.raises(ValueError, match="cannot be disabled or replaced"):
+            require_model_quality_filter({"quality_filter_column": configured})
+
+    values = {
+        "input_dataset": str(tmp_path / "missing.csv.gz"),
+        "target_column": "generation_mwh",
+        "feature_columns": ["feature"],
+        "energy_source_filter": "solar",
+    }
+    config = ModelJobConfig("xgboost", "test", values, tmp_path / "config.json")
+    with pytest.raises(ValueError, match="quality_filter_column"):
+        XGBoostTrainer._load(
+            config,
+            columns=["timestamp", "plant_id", "feature", "generation_mwh"],
+            numeric_columns=["feature", "generation_mwh"],
+            energy_source="solar",
+            smoke=True,
+        )
+    with pytest.raises(ValueError, match="quality_filter_column"):
+        CnnBiLstmTrainer().train(config, tmp_path / "cnn-run", smoke=True)
+
+    assert require_model_quality_filter(
+        {"quality_filter_column": "quality_train_eligible"}
+    ) == "quality_train_eligible"
+
+
+def test_feature_ablation_fails_closed_without_training_eligibility(tmp_path):
+    source = tmp_path / "model_ready.csv"
+    pd.DataFrame(
+        {
+            "timestamp": ["2025-01-01 00:00:00"],
+            "energy_source": ["solar"],
+            "generation_mwh": [0.0],
+        }
+    ).to_csv(source, index=False)
+
+    with pytest.raises(ValueError, match="quality_train_eligible"):
+        FeatureAblationService(n_estimators=1).run(source, tmp_path / "ablation")
 
 
 def test_full_pipeline_creates_report(tmp_path):

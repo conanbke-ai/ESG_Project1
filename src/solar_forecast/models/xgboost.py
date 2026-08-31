@@ -12,7 +12,10 @@ from solar_forecast.ensemble.dynamic_gate import normalize_prediction_columns
 from solar_forecast.artifacts.manifest import replace_file_atomic
 from solar_forecast.evaluation.temporal import TemporalSplitConfig, TemporalSplitter
 from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
-from solar_forecast.pipeline.preprocessing import NumericPreprocessor
+from solar_forecast.pipeline.preprocessing import (
+    NumericPreprocessor,
+    require_model_quality_filter,
+)
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT
 
 from .checkpointing import TrainingCheckpointStore, dataset_signature, stable_signature
@@ -307,7 +310,7 @@ class XGBoostTrainer:
             columns=columns,
             numeric_columns=numeric_columns,
             equals_filters={"energy_source": energy_source} if energy_source else None,
-            truthy_filter=config.values.get("quality_filter_column"),
+            truthy_filter=require_model_quality_filter(config.values),
             row_limit=10_000 if smoke else None,
             policy=policy,
         )

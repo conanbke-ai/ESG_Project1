@@ -1,6 +1,6 @@
 # 파일 포맷·발전소 매핑·대시보드 구조 감사
 
-검증일: 2026-08-28 (Asia/Seoul)
+검증일: 2026-08-31 (Asia/Seoul)
 
 ## 결론
 
@@ -21,7 +21,8 @@ UTF-8로 강제해서 열거나, BOM 없는 UTF-8을 Excel이 로컬 코드페�
 ## 발전소·지역·기상 매핑
 
 현재 registry는 68개 자산이며 태양광 65, 풍력 2, 소수력 1이다. 태양광 중 공식 주소·좌표 또는
-근거가 있는 reviewed ASOS 매핑을 통과한 22개만 학습 가능하고 43개는 격리한다. 풍력 2개는
+근거가 있는 reviewed ASOS 매핑을 통과한 22개만 태양광 Gold에 결합하고 43개는 격리한다.
+Gold 22개 중 시간 해상도 품질 게이트까지 통과한 학습 적격은 21개·671,731행이다. 풍력 2개는
 원본 보존용 Gold에 남고 소수력 1개는 무근거 legacy 지점번호만 있어 격리한다. 두 태양광 모델은
 `energy_source=solar`만 읽는다.
 
@@ -33,7 +34,7 @@ UTF-8로 강제해서 열거나, BOM 없는 UTF-8을 Excel이 로컬 코드페�
 
 registry의 실좌표는 5개, ASOS 결합은 공식/검토 근거를 통과한 24개, 미매핑은 44개다. 대리좌표에는
 `location_basis=weather_station_proxy`를 붙여 발전소 위치처럼 보이지 않게 한다. Registry 자동
-검사는 plant ID 유일성, 학습 가능 태양광의 ASOS 존재, 좌표 쌍 완전성, 대한민국 범위,
+검사는 plant ID 유일성, Gold 결합 태양광의 ASOS 존재, 좌표 쌍 완전성, 대한민국 범위,
 미해결 자산 격리를 모두 통과했다.
 
 Gold 27개 회사×연도 파티션의 718,531행을 필요한 식별 컬럼만 파티션 단위로 읽어 registry와
@@ -45,7 +46,8 @@ Gold 27개 회사×연도 파티션의 718,531행을 필요한 식별 컬럼만 
 기존 Gold 1,810,752행에 영향을 줬다. 새 registry는 이 값을 audit-only 후보 열에만 보존하고
 동일주소 전파를 제거한다. stale registry에 `reviewed_legacy_mapping` 또는
 `reviewed_colocated_address`가 남아 있어도 모델 로더가 다시 차단한다. 전체 재생성 뒤 unsafe
-method 학습행, review-required 학습행, reviewed config 근거 누락은 모두 0건이다.
+method 학습행, `weather_mapping_review_required=true` 학습행, reviewed config 근거 누락은 모두
+0건이다. 이는 ASOS 매핑 승인 상태이며 발전량의 `quality_review_required`와는 별도 게이트다.
 
 행정구역과 기상관측소는 의도적으로 별개다. 예를 들어 전남 영암은 목포 ASOS를 사용할 수 있지만
 행정구역을 목포로 바꾸지 않는다. 공식 주소가 없는 자산의 Gold `region`은 `unknown`으로 유지하고

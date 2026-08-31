@@ -35,11 +35,13 @@
 `config/reviewed_weather_mappings.json`에 근거 URL·거리·사유를 기록한 예외로 옮긴 후
 `val.csv` 의존을 제거한다.
 
-안전장치 적용 후 `prepare-data`를 전체 재실행한 결과 registry 68개 자산 중 학습 가능 24개,
-격리 44개가 됐다. 태양광은 22개 자산·701,011행, 풍력은 원본 보존용 2개 자산·17,520행이며
-태양광 모델은 여전히 `energy_source=solar`만 선택한다. 새 모델용 전체 행은 718,531개다.
-legacy 방식으로 학습에 들어간 행, `review_required=true`인 행, explicit reviewed mapping의 근거
-URL·사유 누락은 모두 0건이다. legacy 후보 19개 중 영월철도부지 1개만 공식 주소와 발전기간에
+안전장치 적용 후 `prepare-data`를 전체 재실행한 결과 registry 68개 자산 중 Gold 결합 가능 24개,
+격리 44개가 됐다. 태양광 Gold는 22개 자산·701,011행, 풍력은 원본 보존용 2개 자산·17,520행이며
+새 모델용 전체 행은 718,531개다. 이후 시간 해상도 품질 게이트가 여수태양광 29,280행 전체를
+제외하므로 태양광 모델의 실제 학습 적격 범위는 21개 자산·671,731행이다.
+legacy 방식으로 학습에 들어간 행, `weather_mapping_review_required=true`인 행, explicit reviewed
+mapping의 근거 URL·사유 누락은 모두 0건이다. 이 수치는 ASOS 매핑 승인 상태이며 발전량의
+`quality_review_required`와는 별개다. legacy 후보 19개 중 영월철도부지 1개만 공식 주소와 발전기간에
 유효한 영월 ASOS가 독립적으로 일치해 편입됐으며, legacy 지점번호 자체는 승인 근거로 쓰지 않았다.
 
 ## 파일·규칙별 대체 가능성

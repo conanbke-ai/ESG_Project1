@@ -11,7 +11,10 @@ from solar_forecast.models.checkpointing import (
 )
 from solar_forecast.models.optimization import OptimizationSettings
 from solar_forecast.pipeline.dataset import DatasetLoadPolicy, DatasetRepository
-from solar_forecast.pipeline.preprocessing import NumericPreprocessor
+from solar_forecast.pipeline.preprocessing import (
+    NumericPreprocessor,
+    require_model_quality_filter,
+)
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT
 
 
@@ -43,7 +46,7 @@ class CnnBiLstmTrainer:
             columns=[*passthrough, *feature_columns, target],
             numeric_columns=[*feature_columns, target],
             equals_filters={"energy_source": str(energy_source)} if energy_source else None,
-            truthy_filter=config.values.get("quality_filter_column"),
+            truthy_filter=require_model_quality_filter(config.values),
             row_limit=10_000 if smoke else None,
             policy=policy,
         )

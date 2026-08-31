@@ -47,6 +47,12 @@ class StandardizedPartition:
     duplicate_keys: int
     negative_generation: int
     energy_sources: dict[str, int]
+    declared_source_unit: str | None
+    resolved_source_unit: str | None
+    unit_resolution_method: str | None
+    unit_capacity_factor_p99: float | None
+    unit_capacity_factor_max: float | None
+    daily_total_resolution: dict[str, object] | None
 
 
 @dataclass(frozen=True)
@@ -124,7 +130,9 @@ class HistoricalGenerationStandardizationService:
             for source in sorted(source_dir.rglob("*.csv")):
                 try:
                     normalized = self._normalize(company, source)
+                    normalization_attrs = normalized.attrs.copy()
                     normalized = self.metadata.enrich(normalized)
+                    normalized.attrs.update(normalization_attrs)
                     destination = generation_dir / company / f"{source.stem}_standardized.csv.gz"
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     temporary = destination.with_name(destination.name + ".tmp")
@@ -182,6 +190,7 @@ class HistoricalGenerationStandardizationService:
         duplicate_keys = int(frame.duplicated(["timestamp", "plant_id"]).sum())
         if duplicate_keys:
             raise ValueError(f"Cross-row duplicate keys remain after normalization: {duplicate_keys}")
+        unit_resolution = frame.attrs.get("generation_unit_resolution", {})
         return StandardizedPartition(
             company=company,
             source=str(source),
@@ -203,4 +212,10 @@ class HistoricalGenerationStandardizationService:
                 str(source): int(count)
                 for source, count in frame["energy_source"].value_counts(dropna=False).items()
             },
+            declared_source_unit=unit_resolution.get("declared_source_unit"),
+            resolved_source_unit=unit_resolution.get("resolved_source_unit"),
+            unit_resolution_method=unit_resolution.get("method"),
+            unit_capacity_factor_p99=unit_resolution.get("capacity_factor_p99"),
+            unit_capacity_factor_max=unit_resolution.get("capacity_factor_max"),
+            daily_total_resolution=unit_resolution.get("daily_total"),
         )

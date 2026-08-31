@@ -213,6 +213,20 @@ class NationwideModelDatasetBuilder:
         coverage = {
             column: float(result[column].notna().mean()) for column in SELECTED_MODEL_FEATURES
         }
+        eligibility_by_energy_source: dict[str, dict[str, object]] = {}
+        for energy_source, group in result.groupby("energy_source", sort=True, observed=True):
+            eligible = group["quality_train_eligible"].fillna(False).astype(bool)
+            all_plants = set(group["plant_id"].astype(str))
+            eligible_plants = set(group.loc[eligible, "plant_id"].astype(str))
+            eligibility_by_energy_source[str(energy_source)] = {
+                "retained_rows": int(len(group)),
+                "training_eligible_rows": int(eligible.sum()),
+                "training_ineligible_rows": int((~eligible).sum()),
+                "retained_plants": int(len(all_plants)),
+                "training_eligible_plants": int(len(eligible_plants)),
+                "fully_excluded_plants": sorted(all_plants - eligible_plants),
+            }
+        eligible = result["quality_train_eligible"].fillna(False).astype(bool)
         manifest = {
             "created_at": datetime.now().isoformat(),
             "source": str(source_path),
@@ -250,6 +264,11 @@ class NationwideModelDatasetBuilder:
                 ),
                 "legacy_mapping": "audit-only candidate; never high confidence or model eligible",
                 "ambiguous_mapping": "quarantine; never silently assign nearest city",
+                "target_granularity": (
+                    "evaluate the retained Gold target profile after weather mapping; source-level "
+                    "daily totals placed in one fixed night bucket remain auditable but are marked "
+                    "quality_train_eligible=false for every row of the plant"
+                ),
                 "quarantined_plants": quarantined_plants,
             },
             "cross_partition_reconciliation": self._reconciliation,
@@ -291,8 +310,21 @@ class NationwideModelDatasetBuilder:
             "quality_columns": QUALITY_COLUMNS,
             "quality_policy": {
                 "negative_generation": "invalid; preserve flag and exclude from training, never replace with zero",
-                "contextual_anomalies": "flag only; do not automatically impute or delete",
+                "daily_aggregate_profile": (
+                    "plant-level hard gate; preserve the official daily-total evidence but exclude "
+                    "it from hourly model training because an intraday curve cannot be reconstructed"
+                ),
+                "contextual_anomalies": (
+                    "flag only; do not automatically impute or delete, except the source-level "
+                    "daily aggregate profile hard gate"
+                ),
                 "invalid_weather": "set missing with reason flag; impute from training data only",
+            },
+            "training_eligibility": {
+                "retained_rows": int(len(result)),
+                "training_eligible_rows": int(eligible.sum()),
+                "training_ineligible_rows": int((~eligible).sum()),
+                "by_energy_source": eligibility_by_energy_source,
             },
             "rows": len(result),
             "plants": int(result["plant_id"].nunique()),
