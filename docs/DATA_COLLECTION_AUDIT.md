@@ -69,6 +69,12 @@ byte와 SHA-256을 남겨 동일 파일명의 수정본도 식별합니다.
 Gold에서 파일명의 최신 `YYYYMMDD` 개정값을 선택해 snapshot을 합산하지 않습니다.
 이번 실행에서는 snapshot 중복 후보 153,262행과 값이 달라진 개정 키 246개를 발견했고, 모두
 최신 공개 snapshot을 선택했다는 사실을 `model_ready_manifest.json`에 남겼습니다.
+추가로 `file/standardized/downloads/`의 collector Silver 4개 파일을 `collector_admission_manifest.json`에서
+심사해 plant-hour 발전량 계약을 만족한 3개 파일·195,225행을 registry 후보로 연결했습니다.
+지역 단위 EWP 학습 CSV 1개는 발전소 식별 컬럼이 없어 Silver 보존만 하고 Gold에서는 제외합니다.
+collector accepted 행 중 60,643행은 registry와 snapshot 선택을 통과해 최종 Gold source로 남았고,
+KOSPO 최신 부산철도태양광2호기 파일 7,560행은 `발전소명=신재생사업본부`처럼 포괄 명칭으로 들어와
+현재 reviewed registry key와 매칭되지 않아 0행 retained 상태입니다.
 서부발전의 `(군산)영암F1태양광`과 `영암에프원태양광b`는 registry의
 `source_plant_aliases` 근거를 남기고 `영암F1 태양광` 한 자산으로 통합해 2017~2023의 61,340개
 Gold 행을 보존했습니다. `화순풍력발전`도 `화순풍력`으로 연결하되 설비 메타데이터를 발전원별로
@@ -151,7 +157,7 @@ history 결측 때문에 행을 삭제하던 정책도 제거했습니다. 2026-
 전라도 Gold 보존 표본은 전남 태양광 8개소·273,955행, 전남 풍력 2개소·17,520행, 전북 태양광
 2개소·22,824행으로 총 12개소·314,299행입니다. 태양광 Gold만 보면 10개소·296,779행이고,
 여수태양광을 제외한 시간 학습 적격은 9개소·267,499행입니다.
-전체 registry 68개소 중 24개소가 Gold이고 44개소는 격리됐습니다. 과거 병합본의 ASOS seed는
+전체 registry 69개소 중 24개소가 Gold이고 45개소는 격리됐습니다. 과거 병합본의 ASOS seed는
 공식 근거가 아니므로 audit-only 후보로만 보존하며, 공식 주소·좌표나 근거 있는 reviewed mapping이
 없는 자산과 복수 ASOS 후보는 학습에서 제외합니다.
 

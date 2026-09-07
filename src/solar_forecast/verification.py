@@ -33,6 +33,7 @@ class VerificationConfig:
     weather_root: Path = Path("file/KMA_data_file")
     merged_source: Path = Path("file/merge_data/val.csv")
     standardized_output_dir: Path = Path("file/standardized")
+    collected_generation_dir: Path | None = Path("file/standardized/downloads")
     train_models: tuple[str, ...] = ("xgboost", "cnn_bilstm")
     smoke: bool = True
     model_config_paths: dict[str, Path] = field(default_factory=dict)
@@ -234,18 +235,50 @@ class PipelineVerificationService:
             weather_root=self._resolve(self.config.weather_root),
             merged_source=self._resolve(self.config.merged_source),
             output_dir=self._resolve(self.config.standardized_output_dir),
+            collected_generation_dir=(
+                self._resolve(self.config.collected_generation_dir)
+                if self.config.collected_generation_dir is not None
+                else None
+            ),
         ).run()
         manifest_path = result.model_dataset.path.with_name("model_ready_manifest.json")
         manifest = self._read_json(manifest_path) if manifest_path.exists() else {}
         warnings: list[str] = []
-        downloads_root = self._collected_download_root()
-        if downloads_root.exists() and downloads_root != self._resolve(self.config.input_root):
+        downloads_root = (
+            self._resolve(self.config.collected_generation_dir)
+            if self.config.collected_generation_dir is not None
+            else None
+        )
+        if downloads_root and downloads_root.exists() and not result.collector_admission:
             warnings.append(
                 "Collected Silver download files are archived separately under "
                 f"{downloads_root}; prepare-data currently rebuilds the Gold model "
                 f"dataset from {self._resolve(self.config.input_root)} plus staged "
                 "candidate intake rules."
             )
+        collector_admission = None
+        if result.collector_admission is not None:
+            rejected_reasons: dict[str, int] = {}
+            for item in result.collector_admission.files:
+                if item.status != "rejected":
+                    continue
+                reason = str(item.reason or "unknown")
+                reason_key = reason.split(":", 1)[0]
+                rejected_reasons[reason_key] = rejected_reasons.get(reason_key, 0) + 1
+            collector_admission = {
+                "manifest_path": str(result.collector_admission.manifest_path),
+                "source_dir": str(result.collector_admission.source_dir),
+                "accepted_files": result.collector_admission.accepted_count,
+                "rejected_files": result.collector_admission.rejected_count,
+                "accepted_rows": result.collector_admission.accepted_rows,
+                "rejected_reasons": rejected_reasons,
+            }
+            if result.collector_admission.rejected_count:
+                warnings.append(
+                    f"{result.collector_admission.rejected_count} collector Silver files "
+                    "were kept out of Gold because they do not satisfy the plant-hour "
+                    "generation contract."
+                )
         return {
             "generation_manifest": str(result.generation.manifest_path),
             "generation_partitions": len(result.generation.partitions),
@@ -263,11 +296,14 @@ class PipelineVerificationService:
                 "preprocessing_artifact_plants": result.quality.preprocessing_artifact_plants,
             },
             "training_eligibility": manifest.get("training_eligibility", {}),
+            "collector_admission": collector_admission,
             "source": {
                 "input_root": str(self._resolve(self.config.input_root)),
                 "weather_root": str(self._resolve(self.config.weather_root)),
                 "merged_source": str(self._resolve(self.config.merged_source)),
-                "collected_download_root": str(downloads_root),
+                "collected_download_root": str(downloads_root)
+                if downloads_root is not None
+                else None,
             },
             "warnings": warnings,
         }
@@ -350,11 +386,6 @@ class PipelineVerificationService:
             return None
         manifests = sorted(runs_root.glob("*/collection_manifest.json"))
         return manifests[-1] if manifests else None
-
-    def _collected_download_root(self) -> Path:
-        if self.config.collection_config is not None:
-            return self._resolve(self.config.collection_config.standardized_output_dir)
-        return self.project_root / "file" / "standardized" / "downloads"
 
     def _resolve(self, path: str | Path | None) -> Path:
         if path is None:

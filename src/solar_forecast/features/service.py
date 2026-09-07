@@ -79,6 +79,7 @@ class NationwideModelDatasetBuilder:
             "revision_conflict_keys": 0,
             "revision_selection_policy": "newest YYYYMMDD snapshot, then deterministic input order",
         }
+        self._source_contribution: list[dict[str, object]] = []
 
     def read_legacy_generation(self, source_path: Path) -> pd.DataFrame:
         """Read the retained merge only as a plant/station mapping and audit source."""
@@ -272,6 +273,7 @@ class NationwideModelDatasetBuilder:
                 "quarantined_plants": quarantined_plants,
             },
             "cross_partition_reconciliation": self._reconciliation,
+            "gold_source_contribution": self._source_contribution,
             "dataset": str(destination),
             "partitioned_dataset": {
                 "directory": str(partitions_dir),
@@ -393,6 +395,7 @@ class NationwideModelDatasetBuilder:
                 "are rejected"
             )
         parts: list[pd.DataFrame] = []
+        source_stats: list[dict[str, object]] = []
         for partition_order, path in enumerate(paths):
             source = pd.read_csv(
                 Path(path),
@@ -405,6 +408,7 @@ class NationwideModelDatasetBuilder:
                     "generation_mwh",
                 ],
             )
+            raw_rows = len(source)
             source["timestamp"] = pd.to_datetime(source["timestamp"], errors="coerce")
             source["plant"] = [
                 self.metadata.canonical_plant(company, plant)
@@ -416,6 +420,14 @@ class NationwideModelDatasetBuilder:
                 source[["company", "plant", "energy_source"]].astype(str)
             )
             source = source.loc[keys.isin(eligible_keys)]
+            source_stat = {
+                "path": str(path),
+                "role": self._source_role(Path(path)),
+                "input_rows": int(raw_rows),
+                "rows_after_registry_gate": int(len(source)),
+                "rows_after_snapshot_aggregation": 0,
+                "retained_rows_after_revision_selection": 0,
+            }
             if not source.empty:
                 # Aggregate all meters/units inside one source snapshot first.
                 # A later public snapshot for the same physical asset replaces
@@ -426,9 +438,12 @@ class NationwideModelDatasetBuilder:
                     sort=False,
                 )["generation_mwh"].sum()
                 source["_partition_order"] = partition_order
+                source["_source_path"] = str(path)
                 snapshot_dates = re.findall(r"20\d{6}", Path(path).name)
                 source["_snapshot_date"] = max(map(int, snapshot_dates), default=0)
+                source_stat["rows_after_snapshot_aggregation"] = int(len(source))
                 parts.append(source)
+            source_stats.append(source_stat)
         if not parts:
             raise ValueError("No standardized official generation rows match the registry quality gate")
         generation = pd.concat(parts, ignore_index=True)
@@ -456,7 +471,24 @@ class NationwideModelDatasetBuilder:
             identity,
             keep="last",
         )
-        generation = generation.drop(columns=["_snapshot_date", "_partition_order"])
+        retained_by_source = generation["_source_path"].value_counts().to_dict()
+        for source_stat in source_stats:
+            retained = int(retained_by_source.get(source_stat["path"], 0))
+            source_stat["retained_rows_after_revision_selection"] = retained
+            if source_stat["rows_after_registry_gate"] == 0:
+                source_stat["retention_note"] = "no rows matched eligible registry keys"
+            elif retained == 0:
+                source_stat["retention_note"] = (
+                    "all rows were superseded by newer/equivalent public snapshots"
+                )
+            elif retained < source_stat["rows_after_snapshot_aggregation"]:
+                source_stat["retention_note"] = (
+                    "partially retained after revision duplicate selection"
+                )
+            else:
+                source_stat["retention_note"] = "fully retained after revision selection"
+        self._source_contribution = source_stats
+        generation = generation.drop(columns=["_snapshot_date", "_partition_order", "_source_path"])
 
         mapping_columns = [
             "company",
@@ -490,6 +522,15 @@ class NationwideModelDatasetBuilder:
         if generation.duplicated(["timestamp", "plant_id"]).any():
             raise ValueError("Official aggregate contains duplicate timestamp/plant_id keys")
         return generation.sort_values(["timestamp", "plant_id"], kind="stable").reset_index(drop=True)
+
+    @staticmethod
+    def _source_role(path: Path) -> str:
+        parts = {part.casefold() for part in path.parts}
+        if "downloads" in parts and "standardized" in parts:
+            return "collector_standardized_download"
+        if path.suffix.lower() == ".csv":
+            return "standardized_csv"
+        return "historical_standardized_partition"
 
     @staticmethod
     def _write_model_partitions(

@@ -44,13 +44,23 @@ def classify_energy_source(value: object) -> str:
     return "unknown"
 
 
-def read_csv_with_fallback(path: Path, *, index_col: bool | None = None) -> pd.DataFrame:
+def read_csv_with_fallback(
+    path: Path,
+    *,
+    index_col: bool | None = None,
+    **read_csv_kwargs: object,
+) -> pd.DataFrame:
     """Read public CSV exports without coupling callers to one Korean encoding."""
 
     last_error: UnicodeDecodeError | None = None
     for encoding in ("utf-8-sig", "utf-8", "cp949"):
         try:
-            return pd.read_csv(path, encoding=encoding, index_col=index_col)
+            return pd.read_csv(
+                path,
+                encoding=encoding,
+                index_col=index_col,
+                **read_csv_kwargs,
+            )
         except UnicodeDecodeError as exc:
             last_error = exc
     raise ValueError(f"Unable to decode CSV: {path}") from last_error

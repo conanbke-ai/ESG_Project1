@@ -35,9 +35,11 @@
 | 열 단위 CNN 통계 | Train 중앙값 계산 시 전체 훈련행×피처 행렬을 한 번 더 합치지 않음 | feature-wise median fitting |
 | 프레임워크별 결측 처리 | XGBoost는 native NaN, CNN은 Train 통계+mask | split별 preprocessing manifest |
 
-현재 검증 범위는 기본 공식 원본 88개와 농어촌공사 파일 6개입니다. 식별자 없는 2개 파일을
-격리하고 92개 파일에서 4,341,756개 표준 시간 행을 만들었습니다. 발전소×발전원 registry 68개 중
-행정·기상 매핑 근거를 통과한 Gold는 24개 발전소, 718,531행이며 44개는 quarantine했습니다.
+현재 검증 범위는 기본 공식 원본 88개, collector Silver 4개, 농어촌공사 파일 6개입니다.
+식별자 없는 영암 2개 파일과 plant-hour 계약이 아닌 collector 1개 파일을 격리하고, historical/KRC
+92개 파일과 collector accepted 3개 파일에서 4,536,981개 표준 후보 행을 만들었습니다.
+발전소×발전원 registry 69개 중 행정·기상 매핑 근거를 통과한 Gold는 24개 발전소,
+718,531행이며 45개는 quarantine했습니다.
 이 중 태양광 Gold는 22개소·701,011행을 보존합니다. 시간 해상도 품질 게이트가 여수태양광
 29,280행을 일 총량 증거로만 유지하고 학습에서 제외하므로 실제 태양광 학습 적격은
 21개소·671,731행입니다. Registry 격리와 Gold 내부 품질 제외는 서로 다른 단계입니다.

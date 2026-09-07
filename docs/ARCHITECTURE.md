@@ -56,9 +56,11 @@ facade로만 유지합니다.
 - `DailyWideGenerationNormalizer`: 발전사별 wide CSV 스키마와 원본 단위를 주입받아 공통 시간별 MWh 계약으로 변환
 - `GenerationSchemaRegistry`: 파일 컬럼 집합으로 여섯 가지 보관 원본 스키마를 명시적으로 판별
 - `HistoricalGenerationStandardizationService`: 4개사 원본을 파일 단위 gzip 파티션과 검증 manifest로 변환
+- `CollectedGenerationAdmissionService`: collector Silver가 plant-hour 발전량 계약을 만족할 때만
+  registry 후보로 승격하고 지역 단위/식별자 부족 파일은 사유와 함께 Silver에 보존
 - `NationwidePlantRegistryBuilder`: 기관·발전원별 안정 키, 행정구역, 기상 매핑 근거와 quarantine 사유를 관리
 - `NationwideModelDatasetBuilder`: 승인된 모든 기관·발전소를 공통 피처로 결합하고 누적 개정본을 최신
-  snapshot 우선으로 조정한 뒤 회사×연도 Gold 파티션 생성
+  snapshot 우선으로 조정한 뒤 source별 Gold 기여도를 manifest에 남기고 회사×연도 Gold 파티션 생성
 - `KrcYeongamCandidateIntakeService`: 추가 발전소 원본의 hash·스키마·연속성·4구간 분할을 검증하고
   개체 식별이 불가능한 과거파일을 quarantine
 - `PlantMetadataCatalog`: 공식 설비현황을 발전소/호기 단위로 매칭하되 불확실한 총용량 복제를 금지

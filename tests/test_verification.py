@@ -20,6 +20,7 @@ def test_verify_e2e_cli_defaults_to_smoke_and_requires_collect_dates() -> None:
     assert args.full_train is False
     assert args.models == "xgboost,cnn_bilstm"
     assert args.collect is False
+    assert args.no_collected_downloads is False
 
 
 def test_verification_service_writes_auditable_report(tmp_path, monkeypatch) -> None:
@@ -47,7 +48,14 @@ def test_verification_service_writes_auditable_report(tmp_path, monkeypatch) -> 
     (downloads / "sample.csv").write_text("a,b\n1,2\n", encoding="utf-8")
 
     class FakePreparationService:
-        def __init__(self, input_root, weather_root, merged_source, output_dir):
+        def __init__(
+            self,
+            input_root,
+            weather_root,
+            merged_source,
+            output_dir,
+            collected_generation_dir=None,
+        ):
             self.output_dir = Path(output_dir)
 
         def run(self):
@@ -79,6 +87,20 @@ def test_verification_service_writes_auditable_report(tmp_path, monkeypatch) -> 
                     high_risk_plants=0,
                     review_plants=1,
                     preprocessing_artifact_plants=0,
+                ),
+                collector_admission=SimpleNamespace(
+                    manifest_path=self.output_dir / "collector_admission_manifest.json",
+                    source_dir=tmp_path / "file/standardized/downloads",
+                    accepted_count=1,
+                    rejected_count=1,
+                    accepted_rows=1,
+                    files=[
+                        SimpleNamespace(status="accepted", reason=None),
+                        SimpleNamespace(
+                            status="rejected",
+                            reason="missing_generation_contract_columns: region",
+                        ),
+                    ],
                 ),
             )
 

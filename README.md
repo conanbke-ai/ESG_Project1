@@ -50,7 +50,9 @@ python app.py pipeline target_column --input-dir file/merge_data --features feat
 
 현재 자동화된 4개 발전사 파일은 각 공식 홈페이지의 공공데이터 게시물 또는 그 게시물이 연결한
 공공데이터포털 첨부파일에서 내려받습니다. 한국농어촌공사 영암 원본은 확보된 주기성 파일을
-`prepare-data`가 자동 심사·편입합니다. 발전사별 다운로드 URL 환경변수는 필요하지 않습니다.
+`prepare-data`가 자동 심사·편입합니다. `collect`가 새로 만든 발전사 Silver 파일도
+plant-hour 발전량 계약을 만족하면 registry/admission을 거쳐 Gold 후보에 자동 연결됩니다.
+발전사별 다운로드 URL 환경변수는 필요하지 않습니다.
 기상청 로그인이 필요한 경우에는 `KMA_CHROME_USER_DATA_DIR`, 중부발전 선택 수집에는
 `DATA_GO_SERVICE_KEY`를 `.env.local`에 설정합니다. 형식은 [`.env.example`](.env.example)을 따릅니다.
 
@@ -72,19 +74,24 @@ python app.py prepare-data
 ```
 
 `prepare-data`는 현재 `file/solar_data_file/`의 88개 원본을 4,236,565개 시간 행의 파일별 gzip CSV
-파티션으로 변환합니다. 이어 농어촌공사 영암 6개 파일을 심사해 개체 식별이 가능한 2022~2025
-4개 파일·105,191개 시간 행을 같은 계약으로 편입하고, 2020~2021은 식별자 부재로 격리합니다.
-기본 원본 검사는 `generation_manifest.json`, 영암 검사는
+파티션으로 변환합니다. 이어 `file/standardized/downloads/`의 collector Silver를 검사해
+plant-hour 계약을 만족한 3개 파일·195,225행을 registry 후보로 넘기고, 지역 단위 학습파일처럼
+발전소 식별자가 없는 1개 파일은 `collector_admission_manifest.json`에 사유를 남겨 제외합니다.
+농어촌공사 영암 6개 파일은 개체 식별이 가능한 2022~2025 4개 파일·105,191개 시간 행을 같은
+계약으로 편입하고, 2020~2021은 식별자 부재로 격리합니다. 기본 원본 검사는
+`generation_manifest.json`, collector 검사는 `collector_admission_manifest.json`, 영암 검사는
 `candidates/krc_yeongam/candidate_manifest.json`에 행 수·기간·결측·음수·중복·물리 상한과 함께 기록합니다.
 각 파티션은 한 원본 파일 단위로 처리하고 완성된 임시 파일만 원자적으로 교체합니다. manifest에는
 입력·출력 byte와 SHA-256을 기록해 같은 파일명의 수정본과 재처리 lineage를 추적합니다.
 이후 공식 표준 발전량을 발전소·시간 단위로 재집계하고, 기존 병합본의 ASOS 지점번호는 승인
 근거가 아닌 audit-only 후보로만 보존합니다. 공식 주소·좌표, 발전기간 전체를 덮는 KMA 지점 이력,
 근거가 있는 reviewed mapping을 통과한 행으로 단일 호환본 `file/standardized/model_ready.csv.gz`와
-학습용 회사×연도 파티션 `file/standardized/model_ready_parts/`를 생성합니다. 현재 Gold는
-718,531행·24개 발전소(태양광 22, 풍력 2)이고, 태양광 43개와 소수력 1개를 포함한 44개 자산은
-근거 없는 기상 결합 대신 registry에 격리합니다. 2026년 기상 연간 파일이 아직 없어 해당 발전량 2,832행·2개소는
-Silver에는 보존하고 Gold에서만 보류합니다.
+학습용 회사×연도 파티션 `file/standardized/model_ready_parts/`를 생성합니다. 현재 표준 후보는
+historical/KRC/collector를 합쳐 4,536,981행이고, registry/ASOS 근거 통과 후 867,397행,
+누적 snapshot 최신본 선택 후 721,363행으로 좁혀집니다. 2026년 기상 연간 파일이 아직 없어
+해당 발전량 2,832행·2개소는 Silver에는 보존하고 Gold에서만 보류하므로 최종 Gold는
+718,531행·24개 발전소(태양광 22, 풍력 2)입니다. 태양광 44개와 소수력 1개를 포함한
+45개 자산은 근거 없는 기상 결합 대신 registry에 격리합니다.
 태양광 Gold 701,011행·22개소 가운데 여수태양광 29,280행은 일 총량이 고정 야간 버킷에 적재된
 자료라 원문과 품질 근거는 보존하되 시간 예측 학습에서는 제외합니다. 따라서 현재 실제 태양광
 학습 적격 범위는 671,731행·21개소입니다.

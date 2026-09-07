@@ -136,11 +136,23 @@ def _run_prepare_data(args: argparse.Namespace) -> None:
         weather_root=Path(args.weather_root),
         merged_source=Path(args.merged_source),
         output_dir=Path(args.output_dir),
+        collected_generation_dir=(
+            None
+            if args.no_collected_downloads
+            else Path(args.collected_generation_dir)
+        ),
     ).run()
     print(
         f"Generation standardized: {len(result.generation.partitions)} files, "
         f"{result.generation.rows} hourly rows"
     )
+    if result.collector_admission:
+        print(
+            f"Collector Silver admission: {result.collector_admission.accepted_count} accepted, "
+            f"{result.collector_admission.rejected_count} rejected, "
+            f"{result.collector_admission.accepted_rows} admitted rows"
+        )
+        print(f"Collector admission manifest: {result.collector_admission.manifest_path}")
     if result.candidate_intake:
         print(
             f"Candidate generation admitted to registry gate: "
@@ -211,6 +223,11 @@ def _run_verify_e2e(args: argparse.Namespace) -> None:
             weather_root=Path(args.weather_root),
             merged_source=Path(args.merged_source),
             standardized_output_dir=Path(args.output_dir),
+            collected_generation_dir=(
+                None
+                if args.no_collected_downloads
+                else Path(args.collected_generation_dir)
+            ),
             train_models=tuple(_csv_list(args.models) or []),
             smoke=not args.full_train,
             no_optuna=args.no_optuna,
@@ -488,6 +505,16 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--weather-root", default="file/KMA_data_file")
     prepare.add_argument("--merged-source", default="file/merge_data/val.csv")
     prepare.add_argument("--output-dir", default="file/standardized")
+    prepare.add_argument(
+        "--collected-generation-dir",
+        default="file/standardized/downloads",
+        help="Collector Silver files to admit into the Gold registry when they match the plant-hour schema",
+    )
+    prepare.add_argument(
+        "--no-collected-downloads",
+        action="store_true",
+        help="Ignore collector Silver files and rebuild Gold only from retained historical archives",
+    )
     prepare.set_defaults(func=_run_prepare_data)
 
     audit_candidate = commands.add_parser(
@@ -563,6 +590,16 @@ def build_parser() -> argparse.ArgumentParser:
     verify_e2e.add_argument("--weather-root", default="file/KMA_data_file")
     verify_e2e.add_argument("--merged-source", default="file/merge_data/val.csv")
     verify_e2e.add_argument("--output-dir", default="file/standardized")
+    verify_e2e.add_argument(
+        "--collected-generation-dir",
+        default="file/standardized/downloads",
+        help="Collector Silver files to admit into Gold during prepare-data",
+    )
+    verify_e2e.add_argument(
+        "--no-collected-downloads",
+        action="store_true",
+        help="Run prepare-data without collector Silver admission",
+    )
     verify_e2e.add_argument("--models", default="xgboost,cnn_bilstm")
     verify_e2e.add_argument(
         "--full-train",

@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from solar_forecast.collectors.admission import (
+    CollectedGenerationAdmissionResult,
+    CollectedGenerationAdmissionService,
+)
 from solar_forecast.collectors.archive import (
     HistoricalGenerationStandardizationService,
     StandardizationRun,
@@ -24,6 +28,7 @@ class DataPreparationResult:
     model_dataset: ModelDatasetResult
     quality: QualityAuditResult
     legacy_quality: QualityAuditResult
+    collector_admission: CollectedGenerationAdmissionResult | None = None
     candidate_intake: CandidateIntakeResult | None = None
 
 
@@ -36,11 +41,17 @@ class DataPreparationService:
         weather_root: Path,
         merged_source: Path,
         output_dir: Path,
+        collected_generation_dir: Path | None = Path("file/standardized/downloads"),
     ):
         self.input_root = Path(input_root)
         self.weather_root = Path(weather_root)
         self.merged_source = Path(merged_source)
         self.output_dir = Path(output_dir)
+        self.collected_generation_dir = (
+            Path(collected_generation_dir)
+            if collected_generation_dir is not None
+            else None
+        )
 
     def run(self) -> DataPreparationResult:
         metadata = PlantMetadataCatalog.from_directory(self.input_root / "location")
@@ -53,6 +64,16 @@ class DataPreparationService:
             Path(partition.destination)
             for partition in generation.partitions
         )
+        collector_admission: CollectedGenerationAdmissionResult | None = None
+        if self.collected_generation_dir is not None:
+            collector_admission = CollectedGenerationAdmissionService(
+                self.collected_generation_dir,
+                self.output_dir / "collector_admission_manifest.json",
+            ).run()
+            generation_paths = (
+                *generation_paths,
+                *collector_admission.accepted_paths,
+            )
         candidate_intake: CandidateIntakeResult | None = None
         krc_source = self.input_root.parent / "raw" / "한국농어촌공사" / "영암"
         if krc_source.exists() and any(krc_source.glob("*.csv")):
@@ -109,5 +130,6 @@ class DataPreparationService:
             model_dataset,
             quality,
             legacy_quality,
+            collector_admission,
             candidate_intake,
         )

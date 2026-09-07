@@ -2,6 +2,10 @@
 
 from .config import CollectionConfig
 from .service import CollectionService, collect_all
+from .admission import (
+    CollectedGenerationAdmissionResult,
+    CollectedGenerationAdmissionService,
+)
 from .normalization import (
     DailyWideGenerationNormalizer,
     EwpTrainingNormalizer,
@@ -13,6 +17,8 @@ from .candidates import KrcYeongamCandidateIntakeService
 from .openapi import KomipoRenewableCollector
 
 __all__ = [
+    "CollectedGenerationAdmissionResult",
+    "CollectedGenerationAdmissionService",
     "CollectionConfig",
     "CollectionService",
     "DailyWideGenerationNormalizer",
