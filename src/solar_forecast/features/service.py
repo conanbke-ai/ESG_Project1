@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-import json
 from pathlib import Path
 import re
 import shutil
@@ -10,11 +9,16 @@ from typing import Iterable
 
 import pandas as pd
 
+from solar_forecast.artifacts.manifest import write_json_atomic
 from solar_forecast.collectors.metadata import PlantMetadataCatalog
 from solar_forecast.collectors.normalization import (
     GENERATION_COLUMNS,
     classify_energy_source,
     read_csv_with_fallback,
+)
+from solar_forecast.jobs.contracts import (
+    JOB_CONTRACT_SCHEMA_VERSION,
+    MODEL_READY_MANIFEST_CONTRACT,
 )
 from solar_forecast.quality.policy import GenerationQualityPolicy, QUALITY_COLUMNS
 from solar_forecast.settings import PROJECT_ROOT
@@ -229,6 +233,8 @@ class NationwideModelDatasetBuilder:
             }
         eligible = result["quality_train_eligible"].fillna(False).astype(bool)
         manifest = {
+            "contract": MODEL_READY_MANIFEST_CONTRACT,
+            "schema_version": JOB_CONTRACT_SCHEMA_VERSION,
             "created_at": datetime.now().isoformat(),
             "source": str(source_path),
             "generation_source": (
@@ -335,7 +341,7 @@ class NationwideModelDatasetBuilder:
             "coverage": coverage,
         }
         manifest_path = destination.with_name("model_ready_manifest.json")
-        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_atomic(manifest_path, manifest)
         return ModelDatasetResult(
             destination,
             manifest_path,

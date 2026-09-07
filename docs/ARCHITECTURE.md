@@ -20,6 +20,34 @@
 - Technology separation: 원본의 태양광·풍력·수력을 모두 보존하고 모델 유스케이스에서 발전원을 선택합니다.
 - Quality before imputation: 물리 위반과 문맥상 의심을 flag로 분리한 뒤 필요한 구간만 복원합니다.
 
+## 서비스 분리 결정
+
+현재 결정은 완전한 마이크로서비스 분리가 아니라 **모듈러 모놀리스 + 명시적 job 계약**입니다.
+이 프로젝트의 병목은 고트래픽 요청 처리보다 공식 원본의 신뢰도, registry/admission, Gold 데이터
+재현성, 학습 checkpoint와 알림 부작용 통제에 있습니다. 따라서 네트워크 서비스 여러 개로 먼저
+쪼개기보다, 같은 코드베이스 안에서 독립 실행 가능한 CLI job과 manifest 계약을 고정합니다.
+
+운영 경계는 다음 순서로 유지합니다.
+
+1. 지금은 마이크로서비스로 쪼개지 않습니다.
+2. CLI command/job 단위 경계를 명확히 합니다.
+3. 각 job 입출력을 versioned manifest schema로 고정합니다.
+4. 나중에 같은 코드를 worker/container entrypoint로 올릴 수 있게 유지합니다.
+5. 외부 부작용이 있는 알림 발송만 실제 분리 1순위 dispatcher로 둡니다.
+
+이 결정은 `src/solar_forecast/jobs/contracts.py`의 `JobContract` 카탈로그와 CLI에서 확인할 수 있습니다.
+
+```bash
+python app.py jobs
+python app.py jobs --json
+python app.py job-contract prepare-data
+python app.py job-contract notify-anomalies
+```
+
+`collect`, `prepare-data`, `train`, `build-dashboard`, `notify-anomalies`는 이미 worker/container entrypoint로
+올릴 수 있는 형태를 목표로 합니다. 다만 현재 배포 단위는 하나의 패키지이며, 분리 시에도
+데이터는 HTTP 호출이 아니라 manifest와 파티션 파일 계약으로 전달합니다.
+
 ## 패키지 구조
 
 ```text
@@ -41,7 +69,7 @@ src/solar_forecast/
 ├─ notifications/           # 운영 이벤트 outbox, route directory, SOLAPI adapter
 ├─ artifacts/               # manifest 저장
 ├─ infrastructure/          # 환경·오류·로깅 어댑터
-└─ jobs/                    # 프로세스 간 학습 잠금
+└─ jobs/                    # 독립 실행 job 계약, dispatcher, 프로세스 간 학습 잠금
 ```
 
 의존성은 CLI에서 application service로, service에서 명시적 adapter로 흐릅니다. 데이터 I/O나
@@ -77,6 +105,8 @@ facade로만 유지합니다.
 - `DataPreparationService`: 전체 표준화와 `model_ready.csv.gz`/`model_ready_parts` 생성을 하나의
   재현 가능한 유스케이스로 묶음
 - `TrainingService`: 모델 전략 선택, 전역 학습 잠금, 성공/실패 manifest 관리
+- `JobContract`: collect/prepare/train/dashboard/notify/e2e의 입출력 manifest schema와 worker 전환
+  가능성을 코드에서 조회 가능한 계약으로 고정
 - `OptunaStudyService`: 모델별 SQLite study의 최대 누적 trial·시간 예산·재개·Validation-only
   선택 근거와 trial 표를 관리하며 과거 데이터셋의 최적값을 새 study에 강제하지 않음
 - `suggest_parameter`: 모델별 `optimizer.search_space` JSON을 Optuna suggest 호출로 변환해
@@ -98,6 +128,8 @@ facade로만 유지합니다.
   검증한 뒤에만 알림 계층으로 넘기는 재현 가능한 이벤트 경계
 - `NotificationService`/`NotificationOutbox`: 운영 이벤트를 수신자·채널별 멱등 작업으로 바꾸고
   SQLite transaction, lease, retry, Kakao→SMS fallback, dead-letter, `in_doubt` 감사를 관리
+- `NotificationDispatchJob`: CLI와 향후 queue worker/container가 공유할 알림 발송 application job.
+  이벤트 전량 검증, outbox 생성, dispatcher 실행을 소유하며 외부 provider 호출을 다른 계층과 분리
 - `RuntimeRouteDirectory`: Git에는 전화번호 대신 환경변수 이름만 두고 dispatch 순간 연락처를 resolve
 - `SolapiProvider`: HMAC-SHA256 인증의 SOLAPI v4 adapter. 승인 알림톡 template과 등록 발신번호를
   사용하며 HTTP 2xx를 실제 배송이 아닌 공급사 접수로 기록
@@ -115,6 +147,8 @@ python app.py verify-e2e
 python app.py evaluate-features
 python app.py build-dashboard
 python app.py notify-anomalies --events artifacts/anomalies/<run>/events.jsonl --routes config/notification_routes.local.json
+python app.py jobs
+python app.py job-contract train
 ```
 
 장시간 기본 모델 학습은 `artifacts/.training.lock`으로 직렬화합니다. Hybrid와 보고 작업은
@@ -127,6 +161,21 @@ Optuna study는 `artifacts/optimization/solar_models.db`에 별도 저장되며,
 실제 모델 상태는 `artifacts/checkpoints/<model>/<fingerprint>/`에 분리합니다. CNN은 모델·optimizer·
 early stopping·난수 상태를 epoch 경계에서, XGBoost는 Booster를 boosting-round 경계에서 저장합니다.
 따라서 재개 단위가 명확하며 데이터 또는 의미 있는 학습 설정이 바뀐 상태를 이어 붙이지 않습니다.
+
+## Job 계약
+
+| Job | 입력 계약 | 출력 계약 | 향후 분리 판단 |
+|---|---|---|---|
+| `collect` | 공식 웹/API | `solar-collection-manifest.v1` | 독립 collector worker 가능 |
+| `prepare-data` | Bronze/Silver CSV, KMA, 선택적 collection manifest | `solar-model-ready-manifest.v1` | Gold dataset builder job으로 유지 |
+| `train` | `solar-model-ready-manifest.v1` | `solar-training-run-manifest.v1` | 모델별 strategy job, 별도 모델 마이크로서비스는 보류 |
+| `build-dashboard` | Gold/quality/model manifests | 정적 dashboard JSON/HTML | 정적 projection job으로 유지 |
+| `notify-anomalies` | `solar-anomaly-event-manifest.v1` | SQLite outbox/provider audit | 외부 부작용 때문에 실제 분리 1순위 |
+| `verify-e2e` | 현재 workspace 산출물 | `solar-e2e-verification.v1` | 서비스가 아니라 readiness check |
+
+새로운 job을 추가할 때는 먼저 `JobContract`에 command, side effects, input/output artifact, schema,
+worker 전환 여부를 등록합니다. 그 다음 application service가 해당 manifest contract를 실제 산출물에
+기록해야 합니다.
 
 ## 데이터 계약
 

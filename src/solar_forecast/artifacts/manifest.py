@@ -7,6 +7,11 @@ from pathlib import Path
 import time
 from typing import Any
 
+from solar_forecast.jobs.contracts import (
+    JOB_CONTRACT_SCHEMA_VERSION,
+    TRAINING_RUN_MANIFEST_CONTRACT,
+)
+
 
 def sha256_file(path: Path, chunk_bytes: int = 1024 * 1024) -> str:
     """Hash an artifact incrementally so lineage checks stay memory bounded."""
@@ -45,6 +50,8 @@ def write_json_atomic(path: Path, payload: dict[str, Any]) -> Path:
 
 def write_manifest(path: Path, *, status: str, model: str, run_id: str, details: dict[str, Any]) -> Path:
     payload = {
+        "contract": TRAINING_RUN_MANIFEST_CONTRACT,
+        "schema_version": JOB_CONTRACT_SCHEMA_VERSION,
         "status": status, "model": model, "run_id": run_id,
         "updated_at_utc": datetime.now(timezone.utc).isoformat(), "details": details,
     }

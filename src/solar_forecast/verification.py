@@ -9,6 +9,10 @@ from typing import Any, Callable
 
 from solar_forecast.artifacts.manifest import write_json_atomic
 from solar_forecast.collectors import CollectionConfig, CollectionService
+from solar_forecast.jobs.contracts import (
+    E2E_VERIFICATION_MANIFEST_CONTRACT,
+    JOB_CONTRACT_SCHEMA_VERSION,
+)
 from solar_forecast.jobs.training import TrainingService
 from solar_forecast.preparation import DataPreparationService
 from solar_forecast.reporting import DashboardBuilder
@@ -102,7 +106,8 @@ class PipelineVerificationService:
         finally:
             payload = {
                 "status": status,
-                "contract": "solar-e2e-verification.v1",
+                "contract": E2E_VERIFICATION_MANIFEST_CONTRACT,
+                "schema_version": JOB_CONTRACT_SCHEMA_VERSION,
                 "started_at_utc": started.isoformat(),
                 "finished_at_utc": datetime.now(timezone.utc).isoformat(),
                 "project_root": str(self.project_root),

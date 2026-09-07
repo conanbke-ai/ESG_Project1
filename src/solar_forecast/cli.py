@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import replace
+import json
 from datetime import date
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -15,6 +15,15 @@ from solar_forecast.collectors import (
 )
 from solar_forecast.ensemble.service import HybridExperiment
 from solar_forecast.evaluation import FeatureAblationService
+from solar_forecast.jobs.contracts import (
+    get_job_contract,
+    job_contract_catalog,
+    list_job_contracts,
+)
+from solar_forecast.jobs.notification_dispatch import (
+    NotificationDispatchJob,
+    NotificationDispatchJobConfig,
+)
 from solar_forecast.jobs.training import TrainingService
 from solar_forecast.preparation import DataPreparationService
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT, load_model_config
@@ -263,127 +272,50 @@ def _run_evaluate_features(args: argparse.Namespace) -> None:
 
 
 def _run_notify_anomalies(args: argparse.Namespace) -> None:
-    from solar_forecast.anomalies import verify_operational_event_batch
-    from solar_forecast.infrastructure.local_env import load_local_env
-    from solar_forecast.notifications import (
-        AnomalyAlert,
-        NotificationDispatcher,
-        NotificationOutbox,
-        NotificationService,
-        NotificationSettings,
-        RuntimeRouteDirectory,
-        SolapiSettings,
-        build_solapi_dispatcher,
-    )
-
-    load_local_env()
-    settings = NotificationSettings.from_env().confirm_live(confirmed=args.live)
-    if args.live and not settings.external_delivery_allowed:
-        raise SystemExit(
-            "Live notifications are blocked. Set SOLAR_NOTIFY_ENABLED=true and "
-            "SOLAR_NOTIFY_DRY_RUN=false, then pass --live explicitly."
+    result = NotificationDispatchJob(project_root=PROJECT_ROOT).run(
+        NotificationDispatchJobConfig(
+            events=Path(args.events),
+            manifest=Path(args.manifest) if args.manifest else None,
+            routes=Path(args.routes),
+            outbox=Path(args.outbox) if args.outbox else None,
+            template_contract=args.template_contract,
+            live=args.live,
         )
-
-    events_path = _project_path(args.events)
-    manifest_path = _project_path(args.manifest) if args.manifest else None
-    routes_path = _project_path(args.routes)
-    batch = verify_operational_event_batch(events_path, manifest_path)
-
-    if args.outbox and not args.live:
-        raise SystemExit(
-            "Dry-run preview does not accept --outbox. It always uses the "
-            "isolated artifacts/notifications/dry_run.sqlite3 database."
-        )
-    if args.live:
-        outbox_path = _project_path(args.outbox or settings.outbox_path)
-    else:
-        # A preview must not consume the live idempotency key and suppress a
-        # later, explicitly approved delivery of the same operational event.
-        outbox_path = PROJECT_ROOT / "artifacts/notifications/dry_run.sqlite3"
-    settings = replace(settings, outbox_path=outbox_path)
-    routes = RuntimeRouteDirectory.from_file(
-        routes_path,
-        require_contacts=settings.external_delivery_allowed,
-    )
-    solapi = SolapiSettings.from_env() if settings.external_delivery_allowed else None
-
-    def validated_alerts():
-        # Re-open the verified JSONL for each pass so semantic validation is
-        # fail-closed without retaining a large event batch in memory.
-        for source in batch.records():
-            record = dict(source)
-            record.setdefault("run_id", batch.run_id)
-            record.setdefault("detector_version", batch.detector_version)
-            alert = AnomalyAlert.from_operational_event(record)
-            yield alert, routes.routes_for(
-                alert.route_key,
-                alert.audience,
-                alert.plant_id,
-            )
-
-    # Validate every event and route before the outbox is created or mutated.
-    for _alert, _routes in validated_alerts():
-        pass
-
-    outbox = NotificationOutbox(outbox_path)
-    service = NotificationService(outbox, template_id=args.template_contract)
-
-    enqueued = 0
-    duplicates = 0
-    for alert, alert_routes in validated_alerts():
-        for result in service.enqueue_anomaly(
-            alert,
-            alert_routes,
-        ):
-            if result.created:
-                enqueued += 1
-            else:
-                duplicates += 1
-
-    if settings.external_delivery_allowed:
-        dispatcher = build_solapi_dispatcher(
-            settings,
-            outbox,
-            routes.contacts,
-            solapi,
-        )
-    else:
-        dispatcher = NotificationDispatcher(settings, outbox, routes.contacts, {})
-
-    totals = {
-        "candidates": 0,
-        "accepted": 0,
-        "suppressed": 0,
-        "retry_required": 0,
-        "fallback_scheduled": 0,
-        "dead_lettered": 0,
-        "in_doubt": 0,
-    }
-    while True:
-        summary = dispatcher.run_once()
-        for key in totals:
-            totals[key] += int(getattr(summary, key))
-        if summary.candidates == 0:
-            break
-
-    mode = "LIVE" if settings.external_delivery_allowed else "DRY-RUN"
-    print(
-        f"Notification {mode}: {batch.event_count} events verified, "
-        f"{enqueued} queued, {duplicates} duplicates"
     )
     print(
-        f"Provider accepted: {totals['accepted']}, dry-run suppressed: "
-        f"{totals['suppressed']}, retry pending: {totals['retry_required']}, "
-        f"fallback scheduled: {totals['fallback_scheduled']}, "
-        f"dead-lettered: {totals['dead_lettered']}, "
-        f"provider outcome unknown: {totals['in_doubt']}"
+        f"Notification {result.mode}: {result.event_count} events verified, "
+        f"{result.queued} queued, {result.duplicates} duplicates"
+    )
+    print(
+        f"Provider accepted: {result.accepted}, dry-run suppressed: "
+        f"{result.suppressed}, retry pending: {result.retry_required}, "
+        f"fallback scheduled: {result.fallback_scheduled}, "
+        f"dead-lettered: {result.dead_lettered}, "
+        f"provider outcome unknown: {result.in_doubt}"
     )
     print("Provider acceptance is not the same as handset delivery confirmation.")
 
 
-def _project_path(value: str | Path) -> Path:
-    path = Path(value)
-    return path if path.is_absolute() else PROJECT_ROOT / path
+def _run_jobs(args: argparse.Namespace) -> None:
+    if args.json:
+        print(json.dumps(job_contract_catalog(), ensure_ascii=False, indent=2))
+        return
+    print("Runnable job boundaries")
+    for contract in list_job_contracts():
+        readiness = "worker-ready" if contract.worker_ready else "readiness-check"
+        outputs = ", ".join(output.name for output in contract.outputs) or "none"
+        print(f"- {contract.job_id} [{readiness}]")
+        print(f"  command: {contract.command}")
+        print(f"  outputs: {outputs}")
+        print(f"  split: {contract.split_decision}")
+
+
+def _run_job_contract(args: argparse.Namespace) -> None:
+    try:
+        contract = get_job_contract(args.job)
+    except KeyError as exc:
+        raise SystemExit(str(exc)) from exc
+    print(json.dumps(contract.as_dict(), ensure_ascii=False, indent=2))
 
 
 def _run_build_dashboard(args: argparse.Namespace) -> None:
@@ -616,6 +548,27 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status", help="Show the active training job")
     status.set_defaults(func=_run_status)
+
+    jobs = commands.add_parser(
+        "jobs",
+        help="List runnable job boundaries and future worker split decisions",
+    )
+    jobs.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the full job contract catalog as JSON",
+    )
+    jobs.set_defaults(func=_run_jobs)
+
+    job_contract = commands.add_parser(
+        "job-contract",
+        help="Print one job's input/output artifact contract as JSON",
+    )
+    job_contract.add_argument(
+        "job",
+        choices=[contract.job_id for contract in list_job_contracts()],
+    )
+    job_contract.set_defaults(func=_run_job_contract)
 
     evaluate_features = commands.add_parser(
         "evaluate-features",

@@ -31,6 +31,7 @@
 | bounded 학습 로더 | 10만 행 chunk, 필터 pushdown, float32, 1.5GB hard limit | `DatasetLoadPolicy`/`DatasetLoadReport` |
 | bounded 하이퍼파라미터 탐색 | XGBoost 대표행·CNN lazy sequence 상한, trial/시간 예산, pruning 후 전체 Train 재학습 | 모델별 `optimizer` 설정·SQLite study |
 | fingerprint 체크포인트 | 데이터/설정별 상태 격리, CNN epoch·XGBoost boosting round 재개, atomic replace | `TrainingCheckpointStore`와 실행 manifest |
+| Job contract catalog | 마이크로서비스로 선분리하지 않고 CLI job별 입출력 manifest schema와 부작용을 코드로 고정 | `python app.py jobs --json` |
 | API 호출 예산 | 중부발전 요청 전 최소 호출 수를 계산하고 station/day로 원자 저장·재개 | `KomipoRenewableCollector` |
 | 열 단위 CNN 통계 | Train 중앙값 계산 시 전체 훈련행×피처 행렬을 한 번 더 합치지 않음 | feature-wise median fitting |
 | 프레임워크별 결측 처리 | XGBoost는 native NaN, CNN은 Train 통계+mask | split별 preprocessing manifest |
@@ -67,6 +68,23 @@ Gold 27개 회사×연도 gzip 파티션은 44,910,649 byte입니다. 실제 XGB
    단계를 재시도 가능한 task로 분리합니다.
 5. 데이터 계약 버전, 모델 버전, feature contract, split boundary를 MLflow/DVC 같은 registry에
    연결해 어떤 데이터로 어떤 모델을 만들었는지 역추적합니다.
+6. 트래픽·스케줄·권한 경계가 실제로 갈라질 때만 `collect`, `prepare-data`, `train`,
+   `notify-anomalies`를 같은 이미지의 다른 worker/container entrypoint로 배포합니다. 이때도
+   서비스 간 직접 HTTP 의존이 아니라 manifest와 파티션 경로를 계약으로 넘깁니다.
+
+## 마이크로서비스 대신 job 경계를 먼저 둔 이유
+
+현재 데이터 규모와 사용 패턴에서는 네트워크 서비스 여러 개보다 재처리 가능성, 실패 복구,
+데이터 lineage가 더 중요합니다. 그래서 `src/solar_forecast/jobs/contracts.py`에 각 job의 command,
+입력 manifest, 출력 manifest, side effect, worker 전환 여부를 고정했습니다.
+
+이 방식은 면접에서 다음처럼 설명할 수 있습니다.
+
+- 현재는 단일 패키지라 로컬 검증과 디버깅 비용이 낮습니다.
+- job 입출력은 `solar-collection-manifest.v1`, `solar-model-ready-manifest.v1`,
+  `solar-training-run-manifest.v1`, `solar-anomaly-event-manifest.v1`처럼 versioned contract로 고정합니다.
+- 나중에 컨테이너로 분리해도 command와 artifact contract가 그대로 유지됩니다.
+- 카카오/SMS처럼 외부 부작용이 있는 알림 dispatcher만 실제 서비스 분리 1순위로 둡니다.
 
 ## 성능 측정 항목
 

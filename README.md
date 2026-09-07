@@ -448,6 +448,21 @@ python app.py notify-anomalies `
 `HybridExperiment`도 수집 및 앙상블 실행 경계를 각각 소유합니다. 자세한 의존성 방향은
 `docs/ARCHITECTURE.md`를 참고합니다.
 
+현재 배포 결정은 마이크로서비스 선분리가 아니라 **모듈러 모놀리스 + 독립 job 계약**입니다.
+수집, Gold 데이터셋 생성, 모델 학습, 대시보드 빌드, 알림 발송은 같은 패키지 안의 독립 CLI
+job으로 유지하고, 각 job의 manifest 계약은 코드에서 조회합니다.
+
+```bash
+python app.py jobs
+python app.py jobs --json
+python app.py job-contract train
+python app.py job-contract notify-anomalies
+```
+
+이 구조는 나중에 동일 코드를 worker/container entrypoint로 올릴 수 있게 만들기 위한 경계입니다.
+실제 외부 카카오/SMS provider를 호출하는 `notify-anomalies`만 부작용이 있으므로 향후 독립
+dispatcher 서비스로 분리할 1순위입니다.
+
 대량 데이터 취업 포트폴리오 관점의 Bronze/Silver/Gold 경계, 파티셔닝, hash lineage, atomic write,
 quarantine, lazy sequence와 Parquet/Polars/Spark 확장 기준은
 [`docs/SCALABLE_DATA_ENGINEERING.md`](docs/SCALABLE_DATA_ENGINEERING.md)에 별도로 정리했습니다.

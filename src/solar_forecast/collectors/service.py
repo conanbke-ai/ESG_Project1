@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-import json
 import logging
 from pathlib import Path
+
+from solar_forecast.artifacts.manifest import write_json_atomic
+from solar_forecast.jobs.contracts import (
+    COLLECTION_MANIFEST_CONTRACT,
+    JOB_CONTRACT_SCHEMA_VERSION,
+)
+from solar_forecast.infrastructure.error_report import write_error_report
+from solar_forecast.infrastructure.local_env import load_local_env
 
 from .base import CollectionResult
 from .config import CollectionConfig, load_source_catalog
@@ -22,8 +29,6 @@ from .normalization import (
     IWEST_WIDE_SCHEMA,
     KOSPO_WIDE_SCHEMA,
 )
-from solar_forecast.infrastructure.error_report import write_error_report
-from solar_forecast.infrastructure.local_env import load_local_env
 
 
 logger = logging.getLogger(__name__)
@@ -80,6 +85,8 @@ class CollectionService:
         run_dir.mkdir(parents=True, exist_ok=False)
         results = [self._collect(source, run_dir) for source in self.config.sources]
         manifest = {
+            "contract": COLLECTION_MANIFEST_CONTRACT,
+            "schema_version": JOB_CONTRACT_SCHEMA_VERSION,
             "started_at": datetime.now().isoformat(),
             "start_date": self.config.start_date.isoformat(),
             "end_date": self.config.end_date.isoformat(),
@@ -101,7 +108,7 @@ class CollectionService:
                 if path.suffix.lower() == ".csv" and path.exists()
             ],
         }
-        (run_dir / "collection_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_atomic(run_dir / "collection_manifest.json", manifest)
         return results
 
     def _collect(self, source: str, run_dir: Path) -> CollectionResult:
