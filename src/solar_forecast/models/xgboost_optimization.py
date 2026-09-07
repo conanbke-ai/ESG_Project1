@@ -12,7 +12,13 @@ from sklearn.metrics import mean_absolute_error
 from xgboost.callback import TrainingCallback
 
 from .checkpointing import TrainingCheckpointStore, stable_signature
-from .optimization import OptimizationRun, OptimizationSettings, OptunaStudyService
+from .optimization import (
+    OptimizationRun,
+    OptimizationSettings,
+    OptunaStudyService,
+    optimizer_search_space,
+    suggest_parameter,
+)
 from .xgboost_checkpoint import fit_xgboost_resumable
 
 
@@ -75,6 +81,7 @@ class XGBoostHyperparameterOptimizer:
             raise ValueError("optimizer configuration must be an object")
         self.values = values
         self.raw = raw
+        self.search_space = optimizer_search_space(values)
         self.checkpoint_store = checkpoint_store
 
     def optimize(
@@ -107,25 +114,78 @@ class XGBoostHyperparameterOptimizer:
         def objective(trial: optuna.Trial) -> float:
             params = {
                 "n_estimators": max_estimators,
-                "max_depth": trial.suggest_int("max_depth", 3, 12),
-                "learning_rate": trial.suggest_float(
-                    "learning_rate", 0.01, 0.20, log=True
+                "max_depth": int(
+                    suggest_parameter(
+                        trial,
+                        "max_depth",
+                        self.search_space,
+                        {"type": "int", "low": 3, "high": 12},
+                    )
                 ),
-                "min_child_weight": trial.suggest_float(
-                    "min_child_weight", 1.0, 32.0, log=True
+                "learning_rate": float(
+                    suggest_parameter(
+                        trial,
+                        "learning_rate",
+                        self.search_space,
+                        {"type": "float", "low": 0.01, "high": 0.20, "log": True},
+                    )
                 ),
-                "subsample": trial.suggest_float("subsample", 0.60, 1.0),
-                "colsample_bytree": trial.suggest_float(
-                    "colsample_bytree", 0.60, 1.0
+                "min_child_weight": float(
+                    suggest_parameter(
+                        trial,
+                        "min_child_weight",
+                        self.search_space,
+                        {"type": "float", "low": 1.0, "high": 32.0, "log": True},
+                    )
                 ),
-                "reg_alpha": trial.suggest_float(
-                    "reg_alpha", 1e-8, 10.0, log=True
+                "subsample": float(
+                    suggest_parameter(
+                        trial,
+                        "subsample",
+                        self.search_space,
+                        {"type": "float", "low": 0.60, "high": 1.0},
+                    )
                 ),
-                "reg_lambda": trial.suggest_float(
-                    "reg_lambda", 1e-3, 100.0, log=True
+                "colsample_bytree": float(
+                    suggest_parameter(
+                        trial,
+                        "colsample_bytree",
+                        self.search_space,
+                        {"type": "float", "low": 0.60, "high": 1.0},
+                    )
                 ),
-                "gamma": trial.suggest_float("gamma", 1e-8, 5.0, log=True),
-                "max_bin": trial.suggest_categorical("max_bin", [128, 256, 512]),
+                "reg_alpha": float(
+                    suggest_parameter(
+                        trial,
+                        "reg_alpha",
+                        self.search_space,
+                        {"type": "float", "low": 1e-8, "high": 10.0, "log": True},
+                    )
+                ),
+                "reg_lambda": float(
+                    suggest_parameter(
+                        trial,
+                        "reg_lambda",
+                        self.search_space,
+                        {"type": "float", "low": 1e-3, "high": 100.0, "log": True},
+                    )
+                ),
+                "gamma": float(
+                    suggest_parameter(
+                        trial,
+                        "gamma",
+                        self.search_space,
+                        {"type": "float", "low": 1e-8, "high": 5.0, "log": True},
+                    )
+                ),
+                "max_bin": int(
+                    suggest_parameter(
+                        trial,
+                        "max_bin",
+                        self.search_space,
+                        {"type": "categorical", "choices": [128, 256, 512]},
+                    )
+                ),
                 "tree_method": "hist",
                 "eval_metric": "mae",
                 "early_stopping_rounds": early_stopping_rounds,

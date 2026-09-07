@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader, Subset
 from solar_forecast.models.optimization import (
     OptimizationSettings,
     OptunaStudyService,
+    suggest_parameter,
 )
 from solar_forecast.models.checkpointing import (
     TrainingCheckpointStore,
@@ -75,15 +76,62 @@ def _evaluate(
     }
 
 
-def _suggest_model_config(trial: Trial, n_features: int) -> ModelConfig:
+def _suggest_model_config(
+    trial: Trial,
+    n_features: int,
+    search_space: dict[str, object] | None = None,
+) -> ModelConfig:
+    search_space = search_space or {}
     return ModelConfig(
         n_features=n_features,
-        cnn_channels=trial.suggest_int("cnn_channels", 16, 128, log=True),
-        kernel_size=trial.suggest_int("kernel_size", 2, 5),
-        lstm_hidden=trial.suggest_int("lstm_hidden", 32, 256, log=True),
-        lstm_layers=trial.suggest_int("lstm_layers", 1, 3),
-        dense_units=trial.suggest_int("dense_units", 32, 256, log=True),
-        dropout=trial.suggest_float("dropout", 0.05, 0.4),
+        cnn_channels=int(
+            suggest_parameter(
+                trial,
+                "cnn_channels",
+                search_space,
+                {"type": "int", "low": 16, "high": 128, "log": True},
+            )
+        ),
+        kernel_size=int(
+            suggest_parameter(
+                trial,
+                "kernel_size",
+                search_space,
+                {"type": "int", "low": 2, "high": 5},
+            )
+        ),
+        lstm_hidden=int(
+            suggest_parameter(
+                trial,
+                "lstm_hidden",
+                search_space,
+                {"type": "int", "low": 32, "high": 256, "log": True},
+            )
+        ),
+        lstm_layers=int(
+            suggest_parameter(
+                trial,
+                "lstm_layers",
+                search_space,
+                {"type": "int", "low": 1, "high": 3},
+            )
+        ),
+        dense_units=int(
+            suggest_parameter(
+                trial,
+                "dense_units",
+                search_space,
+                {"type": "int", "low": 32, "high": 256, "log": True},
+            )
+        ),
+        dropout=float(
+            suggest_parameter(
+                trial,
+                "dropout",
+                search_space,
+                {"type": "float", "low": 0.05, "high": 0.4},
+            )
+        ),
     )
 
 
@@ -131,6 +179,7 @@ def run_study(
     settings: OptimizationSettings | None = None,
     artifact_dir: Path | None = None,
     checkpoint_store: TrainingCheckpointStore | None = None,
+    optimizer_parameter_space: dict[str, object] | None = None,
 ) -> optuna.Study:
     """Select architecture and optimizer values from Validation only."""
 
@@ -150,6 +199,7 @@ def run_study(
     )
     n_features = loaders.n_features
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    search_space = optimizer_parameter_space or {}
     if min(trial_epochs, early_stopping_patience) < 1:
         raise ValueError("optimizer trial epochs and patience must be positive")
 
@@ -157,11 +207,23 @@ def run_study(
         seed = (settings.seed if settings else 42) + trial.number
         np.random.seed(seed)
         torch.manual_seed(seed)
-        model_cfg = _suggest_model_config(trial, n_features)
+        model_cfg = _suggest_model_config(trial, n_features, search_space)
         model = build_model(model_cfg, device=device)
-        lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
-        weight_decay = trial.suggest_float(
-            "weight_decay", 1e-6, 1e-2, log=True
+        lr = float(
+            suggest_parameter(
+                trial,
+                "lr",
+                search_space,
+                {"type": "float", "low": 1e-4, "high": 1e-2, "log": True},
+            )
+        )
+        weight_decay = float(
+            suggest_parameter(
+                trial,
+                "weight_decay",
+                search_space,
+                {"type": "float", "low": 1e-6, "high": 1e-2, "log": True},
+            )
         )
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         criterion = nn.MSELoss()
@@ -324,6 +386,7 @@ def train_with_best_trial(
     artifact_dir: Path | None = None,
     timeout: Optional[int] = None,
     checkpoint_store: TrainingCheckpointStore | None = None,
+    optimizer_parameter_space: dict[str, object] | None = None,
 ) -> Dict[str, object]:
     """Run Optuna then train/evaluate the best model; returns artifacts."""
 
@@ -345,6 +408,7 @@ def train_with_best_trial(
         artifact_dir=artifact_dir,
         timeout=timeout,
         checkpoint_store=checkpoint_store,
+        optimizer_parameter_space=optimizer_parameter_space,
     )
     best_params = study.best_params
     loaders = prepare_dataset_splits(

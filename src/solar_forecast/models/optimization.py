@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 import optuna
 from optuna.storages import RetryHeartbeatStaleTrialCallback
@@ -11,6 +11,70 @@ from optuna.trial import FrozenTrial, Trial, TrialState
 
 from solar_forecast.artifacts.manifest import replace_file_atomic, write_json_atomic
 from solar_forecast.settings import PROJECT_ROOT
+
+
+def optimizer_search_space(values: Mapping[str, object]) -> Mapping[str, object]:
+    """Return an optional Optuna search-space section from a model config."""
+
+    raw = values.get("optimizer", {})
+    if not isinstance(raw, Mapping):
+        raise ValueError("optimizer configuration must be an object")
+    search_space = raw.get("search_space", {})
+    if search_space is None:
+        return {}
+    if not isinstance(search_space, Mapping):
+        raise ValueError("optimizer search_space must be an object")
+    return search_space
+
+
+def suggest_parameter(
+    trial: Trial,
+    name: str,
+    search_space: Mapping[str, object],
+    default: Mapping[str, object],
+) -> Any:
+    """Suggest one parameter from config, falling back to a model-owned default."""
+
+    spec = search_space.get(name, default)
+    if not isinstance(spec, Mapping):
+        raise ValueError(f"optimizer search_space.{name} must be an object")
+    kind = str(spec.get("type", default.get("type", "float"))).lower()
+    if kind == "fixed":
+        if "value" not in spec:
+            raise ValueError(f"optimizer search_space.{name}.value is required")
+        return trial.suggest_categorical(name, [spec["value"]])
+    if kind == "categorical":
+        choices = spec.get("choices")
+        if (
+            not isinstance(choices, Sequence)
+            or isinstance(choices, (str, bytes))
+            or not choices
+        ):
+            raise ValueError(f"optimizer search_space.{name}.choices must be a non-empty list")
+        return trial.suggest_categorical(name, list(choices))
+    if kind == "int":
+        low = int(spec["low"])
+        high = int(spec["high"])
+        log = bool(spec.get("log", False))
+        step = int(spec.get("step", 1))
+        if log and step != 1:
+            raise ValueError(f"optimizer search_space.{name} cannot use log with step")
+        return trial.suggest_int(name, low, high, step=step, log=log)
+    if kind == "float":
+        low = float(spec["low"])
+        high = float(spec["high"])
+        log = bool(spec.get("log", False))
+        if "step" in spec:
+            if log:
+                raise ValueError(f"optimizer search_space.{name} cannot use log with step")
+            return trial.suggest_float(
+                name,
+                low,
+                high,
+                step=float(spec["step"]),
+            )
+        return trial.suggest_float(name, low, high, log=log)
+    raise ValueError(f"unsupported optimizer search_space.{name}.type: {kind}")
 
 
 @dataclass(frozen=True)

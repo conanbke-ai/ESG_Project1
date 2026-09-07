@@ -106,6 +106,17 @@ def test_xgboost_optimizer_uses_validation_and_persists_artifacts(tmp_path: Path
                 "early_stopping_rounds": 2,
                 "tuning_train_max_rows": 80,
                 "tuning_validation_max_rows": 20,
+                "search_space": {
+                    "max_depth": {"type": "categorical", "choices": [2]},
+                    "learning_rate": {"type": "categorical", "choices": [0.1]},
+                    "min_child_weight": {"type": "categorical", "choices": [1.0]},
+                    "subsample": {"type": "categorical", "choices": [0.8]},
+                    "colsample_bytree": {"type": "categorical", "choices": [0.9]},
+                    "reg_alpha": {"type": "categorical", "choices": [0.0]},
+                    "reg_lambda": {"type": "categorical", "choices": [1.0]},
+                    "gamma": {"type": "categorical", "choices": [0.0]},
+                    "max_bin": {"type": "categorical", "choices": [128]},
+                },
             },
         },
     )
@@ -121,6 +132,8 @@ def test_xgboost_optimizer_uses_validation_and_persists_artifacts(tmp_path: Path
     assert result.tuning_validation_rows == 20
     assert result.run.study.best_value >= 0
     assert result.run.summary_path.exists()
+    assert result.best_params["max_depth"] == 2
+    assert result.best_params["max_bin"] == 128
 
 
 def test_cnn_optimizer_handles_missing_mask_dimension_and_saves_study(tmp_path: Path):
@@ -154,10 +167,22 @@ def test_cnn_optimizer_handles_missing_mask_dimension_and_saves_study(tmp_path: 
         early_stopping_patience=1,
         optimizer_max_train_sequences=20,
         optimizer_max_validation_sequences=10,
+        optimizer_parameter_space={
+            "cnn_channels": {"type": "categorical", "choices": [8]},
+            "kernel_size": {"type": "categorical", "choices": [3]},
+            "lstm_hidden": {"type": "categorical", "choices": [8]},
+            "lstm_layers": {"type": "categorical", "choices": [1]},
+            "dense_units": {"type": "categorical", "choices": [8]},
+            "dropout": {"type": "categorical", "choices": [0.0]},
+            "lr": {"type": "categorical", "choices": [0.001]},
+            "weight_decay": {"type": "categorical", "choices": [0.0]},
+        },
     )
 
     checkpoint = torch.load(artifacts["checkpoint_path"], map_location="cpu")
     assert checkpoint["config"]["n_features"] == 4
+    assert checkpoint["config"]["cnn_channels"] == 8
+    assert checkpoint["config"]["lstm_hidden"] == 8
     run_dir = Path(artifacts["output_dir"])
     assert (run_dir / "optimization_summary.json").exists()
     assert (run_dir / "optimization_trials.csv").exists()

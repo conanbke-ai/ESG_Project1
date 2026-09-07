@@ -69,7 +69,17 @@
     "trial_epochs": 20,
     "early_stopping_patience": 5,
     "tuning_train_max_sequences": 250000,
-    "tuning_validation_max_sequences": 100000
+    "tuning_validation_max_sequences": 100000,
+    "search_space": {
+      "cnn_channels": { "type": "int", "low": 16, "high": 128, "log": true },
+      "kernel_size": { "type": "categorical", "choices": [3, 5, 7] },
+      "lstm_hidden": { "type": "int", "low": 32, "high": 256, "log": true },
+      "lstm_layers": { "type": "int", "low": 1, "high": 2 },
+      "dense_units": { "type": "int", "low": 32, "high": 256, "log": true },
+      "dropout": { "type": "float", "low": 0.05, "high": 0.35 },
+      "lr": { "type": "float", "low": 1e-4, "high": 3e-3, "log": true },
+      "weight_decay": { "type": "float", "low": 1e-7, "high": 1e-3, "log": true }
+    }
   },
   "early_stopping_patience": 5,
   "n_trials": 10,

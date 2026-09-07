@@ -38,6 +38,7 @@ src/solar_forecast/
 │  ├─ cnn_bilstm.py         # 독립 학습 어댑터
 │  └─ xgboost.py            # 독립 학습 어댑터
 ├─ anomalies/               # 이상징후 해석 정책
+├─ notifications/           # 운영 이벤트 outbox, route directory, SOLAPI adapter
 ├─ artifacts/               # manifest 저장
 ├─ infrastructure/          # 환경·오류·로깅 어댑터
 └─ jobs/                    # 프로세스 간 학습 잠금
@@ -76,6 +77,8 @@ facade로만 유지합니다.
 - `TrainingService`: 모델 전략 선택, 전역 학습 잠금, 성공/실패 manifest 관리
 - `OptunaStudyService`: 모델별 SQLite study의 최대 누적 trial·시간 예산·재개·Validation-only
   선택 근거와 trial 표를 관리하며 과거 데이터셋의 최적값을 새 study에 강제하지 않음
+- `suggest_parameter`: 모델별 `optimizer.search_space` JSON을 Optuna suggest 호출로 변환해
+  XGBoost와 CNN-BiLSTM의 탐색 범위를 코드 수정 없이 관리
 - `TrainingCheckpointStore`: 데이터·학습 설정 fingerprint별로 PyTorch/XGBoost 상태를 격리하고
   atomic replace, 호환성 검증, 완료 상태의 멱등 재개를 공통 제공
 - `XGBoostHyperparameterOptimizer`: 제한된 Train/Validation 대표행에서 boosting-round pruning과
@@ -89,6 +92,13 @@ facade로만 유지합니다.
   독립 Calibration의 발전소별 용량 정규화 임계값 기반 이상 신호를 메모리 제한 방식으로 계산.
   평가 계약별 최신 호환 실행 쌍, 용량 적용률, 전체 신호 집계와 대표 이벤트, 발전소별 최근 연속
   168시간을 별도 계약으로 제공
+- `OperationalEventBatch`: 운영 detector의 전량 JSONL을 행 단위로 쓰고 전체 SHA-256·행 수 manifest를
+  검증한 뒤에만 알림 계층으로 넘기는 재현 가능한 이벤트 경계
+- `NotificationService`/`NotificationOutbox`: 운영 이벤트를 수신자·채널별 멱등 작업으로 바꾸고
+  SQLite transaction, lease, retry, Kakao→SMS fallback, dead-letter, `in_doubt` 감사를 관리
+- `RuntimeRouteDirectory`: Git에는 전화번호 대신 환경변수 이름만 두고 dispatch 순간 연락처를 resolve
+- `SolapiProvider`: HMAC-SHA256 인증의 SOLAPI v4 adapter. 승인 알림톡 template과 등록 발신번호를
+  사용하며 HTTP 2xx를 실제 배송이 아닌 공급사 접수로 기록
 
 ## 실행 및 산출물
 
@@ -101,6 +111,7 @@ python app.py collect --start-date 2024-01-01
 python app.py prepare-data
 python app.py evaluate-features
 python app.py build-dashboard
+python app.py notify-anomalies --events artifacts/anomalies/<run>/events.jsonl --routes config/notification_routes.local.json
 ```
 
 장시간 기본 모델 학습은 `artifacts/.training.lock`으로 직렬화합니다. Hybrid와 보고 작업은
@@ -117,6 +128,13 @@ Hybrid 필수 컬럼은 `timestamp, region, plant, y_true, xgb_pred, cnn_pred`�
 `일시, 지역, 발전구분, 합산발전량(MWh)`는 자동 변환하지만 두 예측 컬럼은 모델이 실제로
 생성한 값이어야 합니다. 판단 결과에는 사용한 범위, 모델별 예상 MAE, 선택 모델, 결합비와
 문장형 근거가 함께 저장됩니다.
+
+운영 알림 입력은 Hybrid 실험 CSV나 대시보드의 Test 상위 이상 이벤트가 아닙니다. 배포 모델 또는
+모델 합의 detector가 별도로 생성한 `solar-anomaly-event.v1` 전량 JSONL이어야 하며, batch manifest의
+hash·행 수·run ID·detector version을 먼저 검증합니다. 이벤트 ID는 detector·발전소·관측시각·
+detector version·영향요인·신호유형·배포역할로 결정되어 재실행 시 안정적입니다. 이벤트에는 연락처나
+API 자격증명을 넣을 수 없고, `scope=operational`, `energy_source=solar`, timezone-aware 시각과 기존
+이상징후 해석 한계를 만족하지 않으면 enqueue 전에 실패합니다.
 
 독립 모델이 저장하는 평가 예측 계약은
 `timestamp, plant_id, region, plant, split, y_true, y_pred`입니다. 모델 비교는 데이터 fingerprint,

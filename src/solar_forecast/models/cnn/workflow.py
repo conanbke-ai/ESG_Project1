@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 import json
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -99,6 +99,7 @@ def train_and_save(
     checkpoint_store: TrainingCheckpointStore | None = None,
     checkpoint_root: str | Path | None = None,
     optimizer_storage_path: str | Path | None = None,
+    optimizer_parameter_space: Mapping[str, object] | None = None,
 ) -> Dict[str, object]:
     """Train the model with Optuna and/or reinforcement learning then persist artifacts.
 
@@ -106,6 +107,11 @@ def train_and_save(
     """
 
     cfg = sequence_config or SequenceConfig()
+    if optimizer_parameter_space is not None and not isinstance(
+        optimizer_parameter_space,
+        Mapping,
+    ):
+        raise ValueError("optimizer_parameter_space must be an object")
     if checkpoint_store is None:
         selected_features = list(feature_columns) if feature_columns is not None else [
             column
@@ -150,6 +156,7 @@ def train_and_save(
                     "early_stopping_patience": early_stopping_patience,
                     "optimizer_max_train_sequences": optimizer_max_train_sequences,
                     "optimizer_max_validation_sequences": optimizer_max_validation_sequences,
+                    "optimizer_parameter_space": dict(optimizer_parameter_space or {}),
                 }
             ),
         )
@@ -185,6 +192,7 @@ def train_and_save(
             artifact_dir=run_dir,
             timeout=optimizer_timeout_seconds,
             checkpoint_store=checkpoint_store,
+            optimizer_parameter_space=dict(optimizer_parameter_space or {}),
         )
         model, model_cfg = result["model"], result["model_config"]
         study = result["study"]

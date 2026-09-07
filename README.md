@@ -383,6 +383,59 @@ python app.py pipeline target --data data.csv --artifact-level debug
 임계값을 한 번 고정한 뒤 Test에 적용하므로 Test 이상치 개수는 1%나 5%로 강제되지 않습니다.
 `--contamination`은 Calibration 임계 분위수의 목표값이며 Test 행을 순위화하는 값이 아닙니다.
 
+## 운영 이상징후 카카오·문자 알림
+
+알림 전송 경계는 모델 성능 화면의 과거 Test 상위 이벤트와 분리했습니다. `prediction_signals`는
+평가용 대표 표본이고 모델별 중복도 있을 수 있으므로 관리자에게 발송하지 않습니다. 실제 운영 추론기가
+만든 전량 `solar-anomaly-event.v1` JSONL과 SHA-256·행 수가 고정된
+`solar-anomaly-event-manifest.v1`만 알림 입력으로 허용합니다. 전체 파일의 hash, 레코드 수,
+`scope=operational`, 시간대, 배포/합의 detector 역할, 태양광 발전원, 영향요인 allowlist와 해석 한계를
+먼저 모두 검증한 뒤 enqueue하므로 일부 전송 후 파일 오류를 발견하는 흐름을 막습니다.
+
+SQLite transactional outbox는 이벤트·수신자·채널별 멱등 키, worker lease, 지수 backoff,
+카카오 알림톡에서 문자로의 fallback, dead-letter와 append-only 감사를 관리합니다. 전송 요청 도중 worker가
+사라져 결과를 모르는 항목은 자동 재전송하지 않고 `in_doubt`로 격리해 중복 문자 위험을 줄입니다.
+SOLAPI의 HTTP 성공은 휴대전화 배송 완료가 아니라 공급사 `accepted` 상태로 기록합니다. 최종 단말
+수신 결과는 운영 계정의 delivery receipt webhook 또는 조회 작업을 추가로 연결해야 합니다.
+카카오 요청이 공급사에 접수된 뒤 단말 전달 단계에서 실패하는 경우에는 등록 발신번호를 사용한
+SOLAPI 대체 문자 옵션을 활성화하고, API 요청 자체가 거절된 경우에는 outbox가 문자 채널로 넘깁니다.
+
+연락처는 이벤트, Git 설정, outbox와 로그에 저장하지 않습니다. 예제 파일을 로컬 파일로 복사하고
+발전소별 `route_key`, 비식별 수신자 참조, 전화번호가 들어 있는 환경변수 이름만 작성합니다.
+
+```powershell
+Copy-Item config/notification_routes.example.json config/notification_routes.local.json
+```
+
+실제 전화번호와 SOLAPI 자격증명은 Git에서 제외된 `.env.local` 또는 secret manager에 둡니다.
+필요한 변수명은 [`.env.example`](.env.example)에 있습니다. 카카오 알림톡은 SOLAPI에 연동한 카카오톡
+채널과 검수 승인된 템플릿이 필요하며, 예제 변수명 `#{지역}`, `#{발전소명}`, `#{관측시각}`,
+`#{심각도}`, `#{판단근거}`, `#{요약}`, `#{주의사항}`이 승인본과 같아야 합니다. 문자 발송번호도
+공급사에 사전 등록되어 있어야 합니다.
+
+기본 실행은 외부 연락처를 조회하거나 공급사를 호출하지 않는 preview이며, live outbox와도 분리되어
+같은 이벤트의 향후 실발송을 소모하지 않습니다.
+
+```powershell
+python app.py notify-anomalies `
+  --events artifacts/anomalies/<run-id>/events.jsonl `
+  --routes config/notification_routes.local.json
+```
+
+실제 발송은 `.env.local`의 `SOLAR_NOTIFY_ENABLED=true`, `SOLAR_NOTIFY_DRY_RUN=false`와 명령의
+`--live` 세 조건이 모두 있어야 합니다. 어느 하나라도 없으면 fail-closed로 종료합니다.
+
+```powershell
+python app.py notify-anomalies `
+  --events artifacts/anomalies/<run-id>/events.jsonl `
+  --routes config/notification_routes.local.json `
+  --live
+```
+
+데이터 품질 신호는 발전소 고장 알림으로 보내지 않고 `audience=data_operator` 경로만 허용합니다.
+발전소 관리자 메시지에는 이상 신호의 시각·수치·판단 근거와 함께 공개 자료만으로 고장·정비·
+출력제어 여부를 확정할 수 없다는 한계를 항상 포함합니다.
+
 제품 코드는 모두 `src/solar_forecast/` 아래에 있습니다. `ForecastPipeline`은 데이터 저장소,
 전처리기, 학습 어댑터, 보고서 작성기를 생성자에서 주입받으며, `CollectionService`와
 `HybridExperiment`도 수집 및 앙상블 실행 경계를 각각 소유합니다. 자세한 의존성 방향은
@@ -413,6 +466,9 @@ python app.py status
 `max_trials`는 실행할 때마다 더하는 수가 아니라 해당 study의 **최대 누적 trial 수**입니다.
 현재 고정 파라미터는 과거 데이터 구성에서 얻은 Optuna 결과로서 문서상의 참고 기준일 뿐입니다.
 새 데이터·피처 구성의 study에는 enqueue하거나 우선권을 주지 않으며 독립적으로 다시 탐색합니다.
+모델별 `optimizer.search_space`는 JSON에서 관리하며 XGBoost와 CNN-BiLSTM 모두 `int`, `float`,
+`categorical`, `fixed` 탐색 항목을 지원합니다. 탐색공간도 fingerprint에 포함되므로 범위를 바꾸면
+과거 trial과 섞이지 않고 새 study로 분리됩니다.
 
 학습 상태는 기본적으로 `artifacts/checkpoints/<model>/<data-config-fingerprint>/`에 원자적으로
 저장합니다. CNN-BiLSTM은 매 epoch마다 모델·optimizer·early stopping·최적 모델·난수 상태를,
@@ -445,7 +501,8 @@ python app.py train cnn_bilstm --smoke
 모델 manifest가 저장됩니다. 두 모델 모두 Validation/Calibration/Test 예측에
 `timestamp, plant_id, region, plant, y_true, y_pred` 공통 문맥을 보존하므로 대시보드가 전체 파일을
 RAM에 올리지 않고 임시 SQLite에서 같은 Test 행만 정렬할 수 있습니다. 데이터·피처·분할 또는
-탐색공간을 바꿀 때는 기존 trial을 섞지 않도록 설정의 `study_name` 버전을 올립니다. `--smoke`는
+탐색공간을 바꾸면 fingerprint가 달라져 기존 trial과 분리됩니다. 사람이 읽는 실험명을 바꾸고
+싶을 때만 설정의 `study_name` 버전을 올립니다. `--smoke`는
 배선 검사 목적이므로 Optuna를 자동 생략하며 완료 manifest에도 `execution_mode=smoke`를 보존해
 정식 성능 화면에서 자동 제외합니다.
 

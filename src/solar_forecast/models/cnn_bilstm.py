@@ -113,6 +113,7 @@ class CnnBiLstmTrainer:
                 "tuning_validation_max_sequences", 100_000
             ),
             checkpoint_store=checkpoint_store,
+            optimizer_parameter_space=optimizer_values.get("search_space"),
         )
         optimizer_artifact = dict(artifacts.get("optimizer", {}))
         if smoke:
