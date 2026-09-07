@@ -109,6 +109,7 @@ python app.py train cnn_bilstm
 python app.py hybrid validation_predictions.csv test_predictions.csv
 python app.py collect --start-date 2024-01-01
 python app.py prepare-data
+python app.py verify-e2e
 python app.py evaluate-features
 python app.py build-dashboard
 python app.py notify-anomalies --events artifacts/anomalies/<run>/events.jsonl --routes config/notification_routes.local.json
@@ -116,6 +117,9 @@ python app.py notify-anomalies --events artifacts/anomalies/<run>/events.jsonl -
 
 장시간 기본 모델 학습은 `artifacts/.training.lock`으로 직렬화합니다. Hybrid와 보고 작업은
 저장된 예측을 사용하므로 기본 모델 학습과 분리할 수 있습니다.
+`verify-e2e`는 로컬 Gold 전처리, 두 모델 smoke 학습, 대시보드 publish를 한 번에 검사하는
+운영 전 점검 경계입니다. 기본 smoke 결과는 formal comparison에서 제외해 정식 성능 지표와 섞지
+않고, `artifacts/verification/e2e/`의 JSON report만 검증 증거로 남깁니다.
 Optuna study는 `artifacts/optimization/solar_models.db`에 별도 저장되며, Test는 목적함수나 pruning
 판단에 전달하지 않습니다.
 실제 모델 상태는 `artifacts/checkpoints/<model>/<fingerprint>/`에 분리합니다. CNN은 모델·optimizer·

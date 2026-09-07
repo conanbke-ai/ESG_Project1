@@ -445,6 +445,27 @@ python app.py notify-anomalies `
 quarantine, lazy sequence와 Parquet/Polars/Spark 확장 기준은
 [`docs/SCALABLE_DATA_ENGINEERING.md`](docs/SCALABLE_DATA_ENGINEERING.md)에 별도로 정리했습니다.
 
+## End-to-End 실행 검증
+
+```bash
+python app.py verify-e2e
+```
+
+`verify-e2e`는 최신 수집 manifest 확인, `prepare-data`, XGBoost/CNN-BiLSTM smoke 학습,
+dashboard build를 한 번에 실행하고 `artifacts/verification/e2e/<run-id>/verification_report.json`에
+단계별 소요시간·행 수·품질·체크포인트·예측 산출물 경로를 남깁니다. 기본 smoke 학습은 배선 검증용이라
+정식 모델 성능 비교 화면에는 표시하지 않습니다.
+
+공식 사이트 다운로드까지 함께 검증하려면 날짜 범위를 명시합니다.
+
+```bash
+python app.py verify-e2e --collect --start-date 2025-01-01 --end-date 2025-01-02 `
+  --download-date 2026-09-07 --allow-collection-failures
+```
+
+정부·발전사 사이트나 브라우저 자동화가 일시 실패해도 로컬 Gold 전처리와 모델 smoke를 계속 확인하려면
+`--allow-collection-failures`를 사용합니다. 정식 성능 산출은 아래 독립 모델 학습 명령을 사용합니다.
+
 ## 독립 모델 학습
 
 ```bash

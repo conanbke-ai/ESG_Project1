@@ -18,6 +18,11 @@ from solar_forecast.evaluation import FeatureAblationService
 from solar_forecast.jobs.training import TrainingService
 from solar_forecast.preparation import DataPreparationService
 from solar_forecast.settings import ModelJobConfig, PROJECT_ROOT, load_model_config
+from solar_forecast.verification import (
+    PipelineVerificationService,
+    VerificationConfig,
+    build_collection_config,
+)
 
 
 def _csv_list(value: str | None) -> list[str] | None:
@@ -171,6 +176,54 @@ def _run_audit_candidate_data(args: argparse.Namespace) -> None:
     )
     print(f"Admission status: {result.status}")
     print(f"Candidate manifest: {result.manifest_path}")
+
+
+def _run_verify_e2e(args: argparse.Namespace) -> None:
+    if args.collect and not args.start_date:
+        raise SystemExit("--start-date is required when --collect is used")
+
+    collection_config = None
+    if args.collect:
+        collection_config = build_collection_config(
+            start_date=args.start_date,
+            end_date=args.end_date,
+            sources=args.sources,
+            output_dir=args.collection_output_dir,
+            standardized_output_dir=args.collection_standardized_output_dir,
+            overwrite=args.overwrite,
+            download_date=args.download_date,
+            komipo_station_codes=tuple(_csv_list(args.komipo_station_codes) or []),
+            api_max_calls=args.api_max_calls,
+        )
+
+    result = PipelineVerificationService(
+        VerificationConfig(
+            project_root=PROJECT_ROOT,
+            report_root=Path(args.report_root),
+            collect=args.collect,
+            collection_config=collection_config,
+            collection_manifest=Path(args.collection_manifest)
+            if args.collection_manifest
+            else None,
+            allow_collection_failures=args.allow_collection_failures,
+            prepare_data=not args.skip_prepare,
+            input_root=Path(args.input_root),
+            weather_root=Path(args.weather_root),
+            merged_source=Path(args.merged_source),
+            standardized_output_dir=Path(args.output_dir),
+            train_models=tuple(_csv_list(args.models) or []),
+            smoke=not args.full_train,
+            no_optuna=args.no_optuna,
+            max_trials=args.max_trials,
+            optimizer_timeout_seconds=args.optimizer_timeout_seconds,
+            build_dashboard=not args.skip_dashboard,
+            dashboard_output_dir=Path(args.dashboard_output_dir),
+        )
+    ).run()
+    print(f"E2E verification: {result.status}")
+    print(f"Report: {result.report_path}")
+    for step in result.steps:
+        print(f"- {step['name']}: {step['status']} ({step['duration_seconds']}s)")
 
 
 def _run_status(_: argparse.Namespace) -> None:
@@ -471,6 +524,58 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override the wall-time budget for this optimization call",
     )
     train.set_defaults(func=_run_train)
+
+    verify_e2e = commands.add_parser(
+        "verify-e2e",
+        help="Run a bounded collect/prepare/train/dashboard wiring verification",
+    )
+    verify_e2e.add_argument(
+        "--collect",
+        action="store_true",
+        help="Include official-source collection before local preprocessing",
+    )
+    verify_e2e.add_argument(
+        "--start-date",
+        help="Collection start date; required only when --collect is used",
+    )
+    verify_e2e.add_argument("--end-date")
+    verify_e2e.add_argument("--sources", default="koen,kospo,ewp,iwest,kma")
+    verify_e2e.add_argument("--collection-output-dir", default="file/raw")
+    verify_e2e.add_argument(
+        "--collection-standardized-output-dir",
+        default="file/standardized/downloads",
+    )
+    verify_e2e.add_argument("--download-date")
+    verify_e2e.add_argument("--overwrite", action="store_true")
+    verify_e2e.add_argument("--komipo-station-codes")
+    verify_e2e.add_argument("--api-max-calls", type=int, default=900)
+    verify_e2e.add_argument(
+        "--allow-collection-failures",
+        action="store_true",
+        help="Continue local verification if an external source is temporarily unavailable",
+    )
+    verify_e2e.add_argument(
+        "--collection-manifest",
+        help="Existing collection manifest to inspect when not rerunning downloads",
+    )
+    verify_e2e.add_argument("--skip-prepare", action="store_true")
+    verify_e2e.add_argument("--input-root", default="file/solar_data_file")
+    verify_e2e.add_argument("--weather-root", default="file/KMA_data_file")
+    verify_e2e.add_argument("--merged-source", default="file/merge_data/val.csv")
+    verify_e2e.add_argument("--output-dir", default="file/standardized")
+    verify_e2e.add_argument("--models", default="xgboost,cnn_bilstm")
+    verify_e2e.add_argument(
+        "--full-train",
+        action="store_true",
+        help="Run full model training instead of default smoke wiring checks",
+    )
+    verify_e2e.add_argument("--no-optuna", action="store_true")
+    verify_e2e.add_argument("--max-trials", type=int)
+    verify_e2e.add_argument("--optimizer-timeout-seconds", type=int)
+    verify_e2e.add_argument("--skip-dashboard", action="store_true")
+    verify_e2e.add_argument("--dashboard-output-dir", default="dashboard")
+    verify_e2e.add_argument("--report-root", default="artifacts/verification/e2e")
+    verify_e2e.set_defaults(func=_run_verify_e2e)
 
     status = commands.add_parser("status", help="Show the active training job")
     status.set_defaults(func=_run_status)

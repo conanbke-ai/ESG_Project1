@@ -11,6 +11,7 @@ artifacts/predictions/
 artifacts/legacy/
 artifacts/optimization/
 artifacts/checkpoints/
+artifacts/verification/
 artifacts/.training.lock
 artifacts/alerts.db
 artifacts/notifications/
