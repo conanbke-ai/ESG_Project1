@@ -1,6 +1,7 @@
 .env.local
 **/__pycache__/
 .pytest_cache/
+.idea/
 *.py[cod]
 file/raw/
 file/standardized/
