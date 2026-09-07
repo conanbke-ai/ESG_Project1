@@ -9,6 +9,7 @@
     subregionQuery: "",
     detailSortKey: "capacity",
     detailSortDirection: "desc",
+    nationalSortDirection: "desc",
     tab: "comparison",
     region: "all",
     plantId: "all",
@@ -116,6 +117,10 @@
                 <button type="button" class="is-active" data-map-metric="capacity" aria-pressed="true">설비용량</button>
                 <button type="button" data-map-metric="records" aria-pressed="false">등록건수</button>
               </div>
+              <div class="segmented-control" role="group" aria-label="시도 목록 정렬 방향">
+                <button type="button" class="is-active" data-map-order="desc" aria-pressed="true">높은 순</button>
+                <button type="button" data-map-order="asc" aria-pressed="false">낮은 순</button>
+              </div>
             </div>
           </div>
           <div id="map" role="region" aria-label="전국 시도별 태양광 설비 분포 지도"></div>
@@ -123,23 +128,27 @@
         </article>
         <article class="surface region-surface">
           <div class="section-head"><div><h2 id="region-list-title">시도별 설비용량</h2><p>전국 ${int.format(regions.length)}개 시도의 규모와 순위를 비교합니다. 전남·광주는 2026년 7월 1일 통합 행정구역을 기준으로 함께 집계합니다.</p></div></div>
-          <div id="region-list" class="region-list">${regionList(regions)}</div>
+          <div class="region-list-shell">
+            <div id="region-list" class="region-list">${regionList(regions)}</div>
+          </div>
         </article>
       </section>
       <section class="surface detail-surface" aria-labelledby="subregion-title">
         <div class="section-head detail-head">
-          <div><h2 id="subregion-title"></h2><p id="subregion-caption"></p></div>
-          <div class="detail-controls">
-            <label class="field-label search-field" for="subregion-search"><span>전국 세부지역 검색</span><input id="subregion-search" type="search" autocomplete="off" placeholder="예: 전남 여수시, 강원"></label>
-            <label class="field-label sort-field" for="subregion-sort"><span>정렬 기준</span><select id="subregion-sort">
-              <option value="capacity" selected>설비용량</option>
-              <option value="records">등록건수</option>
-              <option value="name">세부지역</option>
-            </select></label>
-            <label class="field-label direction-field" for="subregion-order"><span>정렬 방향</span><select id="subregion-order">${detailDirectionOptions()}</select></label>
+          <div class="detail-copy"><h2 id="subregion-title"></h2><p id="subregion-caption"></p></div>
+          <div class="detail-toolbar">
+            <div class="detail-controls">
+              <label class="field-label search-field" for="subregion-search"><span>전국 세부지역 검색</span><input id="subregion-search" type="search" autocomplete="off" placeholder="예: 전남 여수시, 강원"></label>
+              <label class="field-label sort-field" for="subregion-sort"><span>정렬 기준</span><select id="subregion-sort">
+                <option value="capacity" selected>설비용량</option>
+                <option value="records">등록건수</option>
+                <option value="name">세부지역</option>
+              </select></label>
+              <label class="field-label direction-field" for="subregion-order"><span>정렬 방향</span><select id="subregion-order">${detailDirectionOptions()}</select></label>
+            </div>
+            <div id="subregion-summary" class="detail-summary" aria-live="polite"></div>
           </div>
         </div>
-        <div id="subregion-summary"></div>
         <div id="subregion-table"></div>
       </section>`;
   }
@@ -158,7 +167,13 @@
   }
 
   function regionList(regions) {
-    const ordered = [...regions].sort((a, b) => nationalValue(b) - nationalValue(a));
+    const ordered = [...regions].sort((a, b) => {
+      const direction = state.nationalSortDirection === "asc" ? 1 : -1;
+      const value = direction * (nationalValue(a) - nationalValue(b));
+      return value !== 0
+        ? value
+        : displayRegion(a.region).localeCompare(displayRegion(b.region), "ko");
+    });
     const maximum = Math.max(...ordered.map((row) => nationalValue(row)), 1);
     return ordered.map((row, index) => {
       const secondary = state.nationalMetric === "records" ? `${number(row.capacity_mw, 1)} MW` : `${int.format(Number(row.generator_records) || 0)}건`;
@@ -400,6 +415,15 @@
       renderDetail();
       mapController?.metric(state.nationalMetric);
     }));
+    document.querySelectorAll("[data-map-order]").forEach((button) => button.addEventListener("click", () => {
+      state.nationalSortDirection = button.dataset.mapOrder;
+      document.querySelectorAll("[data-map-order]").forEach((candidate) => {
+        const active = candidate === button;
+        candidate.classList.toggle("is-active", active);
+        candidate.setAttribute("aria-pressed", String(active));
+      });
+      renderList();
+    }));
     bindRows();
     renderDetail();
     mapController = drawMap(inventory, boundaries, selectRegion);
@@ -423,7 +447,9 @@
       KR46: "전남광주통합특별시", KR47: "경상북도", KR48: "경상남도", KR49: "제주특별자치도", KR50: "세종특별자치시",
     };
     const byName = new Map((inventory.regions || []).map((row) => [row.region, row]));
-    const colors = ["#eff6f4", "#d8eae5", "#afd2c8", "#72ae9e", "#327c69"];
+    const colors = ["#eaf4f1", "#cde2db", "#9cc4b4", "#64a58d", "#2d7c64"];
+    const activeColors = ["#d8ebe5", "#b0d5ca", "#8ec0a3", "#6ea98a", "#3a8b68"];
+    const selectedStroke = "#0a4c3a";
     let metric = state.nationalMetric;
     let selected = state.selectedRegion;
     const map = L.map(node, {
@@ -448,24 +474,50 @@
     }).addTo(map);
     const key = () => metric === "records" ? "generator_records" : "capacity_mw";
     const maximum = () => Math.max(...(inventory.regions || []).map((row) => Number(row[key()]) || 0), 1);
-    const color = (value) => {
+    const resolveColor = (value, active = false) => {
       const share = Number(value || 0) / maximum();
-      return share >= .72 ? colors[4] : share >= .42 ? colors[3] : share >= .20 ? colors[2] : share >= .08 ? colors[1] : colors[0];
+      const palette = active ? activeColors : colors;
+      return share >= .72 ? palette[4] : share >= .42 ? palette[3] : share >= .20 ? palette[2] : share >= .08 ? palette[1] : palette[0];
     };
     const featureName = (feature) => names[feature.properties.id] || feature.properties.name;
     const style = (feature) => {
       const name = featureName(feature);
-      const active = name === selected;
-      return { color: active ? "#0a5b48" : "#698c81", weight: active ? 2.4 : 1.1, fillColor: color(byName.get(name)?.[key()]), fillOpacity: active ? .68 : .5 };
+      const value = Number(byName.get(name)?.[key()] || 0);
+      if (name === selected) {
+        return {
+          color: selectedStroke,
+          weight: 3.6,
+          fillColor: resolveColor(value, true),
+          fillOpacity: .92,
+          opacity: 1,
+        };
+      }
+      return {
+        color: "#698c81",
+        weight: 1.1,
+        fillColor: resolveColor(value),
+        fillOpacity: .56,
+        opacity: 1,
+      };
     };
     const layer = L.geoJSON(boundaries, {
       style,
       onEachFeature: (feature, shape) => {
         const name = featureName(feature);
         const row = byName.get(name) || {};
+        const renderHover = (active = false) => ({
+          color: active || name === selected ? selectedStroke : "#0a5b48",
+          weight: active || name === selected ? 3.6 : 1.1,
+          fillColor: resolveColor(Number(byName.get(name)?.[key()] || 0), true),
+          fillOpacity: active || name === selected ? .92 : .56,
+          opacity: 1,
+        });
         shape.bindTooltip(() => `<strong>${esc(displayRegion(name))}</strong><div class="map-tooltip-metrics"><span><small>설비 등록</small><b>${esc(`${int.format(Number(row.generator_records) || 0)}건`)}</b></span><span><small>설비용량</small><b>${esc(`${number(row.capacity_mw, 2)} MW`)}</b></span></div>`, { sticky: true, direction: "top", className: "province-hover-tooltip", opacity: 1 });
         shape.on({
-          mouseover: (event) => event.target.setStyle({ color: "#0a5b48", weight: 2, fillOpacity: .64 }),
+          mouseover: (event) => {
+            event.target.setStyle(renderHover(true));
+            event.target.bringToFront();
+          },
           mouseout: () => layer.setStyle(style),
           click: () => onSelect(name),
         });

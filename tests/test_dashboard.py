@@ -717,6 +717,12 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert '<thead><tr><th>순위</th>' in script
     assert "<th>순서</th>" not in script
     assert ".detail-controls" in styles
+    assert 'class="detail-toolbar"' in script
+    assert 'class="detail-copy"' in script
+    assert 'class="detail-summary" aria-live="polite"' in script
+    assert 'grid-template-areas: "summary controls"' in styles
+    assert 'grid-template-areas: "controls" "summary"' in styles
+    assert "@media (max-width: 980px)" in styles
     assert "@media (max-width: 660px)" in styles
     assert 'return region === "전남광주통합특별시" ? "전남·광주" : region' in script
     assert '["설비용량 1위", leader ? displayRegion(leader.region) : "-"' in script
