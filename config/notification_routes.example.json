@@ -1,0 +1,14 @@
+{
+  "schema_version": "solar-notification-routes.v1",
+  "routes": [
+    {
+      "active": false,
+      "route_key": "plant:provider:plant-id:manager",
+      "plant_id": "provider:plant-id",
+      "recipient_id": "manager:provider:plant-id:primary",
+      "audience": "plant_manager",
+      "channels": ["kakao_alimtalk", "sms"],
+      "phone_env": "SOLAR_MANAGER_EXAMPLE_PHONE"
+    }
+  ]
+}

@@ -12,4 +12,6 @@ artifacts/optimization/
 artifacts/checkpoints/
 artifacts/.training.lock
 artifacts/alerts.db
+artifacts/notifications/
+config/notification_routes.local.json
 backups/*.zip
