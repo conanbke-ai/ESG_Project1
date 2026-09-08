@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from .csv_artifacts import write_standardized_csv
+from .identity import resolve_generation_identity
 
 
 GENERATION_COLUMNS = [
@@ -626,6 +627,7 @@ class DailyWideGenerationNormalizer:
         result = result.sort_values(["timestamp", "plant_id"], kind="stable").reset_index(drop=True)
         if result.duplicated(["timestamp", "plant_id"]).any():
             raise ValueError(f"Normalized {self.schema.company} data contains duplicate hourly keys")
+        result = resolve_generation_identity(result)
         result.attrs["generation_unit_resolution"] = unit_resolution
         return result
 

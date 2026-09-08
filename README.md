@@ -83,6 +83,12 @@ plant-hour 계약을 만족한 3개 파일·195,225행을 registry 후보로 넘
 `candidates/krc_yeongam/candidate_manifest.json`에 행 수·기간·결측·음수·중복·물리 상한과 함께 기록합니다.
 각 파티션은 한 원본 파일 단위로 처리하고 완성된 임시 파일만 원자적으로 교체합니다. manifest에는
 입력·출력 byte와 SHA-256을 기록해 같은 파일명의 수정본과 재처리 lineage를 추적합니다.
+KOSPO의 `신재생사업본부`는 개별 설비명이 아니므로 공식 발전기명 `부산 철도태양광 #2`가 함께
+확인된 행만 사양표의 `부산철도 2`로 식별합니다. 신규 수집과 보관된 collector Silver의
+admission/registry/Gold 읽기에 같은 규칙을 적용하고, 원본 파일은 변경하지 않습니다.
+주소·기상 매핑과 용량의 검증은 별도입니다. 해당 설비의 용량은 현재 사양표에서 비어 있고
+부산진구 주소에 대한 기상 매핑도 미승인 상태이므로, 식별자 보정만으로 Gold에 편입하지 않습니다.
+검증 범위와 남은 게이트는 [`docs/KOSPO_IDENTITY_AUDIT.md`](docs/KOSPO_IDENTITY_AUDIT.md)에 기록합니다.
 이후 공식 표준 발전량을 발전소·시간 단위로 재집계하고, 기존 병합본의 ASOS 지점번호는 승인
 근거가 아닌 audit-only 후보로만 보존합니다. 공식 주소·좌표, 발전기간 전체를 덮는 KMA 지점 이력,
 근거가 있는 reviewed mapping을 통과한 행으로 단일 호환본 `file/standardized/model_ready.csv.gz`와
