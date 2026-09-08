@@ -3,9 +3,12 @@ import re
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from solar_forecast.models.cnn_bilstm.sequence_config import SequenceConfig
 from solar_forecast.models.cnn_bilstm.sequence_data import LazyWindowSequenceDataset
+from solar_forecast.models.cnn_bilstm.sequence_data import _EntitySeries
+from solar_forecast.models.cnn_bilstm.sequence_data import _fit_and_transform_training_medians
 from solar_forecast.models.cnn_bilstm.sequence_data import prepare_dataset_splits
 from solar_forecast.models.cnn_bilstm.sequence_data import prepare_datasets
 from solar_forecast.models.cnn_bilstm.evaluation import compare_checkpoints
@@ -207,3 +210,32 @@ def test_lazy_windows_keep_all_missing_train_feature_as_zero_plus_mask():
     state = splits.train.preprocessing_state
     assert state["all_missing_training_features"] == ["never_observed"]
     assert state["temporal_split"]["window_materialization"] == "lazy_per_batch"
+
+
+@pytest.mark.parametrize("read_only", [True, False])
+@pytest.mark.parametrize("append_missing_indicators", [True, False])
+def test_imputation_owns_buffer_and_preserves_input(read_only, append_missing_indicators):
+    source = np.array([[1, np.nan], [np.nan, 10], [5, 30], [1000, 9000]], dtype=np.float32)
+    original = source.copy()
+    source.setflags(write=not read_only)
+    series = _EntitySeries(
+        features=source,
+        targets=np.zeros(4, dtype=np.float32),
+        target_positions={},
+        train_feature_rows=np.array([True, True, True, False]),
+        plant_id="test-plant", region="test-region", plant="test-plant",
+        timestamps=np.arange(4),
+    )
+
+    state = _fit_and_transform_training_medians(
+        [series], ["first", "second"], append_missing_indicators=append_missing_indicators,
+    )
+
+    assert state["feature_medians"] == {"first": 3.0, "second": 20.0}
+    np.testing.assert_array_equal(series.features[:, :2], [[1, 20], [3, 10], [5, 30], [1000, 9000]])
+    np.testing.assert_array_equal(source, original)
+    assert source.flags.writeable == (not read_only)
+    assert series.features.flags.writeable
+    assert not np.shares_memory(source, series.features)
+    if append_missing_indicators:
+        np.testing.assert_array_equal(series.features[:, 2:], [[0, 1], [1, 0], [0, 0], [0, 0]])

@@ -1328,7 +1328,7 @@ Compare two checkouts using frozen data and isolated, small CPU training runs.
 
 자동 검증 파일.
 
-`_dummy_frame`, `_short_seq_config`, `test_train_and_save_creates_timestamped_dir`, `test_compare_checkpoints_reads_nested_runs`, `test_evaluate_and_analyze_saves_outputs`, `test_entity_sequences_never_cross_plants_and_split_chronologically`, `test_anomaly_threshold_is_frozen_from_calibration_not_test_ranking`, `test_lazy_windows_keep_all_missing_train_feature_as_zero_plus_mask`
+`_dummy_frame`, `_short_seq_config`, `test_train_and_save_creates_timestamped_dir`, `test_compare_checkpoints_reads_nested_runs`, `test_evaluate_and_analyze_saves_outputs`, `test_entity_sequences_never_cross_plants_and_split_chronologically`, `test_anomaly_threshold_is_frozen_from_calibration_not_test_ranking`, `test_lazy_windows_keep_all_missing_train_feature_as_zero_plus_mask`, `test_imputation_owns_buffer_and_preserves_input`
 
 ### [tests/test_collector_admission.py](../tests/test_collector_admission.py)
 

@@ -173,7 +173,9 @@ def _fit_and_transform_training_medians(
         )
     medians = np.nan_to_num(medians, nan=0.0).astype(np.float32)
     for item in series:
-        numeric = item.features.astype(np.float32, copy=False)
+        # pandas may expose a read-only NumPy view. Imputation owns its buffer
+        # so neither read-only views nor writable caller data are modified.
+        numeric = item.features.astype(np.float32, copy=True)
         missing = ~np.isfinite(numeric)
         missing_row, missing_feature = np.where(missing)
         numeric[missing_row, missing_feature] = medians[missing_feature]
