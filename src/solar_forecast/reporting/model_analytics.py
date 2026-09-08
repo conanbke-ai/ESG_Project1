@@ -6,6 +6,8 @@ It never promotes legacy or unmatched evaluations into a model comparison.
 
 from __future__ import annotations
 
+from solar_forecast.infrastructure.project_paths import PLANT_QUALITY_PATH, PLANT_REGISTRY_PATH
+
 from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -19,7 +21,7 @@ from typing import Any, Iterable
 
 import pandas as pd
 
-from solar_forecast.collectors.normalization import read_csv_with_fallback
+from solar_forecast.collectors.generation_normalizers import read_csv_with_fallback
 
 
 MODEL_LABELS = {
@@ -877,7 +879,7 @@ class ModelAnalyticsService:
         }
 
     def _capacity_lookup(self) -> dict[str, float]:
-        path = self.project_root / "file/standardized/plant_registry.csv"
+        path = self.project_root / PLANT_REGISTRY_PATH
         if not path.exists():
             return {}
         frame = read_csv_with_fallback(path)
@@ -1035,7 +1037,7 @@ class ModelAnalyticsService:
         }
 
     def _data_quality_signals(self) -> list[dict[str, Any]]:
-        path = self.project_root / "file/standardized/plant_quality_report.csv"
+        path = self.project_root / PLANT_QUALITY_PATH
         if not path.exists():
             return []
         frame = read_csv_with_fallback(path)

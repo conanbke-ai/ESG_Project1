@@ -50,27 +50,22 @@ python app.py job-contract notify-anomalies
 
 ## 패키지 구조
 
-```text
-src/solar_forecast/
-├─ cli.py                   # 단일 CLI
-├─ pipeline/                # ForecastPipeline과 단계별 어댑터
-├─ ensemble/                # ExplainableDynamicGate, HybridExperiment
-├─ collectors/              # Collector 구현과 CollectionService
-├─ features/                # ASOS 표준화와 누수 없는 시간·이력 피처
-├─ quality/                 # 물리 규칙, 품질 flag, 발전소별 센서 위험 진단
-├─ evaluation/              # 공통 TemporalSplitter와 rolling-origin 피처 ablation
-├─ reporting/               # 전국 설비 projection과 정식 모델 분석 데이터 빌더
-├─ preparation.py           # 보관 원본 전체 표준화/학습파일 application service
-├─ models/
-│  ├─ cnn/                  # CNN-BiLSTM 학습 엔진
-│  ├─ cnn_bilstm.py         # 독립 학습 어댑터
-│  └─ xgboost.py            # 독립 학습 어댑터
-├─ anomalies/               # 이상징후 해석 정책
-├─ notifications/           # 운영 이벤트 outbox, route directory, SOLAPI adapter
-├─ artifacts/               # manifest 저장
-├─ infrastructure/          # 환경·오류·로깅 어댑터
-└─ jobs/                    # 독립 실행 job 계약, dispatcher, 프로세스 간 학습 잠금
-```
+전체 구조와 새 파일 규칙은 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md), 실제 심볼은 [CODE_INDEX.md](CODE_INDEX.md)에 있습니다.
+
+| 경계 | 위치 | 역할 |
+| --- | --- | --- |
+| CLI | `cli/parser.py`, `cli/*_commands.py` | 인자 선언과 기능별 명령 처리 |
+| 수집 | `collectors/` | 공급자 adapter, ASOS API와 브라우저 |
+| 데이터 | `datasets/`, `features/`, `quality/` | admission·registry·Gold·특징·품질 |
+| 모델 | `models/cnn_bilstm/`, `models/xgboost/`, `models/hybrid/` | 모델별 구현; 공통 지원은 `models/shared/` |
+| 실행 | `jobs/`, `pipeline/` | 독립 job 계약과 전체 파이프라인 adapter |
+| 평가·표시 | `evaluation/`, `reporting/`, `dashboard/src/` | 공통 평가와 정적 화면 원본 |
+| 이벤트·전송 | `anomalies/`, `notifications/` | 이상치 계약과 영속 outbox/dispatcher |
+| 공통 I/O | `infrastructure/` | 환경변수·원자적 파일 기록·저장 경로 |
+
+`cnn/`과 바깥의 `cnn_bilstm.py`는 `cnn_bilstm/`로 통합했습니다. 설정→학습 연결은 `trainer.py`, 신경망 구조는 `network.py`, 학습은 `training_workflow.py`, 저장 모델 평가는 `evaluation.py`가 소유합니다. CLI와 패키지 공개 export는 필요한 기능을 실행할 때 의존성을 로딩합니다.
+
+ASOS 키와 수집 계약은 [KMA_ASOS_API.md](KMA_ASOS_API.md)에 정의합니다. API와 브라우저가 공통 관측소·시간 병합을 사용하며, 발전소별 registry 승인과 누수 방지 정책은 기존 Gold 경계에서 계속 검사합니다.
 
 의존성은 CLI에서 application service로, service에서 명시적 adapter로 흐릅니다. 데이터 I/O나
 파일 저장은 모델의 핵심 계산과 섞지 않습니다. 기존 호출자를 위한 함수형 API는 얇은 호환

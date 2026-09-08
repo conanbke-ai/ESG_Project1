@@ -1,3 +1,4 @@
+"""독립 실행 job 목록과 교환 manifest의 버전·입출력 계약 정의."""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -195,6 +196,7 @@ JOB_CONTRACTS: tuple[JobContract, ...] = (
         side_effects=(
             "공식 웹/API에서 파일을 다운로드합니다.",
             "file/raw/<source>/와 file/standardized/downloads/<source>/에 산출물을 씁니다.",
+            "ASOS API/browser 관측값은 file/KMA_data_file/OBS_ASOS_TIM_<year>.csv로 병합합니다.",
         ),
         inputs=(),
         outputs=(
