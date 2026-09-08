@@ -50,7 +50,7 @@
 | `features/` | 관측값과 과거 데이터에서 학습 특징 계산 | `asos_features.py`, `history_features.py` |
 | `quality/` | 데이터의 물리·통계 품질과 학습 적격 여부 | `generation_quality.py` |
 | `models/` | 모델별 학습·평가 구현 | 아래 모델 표 참조 |
-| `evaluation/` | 공통 시간 분할·회귀 지표·특징 비교 | `temporal_split.py`, `regression_metrics.py`, `feature_ablation.py` |
+| `evaluation/` | 공통 시간 분할·회귀 지표·특징·예측 동등성 비교 | `temporal_split.py`, `regression_metrics.py`, `feature_ablation.py`, `model_parity.py` |
 | `jobs/` | 독립 실행·잠금·manifest·dispatcher orchestration | `training_job.py`, `verification_job.py`, `notification_dispatch_job.py`, `contracts.py` |
 | `pipeline/` | 데이터·학습·리포트 adapter를 잇는 전체 실행 | `forecast_pipeline.py`, `cnn_training_adapter.py`, `contracts.py` |
 | `anomalies/` | 운영 이상치 이벤트와 설명 정책 | `event_batch.py`, `influence_policy.py` |
@@ -98,3 +98,5 @@ python -m pytest
 ```
 
 구조 검사는 모듈 목적 누락, 모호한 파일명, 깨진 내부 import/심볼, 소스 폴더에 들어온 데이터·가중치, 생성 파일과 원본 불일치를 실패로 처리한다. 계산이나 저장 계약을 바꾼 경우 해당 회귀 검증도 통과해야 한다. 전체 의존성이 없는 환경의 구조 검사 성공을 전체 모델 학습 검증으로 표시하지 않는다.
+
+실제 변경 전후 수치 비교는 [MODEL_PARITY_VALIDATION.md](MODEL_PARITY_VALIDATION.md)를 따른다. `tools/verify_model_reorganization.py`는 별도 checkout의 비교 실험을 실행하고, 제품 CLI의 `compare-predictions`는 이미 저장한 예측 CSV를 비교한다.

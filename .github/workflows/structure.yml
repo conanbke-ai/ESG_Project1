@@ -19,3 +19,50 @@ jobs:
       - run: python tools/check_structure.py
       - run: python -m compileall -q src tests tools
       - run: node --check dashboard/assets/dashboard.js
+
+  model-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CUDA_VISIBLE_DEVICES: ''
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '42'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          # Last implementation before source reorganization, including KOSPO fix.
+          ref: 477b01e9e4944330b7b17695b31d40c800819bf3
+          path: baseline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install shared CPU model environment
+        id: model-environment
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e './candidate[dev,geo]'
+          python -m pip freeze > runtime-versions.txt
+      - name: Run complete regression suite
+        working-directory: candidate
+        run: python -m pytest -q --junitxml=../test-results.xml
+      - name: Compare isolated before and after training
+        if: ${{ !cancelled() && steps.model-environment.outcome == 'success' }}
+        run: >-
+          python candidate/tools/verify_model_reorganization.py
+          --baseline-root baseline --candidate-root candidate
+          --output-dir model-parity
+      - name: Save validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-reorganization-evidence
+          path: |
+            runtime-versions.txt
+            test-results.xml
+            model-parity/
+          retention-days: 14

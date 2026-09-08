@@ -7,6 +7,32 @@ from solar_forecast.config_loader import PROJECT_ROOT
 from solar_forecast.cli.arguments import parse_csv_values
 
 
+def handle_compare_predictions_command(args: argparse.Namespace) -> None:
+    """Write parity evidence for two saved CSVs without modifying either input."""
+    import json
+    from solar_forecast.evaluation.model_parity import compare_prediction_files
+    from solar_forecast.infrastructure.artifact_store import write_json_atomic
+
+    baseline, candidate = Path(args.baseline).resolve(), Path(args.candidate).resolve()
+    report_path = Path(args.report).resolve() if args.report else None
+    if report_path:
+        write_paths = (report_path, report_path.with_name(report_path.name + ".tmp"))
+        if any(
+            output.resolve() == source or (output.exists() and source.exists() and output.samefile(source))
+            for output in write_paths for source in (baseline, candidate)
+        ):
+            raise SystemExit("--report must not overwrite an input prediction CSV")
+    try:
+        result = compare_prediction_files(baseline, candidate, atol=args.atol, rtol=args.rtol)
+    except (OSError, ValueError) as exc:
+        raise SystemExit(str(exc)) from None
+    if report_path:
+        write_json_atomic(report_path, result)
+    print(json.dumps(result, ensure_ascii=False, allow_nan=False, indent=2))
+    if result["status"] != "passed":
+        raise SystemExit(1)
+
+
 def handle_verify_e2e_command(args: argparse.Namespace) -> None:
     from solar_forecast.jobs.verification_job import (
         PipelineVerificationService,

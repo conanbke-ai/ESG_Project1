@@ -58,7 +58,7 @@
       "kind": "implementation"
     },
     "cli/verification_commands.py": {
-      "purpose": "수집부터 학습·대시보드까지의 연결 검증 명령 처리",
+      "purpose": "연결 검증과 저장 예측 CSV의 수치 동등성 비교 명령 처리",
       "kind": "implementation"
     },
     "collectors/__init__.py": {
@@ -171,6 +171,10 @@
     },
     "evaluation/feature_ablation.py": {
       "purpose": "시간 순서를 지키는 rolling-origin 특징 조합 비교 실험",
+      "kind": "implementation"
+    },
+    "evaluation/model_parity.py": {
+      "purpose": "동일 plant-hour 예측 CSV의 수치 동등성·지표 차이·입력 무결성 비교",
       "kind": "implementation"
     },
     "evaluation/regression_metrics.py": {

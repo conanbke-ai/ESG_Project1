@@ -52,6 +52,10 @@ class AsosApiTests(unittest.TestCase):
     def test_decoding_key_is_url_encoded_once_and_query_is_explicit(self):
         client = self.client([response_bytes([observation()])])
         client.fetch_page("159", self.config.start_date, self.config.end_date, 1)
+        self.assertEqual(
+            self.urls[0].split("?", 1)[0],
+            "https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList",
+        )
         params = parse_qs(urlsplit(self.urls[0]).query)
         self.assertEqual(params["serviceKey"], ["SYNTHETIC+KEY/=="])
         self.assertEqual(params["stnIds"], ["159"])

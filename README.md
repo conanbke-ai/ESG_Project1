@@ -4,6 +4,7 @@
 
 - 전체 폴더·파일·함수 생성 규칙: [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
 - Python 파일별 목적과 전체 함수 색인: [CODE_INDEX.md](docs/CODE_INDEX.md)
+- 변경 전후 모델 수치 비교와 실데이터 성능 검증 범위: [MODEL_PARITY_VALIDATION.md](docs/MODEL_PARITY_VALIDATION.md)
 - 발급받은 ASOS API 키 적용: [KMA_ASOS_API.md](docs/KMA_ASOS_API.md)
 
 실제 ASOS 키는 프로젝트 루트 `.env.local`의 `KMA_ASOS_SERVICE_KEY`에 일반인증키(Decoding)로 설정합니다. `.env.example`에는 빈 예시만 둡니다. 기존 `DATA_GO_SERVICE_KEY`는 중부발전용입니다.

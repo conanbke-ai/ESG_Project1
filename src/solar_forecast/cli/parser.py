@@ -21,12 +21,20 @@ from solar_forecast.cli.dataset_commands import handle_prepare_data_command
 from solar_forecast.cli.dashboard_commands import handle_serve_dashboard_command
 from solar_forecast.cli.job_commands import handle_status_command
 from solar_forecast.cli.training_commands import handle_train_command
-from solar_forecast.cli.verification_commands import handle_verify_e2e_command
+from solar_forecast.cli.verification_commands import handle_compare_predictions_command, handle_verify_e2e_command
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Solar forecast and anomaly monitoring")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    compare = commands.add_parser("compare-predictions", help="Check numeric parity of two saved plant-hour prediction CSVs")
+    compare.add_argument("baseline")
+    compare.add_argument("candidate")
+    compare.add_argument("--atol", type=float, default=1e-6)
+    compare.add_argument("--rtol", type=float, default=1e-6)
+    compare.add_argument("--report", help="Optional output JSON; must differ from both input CSVs")
+    compare.set_defaults(func=handle_compare_predictions_command)
 
     pipeline = commands.add_parser("pipeline", help="Run preprocessing, CNN training, analysis, and reporting")
     pipeline.add_argument("target")

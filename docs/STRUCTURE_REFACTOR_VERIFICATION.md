@@ -2,7 +2,7 @@
 
 이 변경은 KOSPO identity 교정 PR #1의 commit `477b01e9e4944330b7b17695b31d40c800819bf3` 위에서 작성했다. 마이크로서비스 전환은 하지 않았다. 전체 Python 모듈의 소유 영역·이름, CLI 명령 파일, 모델별 구현, 화면 JavaScript 원본을 정리하고 ASOS API 수집 경계를 추가했다.
 
-## 수행한 검증
+## 최초 구조 변경 시 수행한 검증
 
 | 확인 | 결과와 범위 |
 | --- | --- |
@@ -18,7 +18,7 @@
 
 Python AST와 Node VM 대조는 작업 직전 snapshot을 기준으로 수행한 일회성 대조다. 모델을 실제로 학습하거나 브라우저·Leaflet 상호작용을 실행한 검증으로 해석하지 않는다. 프로젝트의 계속 사용하는 검증 도구는 `tools/check_structure.py`, `tools/update_code_index.py`, `tools/build_dashboard_assets.py`와 `tests/`다.
 
-## 전체 실행을 하지 못한 항목
+## 최초 로컬 검증에서 실행하지 못한 항목
 
 현재 실행 환경에는 PyTorch·Optuna·XGBoost·Selenium이 없다. pytest 9.1.1은 사용할 수 있었고 HTTP adapter import에 필요한 실제 requests는 실행 환경 pip의 vendored 패키지를 `sys.path` 끝에 추가해 사용했다. 제품 코드나 계산을 가짜 모듈로 대체하지 않았다. 일반 개발 환경에서는 프로젝트 의존성을 설치한 뒤 `python -m pytest`를 실행한다.
 
@@ -37,7 +37,14 @@ Python AST와 Node VM 대조는 작업 직전 snapshot을 기준으로 수행한
 - `test_official_sgis_boundaries_have_complete_unique_regions_and_island_owners`
 - `test_boundary_validation_rejects_duplicate_region_ids`
 
-해당 테스트를 삭제하거나 상시 skip 처리하지 않았다. 원래 의존성과 데이터를 보유한 개발 폴더에서 그대로 실행된다. CI의 `Source structure` workflow는 가벼운 구조·구문 검사이며 전체 모델 회귀 통과를 대신하지 않는다.
+해당 테스트를 삭제하거나 상시 skip 처리하지 않았다. 원래 의존성과 데이터를 보유한 개발 폴더에서 그대로 실행된다. 최초 CI는 가벼운 구조·구문 검사만 수행했다. 이후 같은 workflow에 전체 의존성을 설치하는 `model-regression` job과 별도 checkout 학습 비교를 추가했다. 실행 조건과 해석은 [MODEL_PARITY_VALIDATION.md](MODEL_PARITY_VALIDATION.md)를 따른다. 아래 최신 결과가 최초 실행 범위를 대체한다.
+
+## 모델 수치 검증 추가
+
+- 동일 CPU 환경에서 변경 전 commit `477b01e9`와 변경 후 코드의 XGBoost·CNN-BiLSTM을 별도 프로세스로 실행한다.
+- 같은 합성 CSV·설정·난수·시간 분할을 사용하고 validation/calibration/test 예측 행과 가중치·전처리 상태를 비교한다.
+- 저장 예측을 직접 비교하는 `compare-predictions` 명령을 추가했다. 평가 행 누락과 정답 변경을 거부한다.
+- 전체 pytest 및 수치 비교의 실행 결과는 PR #2의 `Source structure` workflow와 `model-reorganization-evidence` 산출물에서 확인한다. 합성 데이터 비교는 기존 실데이터 점수를 재현했다는 뜻이 아니다.
 
 실제 ASOS API 키는 주입하지 않았다. 라이브 API 성공, 실데이터 Gold 행 증가, 전체 `prepare-data` 또는 `verify-e2e` 완료를 주장하지 않는다. API에서 발전소의 기상 매핑 승인을 유추하지 않으며 기존 registry 게이트를 유지한다.
 

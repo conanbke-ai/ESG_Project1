@@ -2,6 +2,8 @@
 
 대상은 공공데이터포털의 [기상청_지상(종관, ASOS) 시간자료 조회서비스](https://www.data.go.kr/data/15057210/openapi.do), 데이터 ID `15057210`이다. 공식 요청 주소는 `https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList`이며 관측소 번호와 시작·종료 날짜/시간을 받는다. 이 서비스는 전일(D-1)까지의 관측자료를 제공한다.
 
+포털에서 안내한 `https://apis.data.go.kr/1360000/AsosHourlyInfoService`는 올바른 **서비스 endpoint**다. 코드의 `collectors/kma_api_client.py`에서 `ASOS_SERVICE_ENDPOINT`로 정의하고, 시간자료 조회 메서드 `/getWthrDataList`를 붙여 `ASOS_HOURLY_ENDPOINT`를 만든다. 사용자가 endpoint를 환경변수에 추가할 필요는 없다. 키를 이미 입력했다면 아래 변수명만 일치하면 된다.
+
 ## 키를 입력할 파일과 변수
 
 프로젝트 루트의 **`C:\ESG_Project1\.env.local`**에 아래 항목을 추가한다. 파일이 이미 있으면 다른 설정을 보존하고 이 항목만 편집한다.

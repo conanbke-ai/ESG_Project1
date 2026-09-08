@@ -108,8 +108,9 @@ prepare-data와 후보 데이터 심사 명령 처리
 
 ## [cli/verification_commands.py](../src/solar_forecast/cli/verification_commands.py)
 
-수집부터 학습·대시보드까지의 연결 검증 명령 처리
+연결 검증과 저장 예측 CSV의 수치 동등성 비교 명령 처리
 
+- `handle_compare_predictions_command(args: argparse.Namespace)` — Write parity evidence for two saved CSVs without modifying either input.
 - `handle_verify_e2e_command(args: argparse.Namespace)`
 
 ## [collectors/__init__.py](../src/solar_forecast/collectors/__init__.py)
@@ -483,6 +484,16 @@ evaluation 패키지의 공개 import 경계; 실행은 명시적 명령에서 �
 - `FeatureAblationService.run(self, dataset_path: Path, output_dir: Path, *, n_splits: int=3, validation_window_hours: int=2160, calibration_fraction: float=0.1, test_fraction: float=0.15, gap_hours: int=168)`
 - `FeatureAblationService._rolling_folds(timestamps: pd.Series, *, n_splits: int, validation_window_hours: int, calibration_fraction: float, test_fraction: float, gap_hours: int)`
 - `FeatureAblationService._as_bool(series: pd.Series)`
+
+## [evaluation/model_parity.py](../src/solar_forecast/evaluation/model_parity.py)
+
+동일 plant-hour 예측 CSV의 수치 동등성·지표 차이·입력 무결성 비교
+
+- `_parse_hourly_timestamps(values: pd.Series, label: str)` — Parse explicit ISO hour keys without guessing a timezone for naive values.
+- `_load_prediction_artifact(path: Path, label: str)` — Read the exact hashed bytes and reject ambiguous or unusable prediction rows.
+- `_calculate_error_metrics(actual: np.ndarray, predicted: np.ndarray)` — Compute pooled row metrics, preserving undefined R2 as JSON null.
+- `_compare_aligned_rows(frame: pd.DataFrame, *, atol: float, rtol: float)` — Measure candidate differences using baseline predictions as the reference.
+- `compare_prediction_files(baseline: Path, candidate: Path, *, atol: float=1e-06, rtol: float=1e-06)` — Compare identical observed plant-hours; invalid input raises ValueError.
 
 ## [evaluation/regression_metrics.py](../src/solar_forecast/evaluation/regression_metrics.py)
 
@@ -1295,6 +1306,12 @@ Generate the complete Python symbol and dashboard source index from real files.
 
 `iter_symbols`, `render_code_index`, `main`
 
+### [tools/verify_model_reorganization.py](../tools/verify_model_reorganization.py)
+
+Compare two checkouts using frozen data and isolated, small CPU training runs.
+
+`write_json`, `sha256_file`, `create_output_directory`, `create_synthetic_fixture`, `experiment_config`, `revision`, `source_identity`, `runtime_versions`, `check_artifact_compatibility`, `run_worker`, `execute_worker`, `run_comparison`, `main`
+
 ### [tests/test_anomaly_policy.py](../tests/test_anomaly_policy.py)
 
 자동 검증 파일.
@@ -1391,6 +1408,12 @@ Synthetic regression cases for collector identity; not production row counts.
 
 `_settings`, `test_optuna_study_resumes_without_exceeding_max_total_trials`, `test_optuna_study_resumes_without_exceeding_max_total_trials.objective`, `test_optimizer_study_name_is_scoped_to_training_fingerprint`, `test_failed_checkpointed_trial_is_retried_with_the_same_parameters`, `test_failed_checkpointed_trial_is_retried_with_the_same_parameters.objective`, `test_xgboost_optimizer_uses_validation_and_persists_artifacts`, `test_cnn_optimizer_handles_missing_mask_dimension_and_saves_study`
 
+### [tests/test_model_parity.py](../tests/test_model_parity.py)
+
+Strict artifact comparisons must never manufacture model performance evidence.
+
+`PredictionParityTests`, `PredictionParityTests.setUp`, `PredictionParityTests.write_candidate`, `PredictionParityTests.compare`, `PredictionParityTests.test_reordered_identical_rows_pass_and_preserve_string_ids`, `PredictionParityTests.test_changed_predictions_fail_with_pooled_metrics_and_group_deltas`, `PredictionParityTests.test_tolerance_is_applied_against_baseline`, `PredictionParityTests.test_relative_tolerance_cannot_use_candidate_as_reference`, `PredictionParityTests.test_invalid_tolerances_are_rejected`, `PredictionParityTests.test_duplicate_keys_are_rejected`, `PredictionParityTests.test_normalized_duplicate_timestamps_are_rejected`, `PredictionParityTests.test_missing_rows_and_same_count_different_keys_are_rejected`, `PredictionParityTests.test_different_observations_are_rejected_even_with_loose_tolerance`, `PredictionParityTests.test_nonfinite_or_nonnumeric_targets_and_predictions_are_rejected`, `PredictionParityTests.test_region_disagreement_or_missing_column_is_rejected`, `PredictionParityTests.test_absent_regions_are_explicitly_unavailable`, `PredictionParityTests.test_split_mismatch_is_rejected`, `PredictionParityTests.test_malformed_and_non_hourly_timestamps_are_rejected`, `PredictionParityTests.test_equivalent_aware_timestamps_align_without_guessing_naive_timezone`, `PredictionParityTests.test_mixed_timezone_modes_are_rejected`, `PredictionParityTests.test_constant_and_single_row_targets_have_null_r2`, `PredictionParityTests.test_missing_columns_empty_files_and_duplicate_headers_are_rejected`, `PredictionParityTests.test_empty_identifiers_are_rejected`
+
 ### [tests/test_national_inventory.py](../tests/test_national_inventory.py)
 
 자동 검증 파일.
@@ -1408,6 +1431,18 @@ Synthetic regression cases for collector identity; not production row counts.
 자동 검증 파일.
 
 `_stations`, `test_administrative_region_is_separate_from_weather_station_name`, `test_station_catalog_quarantines_an_address_without_a_defensible_match`, `test_reviewed_alias_keeps_one_physical_plant_identity_and_filters_ess_capacity`, `test_reviewed_station_mapping_catalog_is_explicit_and_auditable`, `test_reviewed_station_mapping_requires_evidence_and_rationale`, `test_legacy_station_seed_is_audit_only_and_cannot_make_a_plant_eligible`, `test_reviewed_mapping_requires_one_station_record_to_cover_generation_dates`, `test_nationwide_builder_does_not_filter_to_legacy_company_or_date`, `test_nationwide_builder_rejects_unapproved_mapping_methods`, `test_nationwide_builder_rejects_null_reviewed_evidence`, `test_official_partitions_do_not_require_a_legacy_mapping_file`, `test_nationwide_builder_replaces_cumulative_revision_instead_of_summing_it`, `test_nationwide_builder_prefers_explicit_latest_snapshot_date`, `test_model_ready_partitions_are_replaced_by_company_and_year`
+
+### [tests/test_prediction_comparison_cli.py](../tests/test_prediction_comparison_cli.py)
+
+Exercise prediction comparison as a real process, including artifact safety.
+
+`PredictionComparisonCliTests`, `PredictionComparisonCliTests.setUp`, `PredictionComparisonCliTests.write_predictions`, `PredictionComparisonCliTests.invoke`, `PredictionComparisonCliTests.test_success_writes_matching_stdout_and_report_without_changing_inputs`, `PredictionComparisonCliTests.test_failed_parity_exits_one_and_preserves_failure_evidence`, `PredictionComparisonCliTests.test_invalid_artifact_exits_nonzero_without_publishing_success`, `PredictionComparisonCliTests.test_report_cannot_overwrite_either_input`, `PredictionComparisonCliTests.test_report_symlink_cannot_alias_an_input`, `PredictionComparisonCliTests.test_report_temporary_path_cannot_overwrite_an_input`, `PredictionComparisonCliTests.test_invalid_tolerance_exits_nonzero`, `PredictionComparisonCliTests.test_cli_help_does_not_import_optional_training_dependencies`
+
+### [tests/test_reorganization_harness.py](../tests/test_reorganization_harness.py)
+
+Safety and fixture-contract checks independent of ML dependencies.
+
+`ReorganizationHarnessTests`, `ReorganizationHarnessTests.test_source_identity_detects_uncommitted_code_and_configuration_changes`, `ReorganizationHarnessTests.test_existing_evidence_is_never_overwritten`, `ReorganizationHarnessTests.test_fixture_is_frozen_and_has_disjoint_entities_and_missingness`, `ReorganizationHarnessTests.test_small_budget_does_not_modify_original_configuration`
 
 ### [tests/test_sgis_boundaries.py](../tests/test_sgis_boundaries.py)
 

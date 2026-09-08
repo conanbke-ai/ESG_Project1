@@ -8,7 +8,8 @@ from typing import Callable
 from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-ASOS_HOURLY_ENDPOINT = "https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList"
+ASOS_SERVICE_ENDPOINT = "https://apis.data.go.kr/1360000/AsosHourlyInfoService"
+ASOS_HOURLY_ENDPOINT = f"{ASOS_SERVICE_ENDPOINT}/getWthrDataList"
 ASOS_SERVICE_KEY_ENV = "KMA_ASOS_SERVICE_KEY"
 
 
