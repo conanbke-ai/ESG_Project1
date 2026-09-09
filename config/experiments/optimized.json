@@ -1,39 +1,78 @@
 {
-  "name": "optimized_solar_model_comparison",
-  "description": "동일 태양광 Gold·피처·시간분할에서 모델별 Validation-only Optuna를 허용하는 실전 비교",
+  "contract": "solar-optimized-experiment.v1",
+  "name": "historical_observed_solar_benchmark",
+  "description": "실측 자료로 과거 예측을 재현하고 모델별 특징·입력 길이·하이퍼파라미터를 검증 구간에서 선택합니다.",
   "seed": 42,
-  "scope": {
-    "energy_source": "solar",
-    "feature_contract": "selected_v3_physics_aware_day_ahead",
-    "split": "global_train_validation_calibration_test_with_168h_purge",
-    "forecast_horizon_hours": 24
+  "input_dataset": "file/standardized/model_ready_parts",
+  "output_root": "artifacts/benchmarks",
+  "horizons_hours": [
+    1,
+    24,
+    72
+  ],
+  "optimization_scope": "configured_search_budget",
+  "minimum_common_coverage": 0.95,
+  "minimum_relative_improvement": 0.0,
+  "selection_gap_hours": 168,
+  "split": {
+    "validation_fraction": 0.15,
+    "calibration_fraction": 0.1,
+    "test_fraction": 0.15,
+    "purge_gap_hours": 168
   },
-  "optimizer": {
-    "framework": "optuna_tpe_median_pruner",
-    "objective": "validation_mae",
-    "persistent_resume": true,
-    "calibration_usage": "none_during_model_selection",
-    "test_usage": "final_report_only"
+  "feature_sets": {
+    "observed_weather_history": {
+      "exclude": []
+    },
+    "history_calendar": {
+      "exclude": [
+        "temperature_c",
+        "precipitation_mm",
+        "sunshine_hours",
+        "solar_irradiance_mj_m2",
+        "wind_speed_mps",
+        "humidity_pct",
+        "total_cloud_cover_tenths",
+        "low_mid_cloud_cover_tenths"
+      ]
+    }
   },
-  "xgboost": {
-    "enabled": true,
-    "tree_method": "hist",
-    "early_stopping": true,
-    "max_total_trials": 30,
-    "timeout_seconds": 7200
+  "models": {
+    "xgboost": {
+      "config": "config/models/xgboost.json",
+      "feature_sets": [
+        "observed_weather_history",
+        "history_calendar"
+      ],
+      "max_trials_per_candidate": 15,
+      "timeout_seconds_per_candidate": 3600
+    },
+    "cnn_bilstm": {
+      "config": "config/models/cnn_bilstm.json",
+      "feature_sets": [
+        "observed_weather_history",
+        "history_calendar"
+      ],
+      "sequence_lengths": [
+        24,
+        168
+      ],
+      "max_trials_per_candidate": 5,
+      "timeout_seconds_per_candidate": 3600
+    }
   },
-  "cnn_bilstm": {
-    "enabled": true,
-    "sequence_length": 168,
-    "lazy_windows": true,
-    "early_stopping": true,
-    "max_total_trials": 20,
-    "timeout_seconds": 14400
+  "selection_protocol": {
+    "base_candidates": "validation_only_common_rows",
+    "gate_fit": "calibration_early_half",
+    "champion_selection": "calibration_late_half_after_purge",
+    "test": "frozen_models_final_report_only",
+    "metric": "pooled_plant_hour_mae",
+    "hybrid_rule": "strict_improvement_over_best_base",
+    "baseline": "generation_observed_at_forecast_origin"
   },
-  "evaluation": {
-    "levels": ["plant", "region", "national"],
-    "metrics": ["mae", "rmse", "r2", "capacity_normalized_mae"],
-    "weights": ["samples", "equal_plant"],
-    "hybrid_order": "compare_and_freeze_base_models_before_dynamic_gate_training"
+  "provenance": {
+    "data_origin": "quality_gated_official_generation_and_asos_observations",
+    "purpose": "employment_portfolio_historical_model_comparison",
+    "historical_checkpoint_baseline": "not_reproduced_by_this_experiment"
   }
 }

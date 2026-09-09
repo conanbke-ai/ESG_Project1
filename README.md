@@ -1,5 +1,30 @@
 # 전국 재생에너지 표준화·태양광 발전량 예측·이상징후 알림 시스템
 
+현재 실측 기반 모델 최적화·하이브리드 채택 작업은 [실행 및 평가 계약](docs/OPTIMIZED_MODEL_BENCHMARK.md)을 따릅니다. `python app.py benchmark --plan`으로 모델별 탐색과 1·24·72시간 비교 설정을 확인할 수 있습니다. 과거 문서의 고정 24시간·동일 특징 조건보다 이 계약이 우선합니다.
+
+## 코드 구조와 ASOS API 설정
+
+- 전체 폴더·파일·함수 생성 규칙: [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
+- Python 파일별 목적과 전체 함수 색인: [CODE_INDEX.md](docs/CODE_INDEX.md)
+- 변경 전후 모델 수치 비교와 실데이터 성능 검증 범위: [MODEL_PARITY_VALIDATION.md](docs/MODEL_PARITY_VALIDATION.md)
+- 발급받은 ASOS API 키 적용: [KMA_ASOS_API.md](docs/KMA_ASOS_API.md)
+
+실제 ASOS 키는 프로젝트 루트 `.env.local`의 `KMA_ASOS_SERVICE_KEY`에 일반인증키(Decoding)로 설정합니다. `.env.example`에는 빈 예시만 둡니다. 기존 `DATA_GO_SERVICE_KEY`는 중부발전용입니다.
+
+```powershell
+python app.py collect --sources kma --kma-mode api --station-ids 108,159 --start-date 2026-01-01 --end-date 2026-01-02 --api-max-calls 10
+python app.py prepare-data
+```
+
+모델 구현은 `models/cnn_bilstm/`, `models/xgboost/`, `models/hybrid/`로 모았습니다. CNN의 실제 네트워크는 `network.py`, 학습 설정 연결은 `trainer.py`, 학습 실행은 `training_workflow.py`, 저장 모델 평가는 `evaluation.py`에서 찾습니다. 대시보드 원본은 `dashboard/src/`, 생성된 배포 파일은 `dashboard/assets/dashboard.js`입니다.
+
+```powershell
+python tools/build_dashboard_assets.py
+python tools/update_code_index.py
+python tools/check_structure.py
+```
+
+
 현재 확보한 한국남동발전·한국남부발전·한국동서발전·한국서부발전·한국농어촌공사 자료를 출발점으로, 기관을
 고정하지 않고 공통 데이터 계약과 품질 게이트를 통과한 국내 발전소를 계속 추가하는 전국 발전량
 예측 프로젝트입니다. 예측 잔차와 공개 기상자료는 이상징후 분석·알림에 사용합니다.
@@ -44,7 +69,7 @@ python app.py pipeline target_column --input-dir file/merge_data --features feat
 4. 평가와 이상징후 탐지
 5. 최종 HTML 보고서와 실행 manifest 생성
 
-각 실행 결과는 기본적으로 `output/pipeline/<실행시간>/`에 저장됩니다. 단계 사이의 DataFrame은 메모리로 전달하고 기본 `minimal` 모드에서는 최종 산출물만 저장합니다.
+각 실행 결과는 기본적으로 `artifacts/pipeline/<실행시간>/`에 저장됩니다. 단계 사이의 DataFrame은 메모리로 전달하고 기본 `minimal` 모드에서는 최종 산출물만 저장합니다.
 
 ## 공식 데이터 자동 수집
 
@@ -571,7 +596,7 @@ timestamp,region,plant,y_true,xgb_pred,cnn_pred
 
 ```bash
 python app.py hybrid output/validation_predictions.csv output/test_predictions.csv \
-  --output-dir output/experiments/hybrid --artifact-level minimal
+  --output-dir artifacts/experiments/hybrid --artifact-level minimal
 ```
 
 원본 병합 파일의 `일시`, `지역`, `발전구분`, `합산발전량(MWh)`는 각각

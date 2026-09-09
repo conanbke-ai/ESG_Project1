@@ -3,15 +3,14 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from solar_forecast.collectors.metadata import PlantMetadata, PlantMetadataCatalog
-from solar_forecast.features.registry import (
-    KmaStationCatalog,
-    NationwidePlantRegistryBuilder,
-    ReviewedStationMapping,
-    ReviewedStationMappingCatalog,
-    parse_administrative_area,
-)
-from solar_forecast.features.service import NationwideModelDatasetBuilder
+from solar_forecast.collectors.plant_metadata import PlantMetadata
+from solar_forecast.collectors.plant_metadata import PlantMetadataCatalog
+from solar_forecast.datasets.plant_registry import KmaStationCatalog
+from solar_forecast.datasets.plant_registry import NationwidePlantRegistryBuilder
+from solar_forecast.datasets.plant_registry import ReviewedStationMapping
+from solar_forecast.datasets.plant_registry import ReviewedStationMappingCatalog
+from solar_forecast.datasets.plant_registry import parse_administrative_area
+from solar_forecast.datasets.model_dataset_builder import NationwideModelDatasetBuilder
 
 
 def _stations() -> KmaStationCatalog:

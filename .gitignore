@@ -1,4 +1,6 @@
 .env.local
+file/KMA_data_file/.asos_collection.lock
+file/KMA_data_file/*.part
 **/__pycache__/
 .pytest_cache/
 .idea/
@@ -18,3 +20,6 @@ artifacts/alerts.db
 artifacts/notifications/
 config/notification_routes.local.json
 backups/*.zip
+artifacts/pipeline/
+artifacts/experiments/
+artifacts/evaluation/

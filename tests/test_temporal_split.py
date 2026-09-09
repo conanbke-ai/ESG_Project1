@@ -1,6 +1,7 @@
 import pandas as pd
 
-from solar_forecast.evaluation.temporal import TemporalSplitConfig, TemporalSplitter
+from solar_forecast.evaluation.temporal_split import TemporalSplitConfig
+from solar_forecast.evaluation.temporal_split import TemporalSplitter
 
 
 def test_global_timestamp_boundaries_are_shared_by_irregular_entities():

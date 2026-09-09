@@ -1,0 +1,67 @@
+name: Source structure
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python tools/check_structure.py
+      - run: python -m compileall -q src tests tools
+      - run: node --check dashboard/assets/dashboard.js
+
+  model-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CUDA_VISIBLE_DEVICES: ''
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONHASHSEED: '42'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install shared CPU model environment
+        id: model-environment
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e './candidate[dev,geo]'
+          python -m pip freeze > runtime-versions.txt
+      - name: Run complete regression suite
+        working-directory: candidate
+        run: python -m pytest -q --junitxml=../test-results.xml
+      - name: Run bounded benchmark on retained official observations
+        working-directory: candidate
+        run: python tools/run_observed_benchmark_pilot.py
+      - name: Save validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: solar-benchmark-evidence
+          path: |
+            runtime-versions.txt
+            test-results.xml
+            candidate/artifacts/verification/observed_benchmark/observed_pilot_report.json
+            candidate/artifacts/verification/observed_benchmark/pilot_experiment.json
+            candidate/artifacts/verification/observed_benchmark/model_artifact_replay.json
+            candidate/artifacts/verification/observed_benchmark/observed_plant_year.csv
+            candidate/artifacts/verification/observed_benchmark/provenance/
+            candidate/artifacts/benchmarks/
+            candidate/dashboard/data/dashboard_data.json
+          retention-days: 14

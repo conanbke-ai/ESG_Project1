@@ -6,19 +6,17 @@ from pathlib import Path
 
 import pytest
 
-from solar_forecast.reporting.national_inventory import (
-    AdministrativeRegionReference,
-    InventoryConfigurationError,
-    InventoryContentError,
-    InventoryIntegrityError,
-    InventorySchemaError,
-    NationalInventoryService,
-    REQUIRED_COLUMNS,
-    build_national_inventory,
-    canonical_location,
-    canonical_region,
-    source_region_conflict,
-)
+from solar_forecast.reporting.national_solar_inventory import AdministrativeRegionReference
+from solar_forecast.reporting.national_solar_inventory import InventoryConfigurationError
+from solar_forecast.reporting.national_solar_inventory import InventoryContentError
+from solar_forecast.reporting.national_solar_inventory import InventoryIntegrityError
+from solar_forecast.reporting.national_solar_inventory import InventorySchemaError
+from solar_forecast.reporting.national_solar_inventory import NationalInventoryService
+from solar_forecast.reporting.national_solar_inventory import REQUIRED_COLUMNS
+from solar_forecast.reporting.national_solar_inventory import build_national_inventory
+from solar_forecast.reporting.national_solar_inventory import canonical_location
+from solar_forecast.reporting.national_solar_inventory import canonical_region
+from solar_forecast.reporting.national_solar_inventory import source_region_conflict
 
 
 def _write_csv(path: Path, rows: list[list[str]], *, encoding: str = "cp949") -> str:
