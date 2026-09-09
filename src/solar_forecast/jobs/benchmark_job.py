@@ -130,7 +130,7 @@ class BenchmarkService:
                     choices = [entry for entry in candidates if entry[1].model == model]
                     selected[model] = min(choices, key=lambda entry: (scores[entry[0]], entry[0]))
                 task_dir = run_dir / f"horizon_{horizon}h"
-                optimization = {model: self._candidate_summary(entry, scores[entry[0]]) for model, entry in selected.items()}
+                optimization = {model: self._candidate_summary(entry, scores[entry[0]], run_dir) for model, entry in selected.items()}
                 base_decision = {"selection_data": "validation_only", "test_used_for_selection": False,
                                  "candidate_scores": scores, "coverage": validation_coverage,
                                  "selected": optimization}
@@ -162,14 +162,14 @@ class BenchmarkService:
             raise
 
     @staticmethod
-    def _candidate_summary(entry: tuple, score: float) -> dict:
+    def _candidate_summary(entry: tuple, score: float, run_root: Path) -> dict:
         label, config, run_dir, details = entry
         optimizer = details.get("optimizer", {})
-        return {"candidate_id": label.split(":", 1)[1], "run_dir": str(run_dir),
+        return {"candidate_id": label.split(":", 1)[1], "run_dir": run_dir.relative_to(run_root).as_posix(),
                 "sequence_length": config.values.get("sequence_length"),
                 "feature_columns": config.values["feature_columns"], "validation_mae": score,
                 "parameters": optimizer.get("best_params", {}),
-                "optimizer": optimizer, "resolved_config": str(run_dir / "resolved_config.json")}
+                "optimizer": optimizer, "resolved_config": (run_dir / "resolved_config.json").relative_to(run_root).as_posix()}
 
     @staticmethod
     def _matching_contract(selected: dict) -> dict:

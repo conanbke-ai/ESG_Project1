@@ -358,6 +358,15 @@ def main() -> None:
         torch.set_num_interop_threads(1)
         from solar_forecast.jobs.benchmark_job import BenchmarkService
         run_dir = BenchmarkService(project_root=root).run(pilot_config, smoke=False)
+        from verify_benchmark_model_artifacts import verify_selected_artifacts
+        replay = verify_selected_artifacts(run_dir, dataset)
+        write_json(output / "model_artifact_replay.json", replay)
+        if replay["status"] != "passed":
+            failed_manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+            failed_manifest.update(status="failed", error="Stored model artifact replay failed")
+            write_json(run_dir / "manifest.json", failed_manifest)
+            raise ValueError("Stored model artifact replay failed; inspect model_artifact_replay.json")
+        report["stored_model_artifact_replay"] = replay
         from solar_forecast.reporting.dashboard_builder import DashboardBuilder
         dashboard = DashboardBuilder(root).build()
         payload = json.loads(dashboard.data_path.read_text(encoding="utf-8"))

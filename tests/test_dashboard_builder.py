@@ -259,6 +259,8 @@ def test_model_analytics_excludes_smoke_and_requires_matching_contract(tmp_path)
         quality_path,
     )
     contract = {
+        "task": "historical_forecast",
+        "information_set": "observed_measurements_through_forecast_origin",
         "dataset_fingerprint": "same-dataset",
         "target": "generation_mwh",
         "target_unit": "MWh",

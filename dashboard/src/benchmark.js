@@ -4,7 +4,7 @@
       return `<section class="surface analysis-section benchmark-section" aria-label="모델 최적화 벤치마크"><div class="section-head"><div><h2>모델 최적화 벤치마크</h2><p>${escapeHtml(benchmark.message || "완료된 정식 벤치마크 결과가 없습니다.")}</p></div></div></section>`;
     }
     return `<section class="surface analysis-section benchmark-section" aria-labelledby="benchmark-title">
-      <div class="section-head"><div><h2 id="benchmark-title">각 모델 최적화 · 하이브리드 채택 결과</h2><p>실측 기상·발전량으로 평가한 과거 Test 결과입니다. 같은 예측 시간의 공통 표본끼리 비교합니다.</p></div><span class="status-tag">정식 평가</span></div>
+      <div class="section-head"><div><h2 id="benchmark-title">각 모델 최적화 · 하이브리드 채택 결과</h2><p>실측 기상·발전량으로 평가한 과거 Test 결과입니다. 같은 예측 시간의 공통 표본끼리 비교합니다.</p></div><span class="status-tag">실측 자료 평가</span></div>
       <p class="benchmark-method">Train 학습 → Validation에서 각 모델 설정 선택 → Calibration 앞 구간에서 Hybrid 가중치 학습 → 뒤 구간에서 채택 모델 선택 → Test 최종 평가</p>
       <label class="field-label benchmark-horizon" for="benchmark-horizon"><span>예측 시간</span><select id="benchmark-horizon">${benchmark.tasks.map((task, index) => `<option value="${index}">${escapeHtml(formatNumber(task.horizon_hours))}시간 후 발전량</option>`).join("")}</select></label>
       <div id="benchmark-content"></div>

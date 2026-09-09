@@ -637,7 +637,7 @@ jobs 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작
 - `BenchmarkService` — Execute independently tuned candidates and freeze selection before Test.
 - `BenchmarkService.__init__(self, *, project_root: Path=PROJECT_ROOT, training_service=None)`
 - `BenchmarkService.run(self, config_path: Path, *, smoke: bool=False)`
-- `BenchmarkService._candidate_summary(entry: tuple, score: float)`
+- `BenchmarkService._candidate_summary(entry: tuple, score: float, run_root: Path)`
 - `BenchmarkService._matching_contract(selected: dict)`
 - `BenchmarkService._merge_selected(selected: dict, split: str, values: dict)`
 - `BenchmarkService._provenance(self, source: Path, values: dict)`
@@ -1379,6 +1379,12 @@ Run a bounded benchmark on a measured plant-year from retained public archives.
 Generate the complete Python symbol and dashboard source index from real files.
 
 `iter_symbols`, `render_code_index`, `main`
+
+### [tools/verify_benchmark_model_artifacts.py](../tools/verify_benchmark_model_artifacts.py)
+
+Replay selected benchmark checkpoints on observed Test rows without training.
+
+`_sha256`, `_json`, `_resolve`, `_load_observations`, `_test_start`, `_indexed`, `_match_truth`, `_xgboost_replay`, `_cnn_replay`, `verify_selected_artifacts`, `main`
 
 ### [tools/verify_model_reorganization.py](../tools/verify_model_reorganization.py)
 

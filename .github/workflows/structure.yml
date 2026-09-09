@@ -59,6 +59,7 @@ jobs:
             test-results.xml
             candidate/artifacts/verification/observed_benchmark/observed_pilot_report.json
             candidate/artifacts/verification/observed_benchmark/pilot_experiment.json
+            candidate/artifacts/verification/observed_benchmark/model_artifact_replay.json
             candidate/artifacts/verification/observed_benchmark/observed_plant_year.csv
             candidate/artifacts/verification/observed_benchmark/provenance/
             candidate/artifacts/benchmarks/
