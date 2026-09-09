@@ -189,6 +189,20 @@ def _artifact(
 
 JOB_CONTRACTS: tuple[JobContract, ...] = (
     JobContract(
+        job_id="benchmark",
+        command="python app.py benchmark --config config/experiments/optimized.json [--plan]",
+        purpose="실측 기반 예측 기간별로 모델을 독립 최적화하고, Test 이전에 하이브리드 채택을 결정합니다.",
+        worker_profile="sequential training and evaluation worker; artifact contracts; no network calls",
+        side_effects=("artifacts/benchmarks/<run-id>/에 설정, 후보 모델, 선택 근거와 예측을 기록합니다.",),
+        inputs=(_artifact("experiment", "solar-optimized-experiment.v1", "config/experiments/optimized.json",
+                          {"type": "object", "required": ["contract", "models", "horizons_hours", "input_dataset"]}),),
+        outputs=(_artifact("benchmark", "solar-optimized-benchmark.v1", "artifacts/benchmarks/<run-id>/manifest.json",
+                           {"type": "object", "required": ["contract", "status", "execution_mode", "tasks", "provenance"]}),),
+        worker_ready=True,
+        split_decision="같은 코드베이스의 독립 실행 job으로 유지하며, 완료된 산출물만 대시보드에 전달합니다.",
+        notes=("예보 API를 요구하지 않습니다. Test 점수는 모델 선택에 사용하지 않습니다.",),
+    ),
+    JobContract(
         job_id="collect",
         command="python app.py collect --start-date <YYYY-MM-DD> [--end-date <YYYY-MM-DD>]",
         purpose="공식 발전량/KMA 원본을 Bronze로 보존하고, 표준화 가능한 발전량 파일은 Silver CSV로 생성합니다.",

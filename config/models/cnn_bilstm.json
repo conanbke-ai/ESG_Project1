@@ -33,7 +33,7 @@
     "clear_sky_irradiance_proxy",
     "is_daylight"
   ],
-  "feature_contract": "selected_v3_physics_aware_day_ahead",
+  "feature_contract": "observed_origin_physics_history_v1",
   "quality_filter_column": "quality_train_eligible",
   "missing_value_policy": "training_split_median_with_missing_indicators",
   "csv_chunk_rows": 100000,
@@ -44,9 +44,9 @@
   "output_root": "artifacts/models/cnn_bilstm",
   "prediction_root": "artifacts/predictions/cnn_bilstm",
   "forecast_horizon_hours": 24,
-  "evaluation_protocol": "rolling_origin_day_ahead_with_observation_updates",
+  "evaluation_protocol": "historical_observation_rolling_origin",
   "validation_fraction": 0.15,
-  "calibration_fraction": 0.10,
+  "calibration_fraction": 0.1,
   "test_fraction": 0.15,
   "purge_gap_hours": 168,
   "sequence_length": 168,
@@ -71,14 +71,54 @@
     "tuning_train_max_sequences": 250000,
     "tuning_validation_max_sequences": 100000,
     "search_space": {
-      "cnn_channels": { "type": "int", "low": 16, "high": 128, "log": true },
-      "kernel_size": { "type": "categorical", "choices": [3, 5, 7] },
-      "lstm_hidden": { "type": "int", "low": 32, "high": 256, "log": true },
-      "lstm_layers": { "type": "int", "low": 1, "high": 2 },
-      "dense_units": { "type": "int", "low": 32, "high": 256, "log": true },
-      "dropout": { "type": "float", "low": 0.05, "high": 0.35 },
-      "lr": { "type": "float", "low": 1e-4, "high": 3e-3, "log": true },
-      "weight_decay": { "type": "float", "low": 1e-7, "high": 1e-3, "log": true }
+      "cnn_channels": {
+        "type": "int",
+        "low": 16,
+        "high": 128,
+        "log": true
+      },
+      "kernel_size": {
+        "type": "categorical",
+        "choices": [
+          3,
+          5,
+          7
+        ]
+      },
+      "lstm_hidden": {
+        "type": "int",
+        "low": 32,
+        "high": 256,
+        "log": true
+      },
+      "lstm_layers": {
+        "type": "int",
+        "low": 1,
+        "high": 2
+      },
+      "dense_units": {
+        "type": "int",
+        "low": 32,
+        "high": 256,
+        "log": true
+      },
+      "dropout": {
+        "type": "float",
+        "low": 0.05,
+        "high": 0.35
+      },
+      "lr": {
+        "type": "float",
+        "low": 0.0001,
+        "high": 0.003,
+        "log": true
+      },
+      "weight_decay": {
+        "type": "float",
+        "low": 1e-07,
+        "high": 0.001,
+        "log": true
+      }
     }
   },
   "early_stopping_patience": 5,
@@ -91,5 +131,6 @@
     "root": "artifacts/checkpoints",
     "cnn_every_epochs": 1,
     "xgboost_every_rounds": 50
-  }
+  },
+  "prediction_task": "historical_forecast"
 }

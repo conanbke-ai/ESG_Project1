@@ -169,12 +169,24 @@
       "purpose": "evaluation 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작",
       "kind": "package"
     },
+    "evaluation/experiment_config.py": {
+      "purpose": "실측 예측 실험 스키마 검증과 모델별 특징·입력 길이·탐색 예산 구성",
+      "kind": "implementation"
+    },
     "evaluation/feature_ablation.py": {
       "purpose": "시간 순서를 지키는 rolling-origin 특징 조합 비교 실험",
       "kind": "implementation"
     },
+    "evaluation/forecast_samples.py": {
+      "purpose": "발전소별 관측 시작 시각과 예측 목표 정렬, 시간창 연속성 검증",
+      "kind": "implementation"
+    },
     "evaluation/model_parity.py": {
       "purpose": "동일 plant-hour 예측 CSV의 수치 동등성·지표 차이·입력 무결성 비교",
+      "kind": "implementation"
+    },
+    "evaluation/model_selection.py": {
+      "purpose": "별도 시간 구간에서 하이브리드 비중 학습·채택 결정·최종 Test 평가",
       "kind": "implementation"
     },
     "evaluation/regression_metrics.py": {
@@ -224,6 +236,10 @@
     "jobs/__init__.py": {
       "purpose": "jobs 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작",
       "kind": "package"
+    },
+    "jobs/benchmark_job.py": {
+      "purpose": "모델별 Validation 탐색과 하이브리드 선택 및 예측 산출물 연결",
+      "kind": "implementation"
     },
     "jobs/contracts.py": {
       "purpose": "독립 실행 job 목록과 교환 manifest의 버전·입출력 계약 정의",
@@ -388,6 +404,10 @@
     "reporting/__init__.py": {
       "purpose": "reporting 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작",
       "kind": "package"
+    },
+    "reporting/benchmark_analytics.py": {
+      "purpose": "완료된 벤치마크의 무결성을 확인하고 선택 근거와 예측을 화면에 전달",
+      "kind": "implementation"
     },
     "reporting/dashboard_builder.py": {
       "purpose": "registry·품질·모델 결과를 대시보드 JSON과 정적 게시 파일로 구성",

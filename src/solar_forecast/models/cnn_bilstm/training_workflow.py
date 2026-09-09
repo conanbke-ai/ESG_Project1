@@ -1,9 +1,11 @@
 """CNN-BiLSTM training workflow and its artifact contract."""
 from __future__ import annotations
 import json
+import random
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence
 import pandas as pd
+import numpy as np
 import torch
 from solar_forecast.models.shared.optuna_study import OptimizationSettings
 from solar_forecast.infrastructure.artifact_store import replace_file_atomic
@@ -98,6 +100,7 @@ def train_cnn_bilstm(
     checkpoint_root: str | Path | None = None,
     optimizer_storage_path: str | Path | None = None,
     optimizer_parameter_space: Mapping[str, object] | None = None,
+    seed: int = 42,
 ) -> Dict[str, object]:
     """Train the model with Optuna and/or reinforcement learning then persist artifacts.
 
@@ -105,6 +108,11 @@ def train_cnn_bilstm(
     """
 
     cfg = sequence_config or SequenceConfig()
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
     if optimizer_parameter_space is not None and not isinstance(
         optimizer_parameter_space,
         Mapping,
@@ -148,6 +156,7 @@ def train_cnn_bilstm(
                     "feature_columns": selected_features,
                     "sequence_config": cfg.__dict__,
                     "epochs": epochs,
+                    "seed": seed,
                     "use_optuna": use_optuna,
                     "use_reinforcement": use_reinforcement,
                     "optimizer_trial_epochs": optimizer_trial_epochs,
@@ -165,7 +174,7 @@ def train_cnn_bilstm(
             storage_path=Path(optimizer_storage_path),
             max_trials=n_trials,
             timeout_seconds=optimizer_timeout_seconds,
-            seed=42,
+            seed=seed,
             startup_trials=min(5, n_trials),
             pruner_startup_trials=min(5, n_trials),
             pruner_warmup_steps=5,

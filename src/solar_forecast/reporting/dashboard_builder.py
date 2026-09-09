@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from solar_forecast.infrastructure.artifact_store import replace_file_atomic
+from solar_forecast.reporting.benchmark_analytics import BenchmarkAnalyticsService
 from solar_forecast.reporting.model_analytics import ModelAnalyticsService
 from solar_forecast.reporting.national_solar_inventory import build_national_inventory
 from solar_forecast.reporting.sgis_boundaries import validate_province_boundaries
@@ -54,6 +55,7 @@ class DashboardBuilder:
             },
             "national_inventory": national_inventory,
             "model_analysis": model_analysis,
+            "model_benchmark": BenchmarkAnalyticsService(self.project_root).build(),
         }
 
         self._publish_static_assets()

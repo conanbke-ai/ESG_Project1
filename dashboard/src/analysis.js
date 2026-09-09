@@ -1,8 +1,9 @@
 // Analysis view helpers; composed into one private browser scope.
-  function renderAnalysisPage(analysis) {
+  function renderAnalysisPage(analysis, benchmark) {
     return renderPageIntro("태양광 모델 성능 비교·분석", "동일한 평가 표본에서 모델 정확도를 비교하고 지역·발전소별 오차와 이상 신호를 살펴봅니다.", evaluationContext(analysis.evaluation)) +
+      renderBenchmarkSection(benchmark) +
       (analysis.status !== "ready" && analysis.message ? `<p class="status-message">${escapeHtml(analysis.message)}</p>` : "") +
-      `<section class="analysis-toolbar" aria-label="분석 조건">
+      `<section id="legacy-analysis-toolbar" class="analysis-toolbar" aria-label="분석 조건">
         <label class="field-label" for="analysis-region"><span>지역</span><select id="analysis-region">${renderAnalysisRegionOptions(analysis)}</select></label>
         <label class="field-label" for="analysis-plant"><span>발전소</span><select id="analysis-plant">${renderAnalysisPlantOptions(analysis)}</select></label>
       </section>
@@ -87,7 +88,7 @@
 
   function bindAnalysisEvents(analysis) {
     const content = document.getElementById("analysis-content");
-    const toolbar = document.querySelector(".analysis-toolbar");
+    const toolbar = document.getElementById("legacy-analysis-toolbar");
     const tabs = [...document.querySelectorAll("[data-tab]")];
     const render = () => {
       toolbar.hidden = state.tab === "comparison";

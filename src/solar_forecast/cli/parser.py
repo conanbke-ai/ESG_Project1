@@ -10,6 +10,7 @@ from solar_forecast.cli.dataset_commands import handle_audit_candidate_data_comm
 from solar_forecast.cli.dashboard_commands import handle_build_dashboard_command
 from solar_forecast.cli.collection_commands import handle_collect_command
 from solar_forecast.cli.training_commands import (
+    handle_benchmark_command,
     handle_evaluate_features_command,
     handle_hybrid_command,
 )
@@ -27,6 +28,12 @@ from solar_forecast.cli.verification_commands import handle_compare_predictions_
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Solar forecast and anomaly monitoring")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    benchmark = commands.add_parser("benchmark", help="Optimize historical measured-data models and select a hybrid before final Test")
+    benchmark.add_argument("--config", default="config/experiments/optimized.json")
+    benchmark.add_argument("--plan", action="store_true", help="Show each horizon and independent model search without training")
+    benchmark.add_argument("--smoke", action="store_true", help="Wiring check only; excluded from dashboard accuracy results")
+    benchmark.set_defaults(func=handle_benchmark_command)
 
     compare = commands.add_parser("compare-predictions", help="Check numeric parity of two saved plant-hour prediction CSVs")
     compare.add_argument("baseline")

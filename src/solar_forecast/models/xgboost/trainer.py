@@ -12,6 +12,12 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from solar_forecast.models.hybrid.dynamic_gate import normalize_prediction_columns
 from solar_forecast.infrastructure.artifact_store import replace_file_atomic
 from solar_forecast.evaluation.temporal_split import TemporalSplitConfig, TemporalSplitter
+from solar_forecast.evaluation.forecast_samples import (
+    FORECAST_CONTEXT_COLUMNS,
+    HISTORICAL_FORECAST_TASK,
+    build_forecast_samples,
+    forecast_evaluation_contract,
+)
 from solar_forecast.datasets.repository import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.datasets.numeric_preprocessor import (
     NumericPreprocessor,
@@ -52,18 +58,38 @@ class XGBoostTrainer:
         )
         del raw
         gc.collect()
+        task_contract = forecast_evaluation_contract(
+            config.values.get("prediction_task"),
+            config.values.get("forecast_horizon_hours"),
+            legacy_task="observed_conditions_estimation",
+        )
+        historical = task_contract["task"] == HISTORICAL_FORECAST_TASK
         frame = prepared.frame
+        if smoke and historical:
+            # Match CNN smoke's first plant and source rows before sorting;
+            # a pooled 512-row slice has a different calendar and population.
+            first_entity = frame["plant_id"].iloc[0]
+            frame = frame.loc[frame["plant_id"].eq(first_entity)].head(512).copy()
         if "timestamp" in frame:
             frame["timestamp"] = pd.to_datetime(frame["timestamp"], errors="coerce")
             frame = frame.dropna(subset=["timestamp"]).sort_values("timestamp", kind="stable")
-        frame = frame.head(512) if smoke else frame
+        frame = frame.head(512) if smoke and not historical else frame
+        calendar_timestamps = frame["timestamp"].copy()
+        if historical:
+            frame = build_forecast_samples(
+                frame, prepared.feature_columns, target,
+                horizon_hours=task_contract["horizon_hours"],
+            )
+        requested_gap = 0 if smoke else int(config.values.get("purge_gap_hours", 168))
         train_frame, validation_frame, calibration_frame, test_frame, split_metadata = (
             self._chronological_split(
             frame,
             validation_fraction=float(config.values.get("validation_fraction", 0.15)),
             calibration_fraction=float(config.values.get("calibration_fraction", 0.10)),
             test_fraction=float(config.values.get("test_fraction", 0.15)),
-            purge_gap_hours=0 if smoke else int(config.values.get("purge_gap_hours", 168)),
+            purge_gap_hours=max(requested_gap, task_contract["horizon_hours"]) if historical else requested_gap,
+            calendar_timestamps=calendar_timestamps,
+            prediction_task=task_contract["task"],
             )
         )
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -233,11 +259,9 @@ class XGBoostTrainer:
                 "dataset_fingerprint": dataset_signature(source),
                 "target": target,
                 "target_unit": "MWh",
-                "horizon_hours": int(config.values.get("forecast_horizon_hours", 24)),
                 "test_start": split_metadata["test_period"]["start"],
                 "test_end": split_metadata["test_period"]["end"],
-                "prediction_key": ["timestamp", "plant_id"],
-                "prediction_schema": "solar-forecast-prediction.v1",
+                **task_contract,
             },
             "optimizer": (
                 optimization_result.to_dict()
@@ -259,6 +283,8 @@ class XGBoostTrainer:
         calibration_fraction: float,
         test_fraction: float,
         purge_gap_hours: int,
+        calendar_timestamps: pd.Series | None = None,
+        prediction_task: str = "observed_conditions_estimation",
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, object]]:
         if "timestamp" not in frame:
             raise ValueError("XGBoost forecasting requires a timestamp column for temporal splitting")
@@ -270,27 +296,39 @@ class XGBoostTrainer:
                 gap_hours=purge_gap_hours,
             )
         )
-        splits = splitter.split_frame(frame, "timestamp")
+        calendar = calendar_timestamps if calendar_timestamps is not None else frame["timestamp"]
+        boundaries = splitter.boundaries(calendar)
+        labels = splitter.labels(frame["timestamp"], boundaries)
+        partitions = {
+            name: frame.loc[labels.eq(name).fillna(False)].copy()
+            for name in ("train", "validation", "calibration", "test")
+        }
+        empty = [name for name, partition in partitions.items() if partition.empty]
+        if empty:
+            raise ValueError(f"Temporal split produced empty partitions {empty}; use more data")
+        test_calendar = pd.to_datetime(calendar)
+        test_calendar = test_calendar[
+            test_calendar.gt(boundaries.calibration_end + pd.Timedelta(hours=boundaries.gap_hours))
+        ]
         metadata = {
             "protocol": "global_timestamp_train_validation_calibration_test",
-            "evaluation_protocol": "rolling_origin_day_ahead_with_observation_updates",
-            "boundaries": splits.boundaries.to_dict(),
-            "counts": {
-                "train": len(splits.train),
-                "validation": len(splits.validation),
-                "calibration": len(splits.calibration),
-                "test": len(splits.test),
-            },
+            "evaluation_protocol": (
+                "historical_rolling_origin_with_observation_updates"
+                if prediction_task == HISTORICAL_FORECAST_TASK
+                else "legacy_observed_conditions_estimation"
+            ),
+            "boundaries": boundaries.to_dict(),
+            "counts": {name: len(partition) for name, partition in partitions.items()},
             "test_period": {
-                "start": splits.test["timestamp"].min().isoformat(),
-                "end": splits.test["timestamp"].max().isoformat(),
+                "start": test_calendar.min().isoformat(),
+                "end": test_calendar.max().isoformat(),
             },
         }
         return (
-            splits.train,
-            splits.validation,
-            splits.calibration,
-            splits.test,
+            partitions["train"],
+            partitions["validation"],
+            partitions["calibration"],
+            partitions["test"],
             metadata,
         )
 
@@ -339,6 +377,14 @@ class XGBoostTrainer:
             "y_pred": predicted,
             "xgb_pred": predicted,
         })
+        for column in FORECAST_CONTEXT_COLUMNS:
+            if column in normalized:
+                # CNN context serializes a Python float. Promote the same
+                # float32 source value here before CSV rendering so baseline
+                # identity does not depend on float32's shorter display text.
+                result[column] = normalized[column].to_numpy(
+                    dtype=float if column == "persistence_pred" else None
+                )
         return result
 
 

@@ -5,6 +5,10 @@ import gc
 from pathlib import Path
 
 from solar_forecast.models.cnn_bilstm.sequence_config import SequenceConfig
+from solar_forecast.evaluation.forecast_samples import (
+    HISTORICAL_FORECAST_TASK,
+    forecast_evaluation_contract,
+)
 from solar_forecast.models.cnn_bilstm.training_workflow import train_cnn_bilstm
 from solar_forecast.models.shared.checkpoint_store import TrainingCheckpointStore, dataset_signature
 from solar_forecast.models.shared.optuna_study import OptimizationSettings
@@ -61,8 +65,20 @@ class CnnBiLstmTrainer:
             frame = prepared.frame[prepared.frame[entity_column] == first_entity].head(512)
         else:
             frame = prepared.frame.head(512) if smoke else prepared.frame
+        task_contract = forecast_evaluation_contract(
+            config.values.get("prediction_task"),
+            config.values.get("forecast_horizon_hours"),
+            legacy_task="previous_row_sequence_estimation",
+        )
+        historical = task_contract["task"] == HISTORICAL_FORECAST_TASK
+        requested_length = int(config.values.get("sequence_length", 168))
         sequence = SequenceConfig(
-            sequence_length=min(int(config.values.get("sequence_length", 168)), max(2, len(frame) // 5)),
+            # Benchmark candidates must keep their declared lookback. A short
+            # dataset is an invalid candidate, not a silently different model.
+            sequence_length=(
+                requested_length if historical and not smoke
+                else min(requested_length, max(2, len(frame) // 5))
+            ),
             test_size=float(config.values.get("test_fraction", 0.15)),
             val_size=float(config.values.get("validation_fraction", 0.15)),
             calibration_size=float(config.values.get("calibration_fraction", 0.10)),
@@ -72,6 +88,8 @@ class CnnBiLstmTrainer:
             append_missing_indicators=bool(
                 config.values.get("append_missing_indicators", True)
             ),
+            prediction_task=config.values.get("prediction_task"),
+            forecast_horizon_hours=task_contract["horizon_hours"] if historical else 1,
         )
         optimization_settings = OptimizationSettings.from_values(
             config.values,
@@ -112,6 +130,7 @@ class CnnBiLstmTrainer:
             ),
             checkpoint_store=checkpoint_store,
             optimizer_parameter_space=optimizer_values.get("search_space"),
+            seed=int(config.values.get("seed", 42)),
         )
         optimizer_artifact = dict(artifacts.get("optimizer", {}))
         if smoke:
@@ -131,11 +150,9 @@ class CnnBiLstmTrainer:
                 "dataset_fingerprint": dataset_signature(source),
                 "target": target,
                 "target_unit": "MWh",
-                "horizon_hours": int(config.values.get("forecast_horizon_hours", 24)),
                 "test_start": test_period.get("start"),
                 "test_end": test_period.get("end"),
-                "prediction_key": ["timestamp", "plant_id"],
-                "prediction_schema": "solar-forecast-prediction.v1",
+                **task_contract,
             },
             "optimizer": optimizer_artifact,
             "memory_aware_loading": load_report.to_dict(),

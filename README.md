@@ -1,5 +1,7 @@
 # 전국 재생에너지 표준화·태양광 발전량 예측·이상징후 알림 시스템
 
+현재 실측 기반 모델 최적화·하이브리드 채택 작업은 [실행 및 평가 계약](docs/OPTIMIZED_MODEL_BENCHMARK.md)을 따릅니다. `python app.py benchmark --plan`으로 모델별 탐색과 1·24·72시간 비교 설정을 확인할 수 있습니다. 과거 문서의 고정 24시간·동일 특징 조건보다 이 계약이 우선합니다.
+
 ## 코드 구조와 ASOS API 설정
 
 - 전체 폴더·파일·함수 생성 규칙: [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)

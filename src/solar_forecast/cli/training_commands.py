@@ -2,9 +2,26 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from solar_forecast.config_loader import ModelJobConfig, load_model_config
 from solar_forecast.cli.arguments import parse_csv_values, build_sequence_config
+
+
+def handle_benchmark_command(args: argparse.Namespace) -> None:
+    from solar_forecast.evaluation.experiment_config import experiment_plan, load_experiment_config
+    from solar_forecast.jobs.benchmark_job import BenchmarkService
+
+    path = Path(args.config)
+    if args.plan:
+        print(json.dumps(experiment_plan(load_experiment_config(path)), ensure_ascii=False, indent=2))
+        return
+    run_dir = BenchmarkService().run(path, smoke=args.smoke)
+    print(f"Benchmark completed: {run_dir}")
+    if not args.smoke:
+        from solar_forecast.reporting.dashboard_builder import DashboardBuilder
+        from solar_forecast.config_loader import PROJECT_ROOT
+        DashboardBuilder(PROJECT_ROOT).build()
 
 
 def handle_pipeline_command(args: argparse.Namespace) -> None:

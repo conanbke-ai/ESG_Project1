@@ -5,11 +5,13 @@
     const data = await response.json();
     if (view === "analysis") {
       const analysis = data.model_analysis || emptyAnalysis();
-      app.innerHTML = renderAnalysisPage(analysis);
+      app.innerHTML = renderAnalysisPage(analysis, data.model_benchmark);
+      bindBenchmarkEvents(data.model_benchmark);
       bindAnalysisEvents(analysis);
     } else if (view === "forecast") {
       const analysis = data.model_analysis || emptyAnalysis();
-      app.innerHTML = renderForecastPage(analysis);
+      app.innerHTML = renderForecastPage(analysis, data.model_benchmark);
+      bindBenchmarkEvents(data.model_benchmark);
       bindForecastEvents(analysis);
     } else {
       let boundaries = null;

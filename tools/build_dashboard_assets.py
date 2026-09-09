@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DASHBOARD_SOURCE_ORDER = ("context", "formatting", "coverage", "forecast", "analysis", "bootstrap")
+DASHBOARD_SOURCE_ORDER = ("context", "formatting", "coverage", "forecast", "analysis", "benchmark", "bootstrap")
 
 
 def build_dashboard_bundle(project_root: Path = PROJECT_ROOT) -> str:

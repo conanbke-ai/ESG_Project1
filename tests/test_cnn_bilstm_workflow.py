@@ -239,3 +239,53 @@ def test_imputation_owns_buffer_and_preserves_input(read_only, append_missing_in
     assert not np.shares_memory(source, series.features)
     if append_missing_indicators:
         np.testing.assert_array_equal(series.features[:, 2:], [[0, 1], [1, 0], [0, 0], [0, 0]])
+
+
+def test_historical_cnn_context_matches_tabular_forecast_and_excludes_future_inputs():
+    from solar_forecast.evaluation.forecast_samples import build_forecast_samples
+
+    frame = pd.DataFrame({
+        "timestamp": pd.date_range("2025-01-01", periods=300, freq="h"),
+        "plant_id": "plant-a",
+        "weather": np.arange(300, dtype=float),
+        "target": np.arange(300, dtype=float) + 1000,
+    }).drop(index=250)
+    cfg = SequenceConfig(
+        sequence_length=12, batch_size=128, shuffle=False,
+        append_missing_indicators=False,
+        prediction_task="historical_forecast", forecast_horizon_hours=6,
+    )
+    splits = prepare_dataset_splits(frame, "target", ["weather"], cfg, "plant_id", "timestamp")
+    tabular = build_forecast_samples(frame, ["weather"], "target", 6).set_index("timestamp")
+    for dataset in (splits.train.dataset, splits.validation.dataset, splits.calibration.dataset, splits.test.dataset):
+        context = dataset.context_frame(0, len(dataset))
+        for index, row in context.iterrows():
+            features, target = dataset[index]
+            origin = pd.Timestamp(row["forecast_origin"])
+            observed = tabular.loc[pd.Timestamp(row["timestamp"])]
+            assert origin == observed["forecast_origin"]
+            assert float(features[-1, 0]) == observed["weather"]
+            assert float(target) == observed["target"]
+            assert row["persistence_pred"] == observed["persistence_pred"]
+            np.testing.assert_array_equal(np.diff(features[:, 0]), np.ones(11))
+    training = splits.train.dataset.series[0]
+    latest_train_origin = training.origin_positions[training.target_positions["train"]].max()
+    assert not training.train_feature_rows[latest_train_origin + 1:].any()
+    assert splits.split_metadata["boundaries"]["gap_hours"] == 6
+
+
+def test_historical_lookbacks_keep_common_split_calendar():
+    frame = pd.DataFrame({
+        "timestamp": pd.date_range("2025-01-01", periods=300, freq="h"),
+        "plant_id": "plant-a", "weather": np.arange(300), "target": np.arange(300),
+    })
+    metadata = []
+    for length in (6, 48):
+        splits = prepare_dataset_splits(
+            frame, "target", ["weather"],
+            SequenceConfig(sequence_length=length, prediction_task="historical_forecast", forecast_horizon_hours=12),
+            "plant_id", "timestamp",
+        )
+        metadata.append(splits.split_metadata)
+    assert metadata[0]["boundaries"] == metadata[1]["boundaries"]
+    assert metadata[0]["test_period"] == metadata[1]["test_period"]

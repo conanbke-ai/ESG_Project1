@@ -82,7 +82,7 @@
     return [...grouped.values()].sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
   }
 
-  function renderLineChart(source, models, plantLabel) {
+  function renderLineChart(source, models, plantLabel, chartId = "series-chart") {
     const points = source.length <= 168 ? source : Array.from({ length: 168 }, (_, index) => source[Math.round(index * (source.length - 1) / 167)]);
     const visible = models.filter((model) => points.some((point) => isFiniteValue(point.predictions[model.id])));
     const values = points.flatMap((point) => [point.y_true, ...visible.map((model) => point.predictions[model.id])]).filter(isFiniteValue).map(Number);
@@ -105,8 +105,8 @@
     const ticks = [minimum, minimum + (maximum - minimum) / 2, maximum];
     const timeIndexes = [...new Set([0, Math.floor((points.length - 1) / 2), points.length - 1])];
     return `<div class="chart-legend"><span><i class="actual"></i>실제 발전량</span>${visible.map((model, index) => `<span><i class="series-${index % 4}"></i>${escapeHtml(model.label)}</span>`).join("")}</div>
-      <svg class="line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="series-chart-title series-chart-desc">
-        <title id="series-chart-title">${escapeHtml(plantLabel)} 실제 발전량과 예측값</title><desc id="series-chart-desc">실제 발전량과 모델별 예측값을 비교한 선 그래프입니다.</desc>
+      <svg class="line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="${escapeHtml(chartId)}-title ${escapeHtml(chartId)}-desc">
+        <title id="${escapeHtml(chartId)}-title">${escapeHtml(plantLabel)} 실제 발전량과 예측값</title><desc id="${escapeHtml(chartId)}-desc">실제 발전량과 모델별 예측값을 비교한 선 그래프입니다.</desc>
         ${ticks.map((tick) => `<line class="chart-gridline" x1="${pad.left}" x2="${width - pad.right}" y1="${y(tick)}" y2="${y(tick)}"></line><text class="chart-axis-label" x="${pad.left - 10}" y="${y(tick) + 4}" text-anchor="end">${escapeHtml(formatNumber(tick, 2))}</text>`).join("")}
         ${timeIndexes.map((index) => `<text class="chart-axis-label" x="${x(index)}" y="${height - 14}" text-anchor="${index === 0 ? "start" : index === points.length - 1 ? "end" : "middle"}">${escapeHtml(shortTime(points[index].timestamp))}</text>`).join("")}
         <text class="chart-axis-title" x="14" y="${height / 2}" transform="rotate(-90 14 ${height / 2})">발전량(MWh)</text>

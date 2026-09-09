@@ -128,7 +128,11 @@ def _write_model_run(
                     },
                     "metrics": {"mae": 0.2, "rmse": 0.3, "r2": 0.8},
                     "n_test": len(test_frame),
-                    "evaluation_contract": contract,
+                    "evaluation_contract": {
+                        "task": "historical_forecast",
+                        "information_set": "observed_until_origin",
+                        **contract,
+                    },
                     "test_predictions": str(test_predictions),
                     "calibration_predictions": str(calibration_predictions),
                 },
@@ -195,7 +199,8 @@ def test_dashboard_builder_publishes_clean_user_contract_without_registry(tmp_pa
     result = DashboardBuilder(tmp_path, tmp_path / "published").build()
     payload = json.loads(result.data_path.read_text(encoding="utf-8"))
 
-    assert set(payload) == {"meta", "national_inventory", "model_analysis"}
+    assert set(payload) == {"meta", "national_inventory", "model_analysis", "model_benchmark"}
+    assert payload["model_benchmark"]["status"] == "empty"
     assert not {
         "mapping",
         "data_inventory",
@@ -765,7 +770,7 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert "renderForecastPage" in script
     assert "bindForecastEvents" in script
     assert "renderForecastModelOptions" in script
-    assert "현재·미래 운영 예측이 아니라 저장된 Test 평가 결과" in script
+    assert "보유한 실측 데이터의 과거 Test 구간" in script
     assert "plantsForForecast" in script
     assert "normalizeSeries(analysis).forEach" in script
     assert 'toolbar.hidden = state.tab === "comparison"' in script

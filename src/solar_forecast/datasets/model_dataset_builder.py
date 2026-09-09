@@ -291,21 +291,22 @@ class NationwideModelDatasetBuilder:
                 "solar_elevation_sin", "clear_sky_irradiance_proxy", "is_daylight"
             ],
             "feature_selection_evidence": {
-                "protocol": "3-fold purged expanding rolling-origin",
-                "gap_hours": 168,
-                "validation_window_hours": 2160,
-                "reserved_calibration_fraction": 0.10,
-                "reserved_test_fraction": 0.15,
-                "energy_source": "solar only; hydro excluded",
-                "generation_source": "official standardized raw aggregation",
-                "baseline_23_mean_mae": 0.04028393219503514,
-                "selected_26_mean_mae": 0.03903863517315129,
-                "relative_mean_mae_improvement": 0.03091299185174775,
-                "rejected_default_candidates": [
-                    "weather observation masks (30 features)",
-                    "history availability features (33 features)"
-                ],
-                "test_usage": "none; Calibration and Test reserved",
+                "status": "not_validated_for_current_dataset",
+                "selection_basis": "configured_feature_set",
+                "experiment_artifact": None,
+                "dataset_match_verified": False,
+                "metrics": None,
+                "historical_reference": {
+                    "document": "docs/DATA_COLLECTION_AUDIT.md",
+                    "scope": "historical 18-plant solar ablation before the legacy ASOS fail-closed gate",
+                    "current_dataset_evidence": False,
+                },
+                "policy": (
+                    "Building Gold does not run feature selection. Historical ablation results "
+                    "do not establish performance on this dataset. Validation requires an "
+                    "experiment artifact matching the dataset fingerprint, eligible population, "
+                    "features, target alignment, and temporal split."
+                ),
             },
             "history_rule": "lags are >=24h; rolling 7d is shifted by 24h",
             "history_missing_policy": (

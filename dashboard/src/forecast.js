@@ -41,7 +41,7 @@
     ).join("");
   }
 
-  function renderForecastPage(analysis) {
+  function renderForecastPage(analysis, benchmark) {
     const models = forecastModels(analysis);
     if (!models.some((model) => model.id === state.forecastModelId)) {
       state.forecastModelId = models[0]?.id || "all";
@@ -51,7 +51,8 @@
       "정식 평가에 사용된 과거 Test 구간의 실제 발전량과 모델 예측값을 발전소별로 확인합니다.",
       evaluationContext(analysis.evaluation),
     ) +
-      `<p class="forecast-note">현재·미래 운영 예측이 아니라 저장된 Test 평가 결과입니다. 예보 발행시각이 보존된 기상예보 입력이 연결되기 전에는 미래 발전량을 표시하지 않습니다.</p>` +
+      `<p class="forecast-note">보유한 실측 데이터의 과거 Test 구간에서 예측값과 실제 발전량을 비교합니다.</p>` +
+      renderBenchmarkSection(benchmark) +
       (analysis.status !== "ready" && analysis.message ? `<p class="status-message">${escapeHtml(analysis.message)}</p>` : "");
     if (!models.length) {
       return header + `<section id="forecast-content" class="forecast-content">${renderEmptyState("예측 결과가 없습니다", analysis.message || "정식 모델의 Test 예측이 완료되면 발전소별 시계열을 표시합니다.")}</section>`;

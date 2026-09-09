@@ -415,6 +415,13 @@ def train_with_best_trial(
         optimizer_parameter_space=optimizer_parameter_space,
     )
     best_params = study.best_params
+    # The final model starts from the configured seed, independently of how
+    # many trials/pruned epochs happened to precede it.
+    final_seed = settings.seed if settings else 42
+    np.random.seed(final_seed)
+    torch.manual_seed(final_seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(final_seed)
     loaders = prepare_dataset_splits(
         frame, target_column, feature_columns, cfg, entity_column, timestamp_column
     )

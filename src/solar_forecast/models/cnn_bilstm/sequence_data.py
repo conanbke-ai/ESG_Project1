@@ -14,6 +14,11 @@ from solar_forecast.evaluation.temporal_split import (
     TemporalSplitConfig,
     TemporalSplitter,
 )
+from solar_forecast.evaluation.forecast_samples import (
+    HISTORICAL_FORECAST_TASK,
+    forecast_window_positions,
+    validate_observation_frame,
+)
 
 from solar_forecast.models.cnn_bilstm.sequence_config import SequenceConfig
 
@@ -42,6 +47,8 @@ class _EntitySeries:
     region: str
     plant: str
     timestamps: np.ndarray
+    origin_positions: np.ndarray | None = None
+    horizon_hours: int | None = None
 
 
 class LazyWindowSequenceDataset(Dataset):
@@ -69,7 +76,11 @@ class LazyWindowSequenceDataset(Dataset):
         previous = int(self.cumulative[series_index - 1]) if series_index else 0
         target_position = int(self.positions[series_index][idx - previous])
         item = self.series[series_index]
-        window = item.features[target_position - self.sequence_length : target_position]
+        window_end = (
+            int(item.origin_positions[target_position]) + 1
+            if item.origin_positions is not None else target_position
+        )
+        window = item.features[window_end - self.sequence_length : window_end]
         return torch.from_numpy(window).float(), torch.tensor(item.targets[target_position]).float()
 
     def context_frame(self, start: int, stop: int) -> pd.DataFrame:
@@ -89,6 +100,13 @@ class LazyWindowSequenceDataset(Dataset):
                     "plant": item.plant,
                 }
             )
+            if item.origin_positions is not None:
+                origin_position = int(item.origin_positions[target_position])
+                records[-1].update({
+                    "forecast_origin": item.timestamps[origin_position],
+                    "horizon_hours": item.horizon_hours,
+                    "persistence_pred": float(item.targets[origin_position]),
+                })
         return pd.DataFrame.from_records(records)
 
 
@@ -217,10 +235,19 @@ def prepare_dataset_splits(
     """Build one global four-way time split with lazy per-entity windows."""
 
     cfg = config or SequenceConfig()
+    historical = cfg.prediction_task == HISTORICAL_FORECAST_TASK
     if feature_columns is None:
         excluded = {target_column, entity_column, timestamp_column}
         feature_columns = [column for column in frame.columns if column not in excluded]
     feature_columns = list(feature_columns)
+    if historical:
+        if not entity_column or not timestamp_column:
+            raise ValueError("Historical forecasting requires entity_column and timestamp_column")
+        if target_column in feature_columns:
+            raise ValueError("The future target cannot also be an unshifted feature column")
+        frame = validate_observation_frame(
+            frame, entity_column=entity_column, timestamp_column=timestamp_column
+        )
     if entity_column and not timestamp_column:
         raise ValueError("timestamp_column is required when entity_column is used")
     for column in (entity_column, timestamp_column):
@@ -235,7 +262,7 @@ def prepare_dataset_splits(
                 validation_fraction=cfg.val_size,
                 calibration_fraction=cfg.calibration_size,
                 test_fraction=cfg.test_size,
-                gap_hours=cfg.purge_gap_hours,
+                gap_hours=max(cfg.purge_gap_hours, cfg.forecast_horizon_hours) if historical else cfg.purge_gap_hours,
             )
         )
         boundaries = splitter.boundaries(frame[timestamp_column])
@@ -257,10 +284,22 @@ def prepare_dataset_splits(
             continue
         features = group[feature_columns].to_numpy(dtype=np.float32)
         targets = group[target_column].to_numpy(dtype=np.float32)
-        absolute_positions = np.arange(cfg.sequence_length, len(group), dtype=np.int64)
+        origin_positions = None
+        if historical:
+            absolute_positions, origins = forecast_window_positions(
+                group[timestamp_column],
+                horizon_hours=cfg.forecast_horizon_hours,
+                sequence_length=cfg.sequence_length,
+            )
+            finite = np.isfinite(targets[absolute_positions]) & np.isfinite(targets[origins])
+            absolute_positions, origins = absolute_positions[finite], origins[finite]
+            origin_positions = np.full(len(group), -1, dtype=np.int64)
+            origin_positions[absolute_positions] = origins
+        else:
+            absolute_positions = np.arange(cfg.sequence_length, len(group), dtype=np.int64)
         if timestamp_column and splitter and boundaries:
             labels = splitter.labels(
-                pd.Series(group[timestamp_column].to_numpy()[cfg.sequence_length:]), boundaries
+                pd.Series(group[timestamp_column].to_numpy()[absolute_positions]), boundaries
             )
             target_positions = {
                 name: absolute_positions[
@@ -271,6 +310,14 @@ def prepare_dataset_splits(
             train_rows = pd.to_datetime(group[timestamp_column], errors="coerce").le(
                 boundaries.train_end
             ).to_numpy()
+            if historical:
+                # Fit medians only on observations actually used by training
+                # windows, including neither held-out origins nor future labels.
+                train_origins = origin_positions[target_positions["train"]]
+                usage = np.zeros(len(group) + 1, dtype=np.int64)
+                np.add.at(usage, train_origins - cfg.sequence_length + 1, 1)
+                np.add.at(usage, train_origins + 1, -1)
+                train_rows = np.cumsum(usage[:-1]) > 0
         else:
             relative = _position_labels(len(absolute_positions), cfg)
             target_positions = {
@@ -304,6 +351,8 @@ def prepare_dataset_splits(
                     if timestamp_column
                     else np.arange(len(group), dtype=np.int64)
                 ),
+                origin_positions=origin_positions,
+                horizon_hours=cfg.forecast_horizon_hours if historical else None,
             )
         )
     if not series:
@@ -338,7 +387,13 @@ def prepare_dataset_splits(
     }
     split_metadata: dict[str, object] = {
         "protocol": "global_timestamp_train_validation_calibration_test",
-        "evaluation_protocol": "rolling_origin_day_ahead_with_observation_updates",
+        "evaluation_protocol": (
+            "historical_rolling_origin_with_observation_updates"
+            if historical else "legacy_previous_row_sequence_estimation"
+        ),
+        "forecast_horizon_hours": cfg.forecast_horizon_hours if historical else None,
+        "sequence_length": cfg.sequence_length,
+        "continuous_hourly_windows_required": historical,
         "fractions": {
             "train": 1 - cfg.val_size - cfg.calibration_size - cfg.test_size,
             "validation": cfg.val_size,

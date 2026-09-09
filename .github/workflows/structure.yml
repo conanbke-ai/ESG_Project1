@@ -22,7 +22,7 @@ jobs:
 
   model-regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       CUDA_VISIBLE_DEVICES: ''
       OMP_NUM_THREADS: '1'
@@ -34,11 +34,6 @@ jobs:
         with:
           path: candidate
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/checkout@v4
-        with:
-          # Last implementation before source reorganization, including KOSPO fix.
-          ref: 477b01e9e4944330b7b17695b31d40c800819bf3
-          path: baseline
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -51,19 +46,21 @@ jobs:
       - name: Run complete regression suite
         working-directory: candidate
         run: python -m pytest -q --junitxml=../test-results.xml
-      - name: Compare isolated before and after training
-        if: ${{ !cancelled() && steps.model-environment.outcome == 'success' }}
-        run: >-
-          python candidate/tools/verify_model_reorganization.py
-          --baseline-root baseline --candidate-root candidate
-          --output-dir model-parity
+      - name: Run bounded benchmark on retained official observations
+        working-directory: candidate
+        run: python tools/run_observed_benchmark_pilot.py
       - name: Save validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: model-reorganization-evidence
+          name: solar-benchmark-evidence
           path: |
             runtime-versions.txt
             test-results.xml
-            model-parity/
+            candidate/artifacts/verification/observed_benchmark/observed_pilot_report.json
+            candidate/artifacts/verification/observed_benchmark/pilot_experiment.json
+            candidate/artifacts/verification/observed_benchmark/observed_plant_year.csv
+            candidate/artifacts/verification/observed_benchmark/provenance/
+            candidate/artifacts/benchmarks/
+            candidate/dashboard/data/dashboard_data.json
           retention-days: 14

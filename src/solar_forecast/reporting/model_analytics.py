@@ -343,6 +343,8 @@ class ModelAnalyticsService:
             "test_start",
             "test_end",
             "prediction_key",
+            "task",
+            "information_set",
         )
         if any(contract.get(key) in (None, "") for key in required):
             return None
