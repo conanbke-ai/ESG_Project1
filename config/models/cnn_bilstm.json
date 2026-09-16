@@ -71,6 +71,13 @@
     "tuning_train_max_sequences": 250000,
     "tuning_validation_max_sequences": 100000,
     "search_space": {
+      "readout": {
+        "type": "categorical",
+        "choices": [
+          "final_hidden",
+          "last_output"
+        ]
+      },
       "cnn_channels": {
         "type": "int",
         "low": 16,

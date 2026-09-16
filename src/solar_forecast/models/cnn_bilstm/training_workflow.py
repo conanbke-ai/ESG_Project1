@@ -220,7 +220,9 @@ def train_cnn_bilstm(
             frame, target_column, feature_columns, cfg, entity_column, timestamp_column
         )
         train_loader, val_loader, test_loader = loaders.train, loaders.validation, loaders.test
-        model_cfg = CnnBiLstmNetworkConfig(n_features=loaders.n_features)
+        model_cfg = CnnBiLstmNetworkConfig(
+            n_features=loaders.n_features, readout="final_hidden"
+        )
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = build_cnn_bilstm_network(model_cfg, device=device)
         criterion = torch.nn.MSELoss()
@@ -289,7 +291,12 @@ def train_cnn_bilstm(
                 completed=True,
             )
         metrics = evaluate_cnn_bilstm_loader(model, test_loader, criterion, device)
-        result = {"model": model, "model_config": model_cfg, "metrics": metrics, "best_params": {}}
+        result = {
+            "model": model,
+            "model_config": model_cfg,
+            "metrics": metrics,
+            "best_params": {"readout": model_cfg.readout},
+        }
         evaluation_loaders = loaders
 
     preprocessing_state = (

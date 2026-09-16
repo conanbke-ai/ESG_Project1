@@ -1,10 +1,17 @@
 from pathlib import Path
+import json
 import re
 
 import numpy as np
+import optuna
 import pandas as pd
 import pytest
+import torch
 
+from solar_forecast.models.cnn_bilstm.network import CnnBiLstmNetworkConfig
+from solar_forecast.models.cnn_bilstm.network import build_cnn_bilstm_network
+from solar_forecast.models.cnn_bilstm.optimization import optimize_cnn_bilstm
+from solar_forecast.models.cnn_bilstm.optimization import train_with_best_trial
 from solar_forecast.models.cnn_bilstm.sequence_config import SequenceConfig
 from solar_forecast.models.cnn_bilstm.sequence_data import LazyWindowSequenceDataset
 from solar_forecast.models.cnn_bilstm.sequence_data import _EntitySeries
@@ -15,6 +22,7 @@ from solar_forecast.models.cnn_bilstm.evaluation import compare_checkpoints
 from solar_forecast.models.cnn_bilstm.evaluation import detect_outliers_from_predictions
 from solar_forecast.models.cnn_bilstm.evaluation import evaluate_and_analyze
 from solar_forecast.models.cnn_bilstm.training_workflow import train_cnn_bilstm
+from solar_forecast.models.shared.optuna_study import OptimizationSettings
 
 
 def _dummy_frame(n_rows: int = 120, n_features: int = 3) -> pd.DataFrame:
@@ -71,6 +79,9 @@ def test_train_and_save_creates_timestamped_dir(tmp_path):
         ]
     ).issubset(predictions.columns)
     assert predictions["split"].eq("test").all()
+    checkpoint = torch.load(run_dir / "cnn_bilstm.pt", weights_only=True)
+    assert checkpoint["config"]["readout"] == "final_hidden"
+    assert json.loads((run_dir / "best_params.json").read_text())["readout"] == "final_hidden"
 
 
 def test_compare_checkpoints_reads_nested_runs(tmp_path):
@@ -289,3 +300,122 @@ def test_historical_lookbacks_keep_common_split_calendar():
         metadata.append(splits.split_metadata)
     assert metadata[0]["boundaries"] == metadata[1]["boundaries"]
     assert metadata[0]["test_period"] == metadata[1]["test_period"]
+
+
+@pytest.mark.parametrize("layers", [1, 2])
+def test_final_hidden_readout_uses_both_top_layer_final_states(layers):
+    torch.manual_seed(17)
+    config = CnnBiLstmNetworkConfig(
+        n_features=3, cnn_channels=4, lstm_hidden=5,
+        lstm_layers=layers, dense_units=4, dropout=0.0, readout="final_hidden",
+    )
+    model = build_cnn_bilstm_network(config).eval()
+    # Expose the sequence summary directly, independently of dense head weights.
+    model.head = torch.nn.Identity()
+    inputs = torch.randn(2, 7, 3)
+    with torch.no_grad():
+        convolved = model.conv(inputs.transpose(1, 2)).transpose(1, 2)
+        output, (hidden, _) = model.lstm(convolved)
+        actual = model(inputs)
+    torch.testing.assert_close(actual[:, :5], hidden[-2], rtol=0, atol=0)
+    torch.testing.assert_close(actual[:, 5:], hidden[-1], rtol=0, atol=0)
+    torch.testing.assert_close(actual[:, 5:], output[:, 0, 5:], rtol=0, atol=0)
+    assert not torch.allclose(actual[:, 5:], output[:, -1, 5:])
+
+
+def test_omitted_readout_retains_legacy_last_output_semantics():
+    torch.manual_seed(19)
+    historical_config = {
+        "n_features": 3, "cnn_channels": 4, "kernel_size": 3,
+        "lstm_hidden": 5, "lstm_layers": 2, "dense_units": 4, "dropout": 0.0,
+    }
+    model = build_cnn_bilstm_network(CnnBiLstmNetworkConfig(**historical_config)).eval()
+    inputs = torch.randn(2, 7, 3)
+    with torch.no_grad():
+        convolved = model.conv(inputs.transpose(1, 2)).transpose(1, 2)
+        output, _ = model.lstm(convolved)
+        expected = model.head(output[:, -1]).squeeze(-1)
+        actual = model(inputs)
+    assert model.readout == "last_output"
+    torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("readout", ["last_output", "final_hidden"])
+def test_checkpoint_preserves_readout_and_exact_predictions(tmp_path, readout):
+    torch.manual_seed(23)
+    config = CnnBiLstmNetworkConfig(
+        n_features=3, cnn_channels=4, lstm_hidden=5,
+        lstm_layers=2, dense_units=4, dropout=0.0, readout=readout,
+    )
+    model = build_cnn_bilstm_network(config).eval()
+    inputs = torch.randn(2, 7, 3)
+    path = tmp_path / "model.pt"
+    torch.save({"config": config.__dict__, "model_state": model.state_dict()}, path)
+    checkpoint = torch.load(path, weights_only=True)
+    restored = build_cnn_bilstm_network(CnnBiLstmNetworkConfig(**checkpoint["config"])).eval()
+    restored.load_state_dict(checkpoint["model_state"])
+    with torch.no_grad():
+        torch.testing.assert_close(restored(inputs), model(inputs), rtol=0, atol=0)
+    assert restored.readout == readout
+
+
+def test_network_rejects_unknown_readout():
+    with pytest.raises(ValueError, match="readout"):
+        CnnBiLstmNetworkConfig(n_features=3, readout="mean")
+
+
+def _tiny_network_search_space(readout=None):
+    values = {
+        "cnn_channels": 4, "kernel_size": 3, "lstm_hidden": 4,
+        "lstm_layers": 1, "dense_units": 4, "dropout": 0.0,
+        "lr": 0.001, "weight_decay": 0.0,
+    }
+    space = {name: {"type": "fixed", "value": value} for name, value in values.items()}
+    if readout is not None:
+        space["readout"] = {"type": "categorical", "choices": [readout]}
+    return space
+
+
+@pytest.mark.parametrize("readout", [None, "last_output", "final_hidden"])
+def test_trial_and_final_fit_use_the_same_selected_readout(readout):
+    result = train_with_best_trial(
+        _dummy_frame(), "target", feature_columns=["f0", "f1", "f2"],
+        sequence_config=_short_seq_config(), n_trials=1, trial_epochs=1,
+        epochs=1, device=torch.device("cpu"),
+        optimizer_parameter_space=_tiny_network_search_space(readout),
+    )
+    expected = readout or "final_hidden"
+    assert result["study"].best_params["readout"] == expected
+    assert result["best_params"]["readout"] == expected
+    assert result["model_config"].readout == expected
+    assert result["model"].readout == expected
+
+
+def test_readout_study_does_not_reuse_legacy_or_different_readout_trials(tmp_path):
+    storage_path = tmp_path / "optimizer.db"
+    settings = OptimizationSettings(
+        enabled=True, study_name="cnn_legacy", storage_path=storage_path,
+        max_trials=1, timeout_seconds=60, seed=42, startup_trials=0,
+        pruner_startup_trials=0, pruner_warmup_steps=0,
+    )
+    legacy = optuna.create_study(
+        study_name=settings.study_name, storage=f"sqlite:///{storage_path}",
+    )
+    legacy.add_trial(optuna.trial.create_trial(value=-123.0))
+    common = {
+        "feature_columns": ["f0", "f1", "f2"],
+        "sequence_config": _short_seq_config(), "trial_epochs": 1,
+        "settings": settings, "device": torch.device("cpu"),
+    }
+    final_hidden = optimize_cnn_bilstm(
+        _dummy_frame(), "target", artifact_dir=tmp_path / "final_hidden",
+        optimizer_parameter_space=_tiny_network_search_space(), **common,
+    )
+    last_output = optimize_cnn_bilstm(
+        _dummy_frame(), "target", artifact_dir=tmp_path / "last_output",
+        optimizer_parameter_space=_tiny_network_search_space("last_output"), **common,
+    )
+    assert len({legacy.study_name, final_hidden.study_name, last_output.study_name}) == 3
+    assert legacy.best_value == -123.0
+    assert final_hidden.best_params["readout"] == "final_hidden"
+    assert last_output.best_params["readout"] == "last_output"

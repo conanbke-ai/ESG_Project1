@@ -23,6 +23,13 @@ class CnnBiLstmNetworkConfig:
     lstm_layers: int = 1
     dense_units: int = 64
     dropout: float = 0.1
+    # Missing fields in historical checkpoints retain their original forward
+    # semantics. New training explicitly selects final_hidden.
+    readout: str = "last_output"
+
+    def __post_init__(self) -> None:
+        if self.readout not in {"last_output", "final_hidden"}:
+            raise ValueError("readout must be last_output or final_hidden")
 
 
 class CNNBiLSTM(nn.Module):
@@ -30,6 +37,7 @@ class CNNBiLSTM(nn.Module):
 
     def __init__(self, config: CnnBiLstmNetworkConfig):
         super().__init__()
+        self.readout = config.readout
         padding = config.kernel_size // 2
         self.conv = nn.Sequential(
             nn.Conv1d(
@@ -64,9 +72,14 @@ class CNNBiLSTM(nn.Module):
         x = x.transpose(1, 2)  # (batch, features, seq_len)
         x = self.conv(x)
         x = x.transpose(1, 2)  # (batch, seq_len, channels)
-        output, _ = self.lstm(x)
-        last_step = output[:, -1]
-        return self.head(last_step).squeeze(-1)
+        output, (hidden, _) = self.lstm(x)
+        if self.readout == "final_hidden":
+            # The top layer's final states summarize the entire input in both
+            # directions. output[:, -1] has only the reverse initial step.
+            summary = torch.cat((hidden[-2], hidden[-1]), dim=1)
+        else:
+            summary = output[:, -1]
+        return self.head(summary).squeeze(-1)
 
 
 def build_cnn_bilstm_network(config: CnnBiLstmNetworkConfig, device: Optional[torch.device] = None) -> CNNBiLSTM:

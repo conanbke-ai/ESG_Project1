@@ -1,7 +1,7 @@
 {
   "contract": "solar-optimized-experiment.v1",
   "name": "historical_observed_solar_benchmark",
-  "description": "실측 자료로 과거 예측을 재현하고 모델별 특징·입력 길이·하이퍼파라미터를 검증 구간에서 선택합니다.",
+  "description": "기존 CNN 성능의 동일 재현을 선행 조건으로 두지 않고, 실측 자료에서 모델별 특징·구조·입력 길이·학습 설정을 독립 개선한 뒤 같은 예측 기간끼리 비교합니다.",
   "seed": 42,
   "input_dataset": "file/standardized/model_ready_parts",
   "output_root": "artifacts/benchmarks",

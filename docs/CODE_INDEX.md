@@ -747,6 +747,7 @@ models/cnn_bilstm 패키지의 공개 import 경계; 실행은 명시적 명령�
 CNN-BiLSTM 신경망 구조·층 구성·forward와 네트워크 설정
 
 - `CnnBiLstmNetworkConfig` — Configuration for the CNN-BiLSTM architecture.
+- `CnnBiLstmNetworkConfig.__post_init__(self)`
 - `CNNBiLSTM` — 1D CNN followed by a bidirectional LSTM for sequence regression.
 - `CNNBiLSTM.__init__(self, config: CnnBiLstmNetworkConfig)`
 - `CNNBiLSTM.forward(self, x: torch.Tensor)`
@@ -1438,7 +1439,7 @@ Reject real retraining drift while allowing timestamp/output relocation.
 
 자동 검증 파일.
 
-`_dummy_frame`, `_short_seq_config`, `test_train_and_save_creates_timestamped_dir`, `test_compare_checkpoints_reads_nested_runs`, `test_evaluate_and_analyze_saves_outputs`, `test_entity_sequences_never_cross_plants_and_split_chronologically`, `test_anomaly_threshold_is_frozen_from_calibration_not_test_ranking`, `test_lazy_windows_keep_all_missing_train_feature_as_zero_plus_mask`, `test_imputation_owns_buffer_and_preserves_input`, `test_historical_cnn_context_matches_tabular_forecast_and_excludes_future_inputs`, `test_historical_lookbacks_keep_common_split_calendar`
+`_dummy_frame`, `_short_seq_config`, `test_train_and_save_creates_timestamped_dir`, `test_compare_checkpoints_reads_nested_runs`, `test_evaluate_and_analyze_saves_outputs`, `test_entity_sequences_never_cross_plants_and_split_chronologically`, `test_anomaly_threshold_is_frozen_from_calibration_not_test_ranking`, `test_lazy_windows_keep_all_missing_train_feature_as_zero_plus_mask`, `test_imputation_owns_buffer_and_preserves_input`, `test_historical_cnn_context_matches_tabular_forecast_and_excludes_future_inputs`, `test_historical_lookbacks_keep_common_split_calendar`, `test_final_hidden_readout_uses_both_top_layer_final_states`, `test_omitted_readout_retains_legacy_last_output_semantics`, `test_checkpoint_preserves_readout_and_exact_predictions`, `test_network_rejects_unknown_readout`, `_tiny_network_search_space`, `test_trial_and_final_fit_use_the_same_selected_readout`, `test_readout_study_does_not_reuse_legacy_or_different_readout_trials`
 
 ### [tests/test_collector_admission.py](../tests/test_collector_admission.py)
 

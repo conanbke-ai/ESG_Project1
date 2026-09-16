@@ -35,6 +35,9 @@ from solar_forecast.models.cnn_bilstm.network import (
 )
 
 
+_DEFAULT_READOUT_SEARCH = {"type": "categorical", "choices": ["final_hidden"]}
+
+
 def train_cnn_bilstm_epoch(
     model: CNNBiLSTM,
     loader: DataLoader,
@@ -136,6 +139,9 @@ def suggest_cnn_bilstm_config(
                 {"type": "float", "low": 0.05, "high": 0.4},
             )
         ),
+        readout=str(
+            suggest_parameter(trial, "readout", search_space, _DEFAULT_READOUT_SEARCH)
+        ),
     )
 
 
@@ -204,6 +210,14 @@ def optimize_cnn_bilstm(
     n_features = loaders.n_features
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
     search_space = optimizer_parameter_space or {}
+    if settings is not None:
+        # Old completed trials did not record the readout and must not supply
+        # objectives for a newly interpreted architecture. Also isolate studies
+        # whose categorical readout choices change.
+        settings = settings.scoped(stable_signature({
+            "network_contract": "cnn_bilstm_readout.v1",
+            "readout": search_space.get("readout", _DEFAULT_READOUT_SEARCH),
+        }))
     if min(trial_epochs, early_stopping_patience) < 1:
         raise ValueError("optimizer trial epochs and patience must be positive")
 
@@ -414,7 +428,8 @@ def train_with_best_trial(
         checkpoint_store=checkpoint_store,
         optimizer_parameter_space=optimizer_parameter_space,
     )
-    best_params = study.best_params
+    best_params = dict(study.best_params)
+    best_params.setdefault("readout", "final_hidden")
     # The final model starts from the configured seed, independently of how
     # many trials/pruned epochs happened to precede it.
     final_seed = settings.seed if settings else 42
@@ -433,6 +448,7 @@ def train_with_best_trial(
         lstm_layers=best_params["lstm_layers"],
         dense_units=best_params["dense_units"],
         dropout=best_params["dropout"],
+        readout=best_params["readout"],
     )
 
     train_loader = loaders.train
