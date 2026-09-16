@@ -141,9 +141,9 @@
     return isFiniteValue(value) ? Number(value) : null;
   }
 
-  function metricText(key, value) {
+  function metricText(key, value, digits) {
     const definition = metrics[key] || metrics.mae;
-    return isFiniteValue(value) ? `${formatNumber(value, definition.digits)}${definition.unit ? ` ${definition.unit}` : ""}` : "-";
+    return isFiniteValue(value) ? `${formatNumber(value, digits ?? definition.digits)}${definition.unit ? ` ${definition.unit}` : ""}` : "-";
   }
 
   function metricHint(key) {
