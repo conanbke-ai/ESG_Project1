@@ -2,13 +2,15 @@
 
 목표는 코드 이름·배치 변경이 같은 입력의 학습 결과를 바꾸었는지 직접 확인하는 것이다. 전체 회귀 테스트 성공, 수치 동등성, 과거 실데이터 성능 재현은 각각 별개의 결과로 기록한다.
 
-## 자동 실행하는 검증
+## 구조 정비 당시 실행한 검증
 
-`.github/workflows/structure.yml`의 `model-regression` job은 같은 Python 3.11 CPU 환경에서 전체 pytest와 변경 전후 비교를 실행한다. 변경 전 기준은 KOSPO 교정 직후이자 구조 정비 직전인 commit `477b01e9e4944330b7b17695b31d40c800819bf3`이다.
+구조 정비 단계의 [CI 34203632382](https://github.com/conanbke-ai/ESG_Project1/actions/runs/34203632382)는 같은 Python 3.11 CPU 환경에서 전체 pytest와 변경 전후 비교를 실행했다. 변경 전 기준은 KOSPO 교정 직후인 `477b01e9e4944330b7b17695b31d40c800819bf3`, 비교 대상은 `75f4eed86285c3ce8912d66e05946c55c540eba0`이었다. 960행 합성 입력과 작은 고정 학습에서 예측·가중치 차이가 0이었다는 결과이며 원래 실데이터 모델의 정확도 검증은 아니다.
+
+이후 예측 시점과 입력 정보 계약을 수정했으므로 현재 코드에 수치 동등성을 요구하지 않는다. 현재 `.github/workflows/structure.yml`은 전체 pytest와 실측 제한 실험·저장 모델 재검증을 실행하고 `solar-benchmark-evidence`를 남긴다. 최신 설계는 [실행 및 평가 계약](OPTIMIZED_MODEL_BENCHMARK.md), 완료한 실측 실행은 [결과 기록](OBSERVED_BENCHMARK_RESULT.md)을 따른다.
 
 `tools/verify_model_reorganization.py`는 두 checkout을 별도 프로세스에서 읽는다. Python·NumPy·PyTorch 난수와 CPU 스레드를 고정하고, Optuna·checkpoint 재개를 끈 작은 학습 조건을 양쪽에 동일하게 적용한다. 검증용 데이터는 한 번 생성한 같은 CSV byte를 사용한다. 기본 실행의 데이터는 합성이며 실제 발전소·ASOS 관측 실적이 아니다. 기존 Gold, 기본 모델 설정, 보관 모델 파일을 변경하지 않는다.
 
-검증 산출물은 CI의 `model-reorganization-evidence`에 저장한다. 입력·설정 hash, 코드 revision, 실행 환경, 분할별 예측과 비교 보고서를 함께 보관한다. 수치 오차 허용값은 절대·상대 각각 `1e-6`이며 실제 최대 차이도 보고한다.
+당시 검증 산출물 이름은 `model-reorganization-evidence`였다. 입력·설정 hash, 코드 revision, 실행 환경, 분할별 예측과 비교 보고서를 함께 기록했다. 수치 오차 허용값은 절대·상대 각각 `1e-6`이다. 아래 실행기는 같은 예측 의미를 가진 두 버전의 구조 변경을 비교할 때 사용한다.
 
 ```powershell
 python tools/verify_model_reorganization.py --baseline-root C:\ESG_Project1_before --candidate-root C:\ESG_Project1 --output-dir artifacts/verification/model_parity_run1
@@ -38,8 +40,8 @@ python app.py compare-predictions C:\ESG_Project1_before\artifacts\models\cnn_bi
 
 ## 과거 성능 재현에 필요한 기준
 
-현재 저장소의 CNN은 Conv1d → BiLSTM → 단일 출력이고 원시 `generation_mwh`를 학습한다. 과거 메모에 있는 다른 층 크기, 24개 동시 출력, log1p 변환 모델과 같다고 가정하지 않는다. 또한 현재 고정 학습 경로는 설정의 seed를 직접 적용하지 않으므로 이 비교 실행기가 프로세스 시작 때 난수를 고정한다.
+현재 저장소의 CNN은 Conv1d → BiLSTM → 단일 출력이고 원시 `generation_mwh`를 학습한다. 과거 commit `92573c04b2d79543c2e271c41a8dbf6e87d0cf52`에 보관된 다른 층 크기, 24개 동시 출력, log1p 변환 모델과 같지 않다. 현재 학습 경로는 설정 seed를 적용하고 최종 학습 전에 난수 상태를 다시 고정한다.
 
-`horizon_hours=24`라는 manifest 필드만으로 24시간 동시 예측이 검증되었다고 판단하지 않는다. 현재 시퀀스는 직전 관측 구간 다음의 단일 정답을 예측한다. 실제 예보 시점에서 사용할 수 없는 미래 관측값을 사용하지 않았는지는 운영 평가에서 별도로 확인해야 한다.
+`horizon_hours=24`라는 manifest 필드만으로 24시간 동시 예측이 검증되었다고 판단하지 않는다. 현재 `historical_forecast`는 시작시각 `t−h`까지의 관측자료로 목표시각 `t`의 단일 시간 발전량을 예측한다. 관측의 실제 API 발행 지연은 재현하지 않는다.
 
-과거 성능을 재현할 때는 백업의 모델 checkpoint, 전처리·target 변환 상태, 특징 순서, 원래 모델 설정, 고정 Gold와 manifest, 동일 테스트 구간과 예측 CSV, 당시 실행 환경을 기준으로 삼는다. ASOS를 추가해 데이터 구성이 바뀐 결과는 기존 데이터에서의 코드 동등성 결과와 따로 기록한다. 모델과 Gold가 현재 작업 환경에 없으면 그 성능은 미검증 상태로 남긴다.
+과거 성능을 재현할 때는 모델 checkpoint, 전처리·target 변환 상태, 특징 순서, 원래 모델 설정, 동일 테스트 구간과 예측 CSV, 당시 실행 환경을 기준으로 삼는다. 위 과거 commit에서 저장 모델과 노트북을 확인했지만 원래 학습·최종 Test 데이터까지 맞춘 재현은 완료하지 않았다. ASOS를 추가해 데이터 구성이 바뀐 결과와 새 모델 파일의 예측 재현을 과거 성능 재현으로 대신하지 않는다.

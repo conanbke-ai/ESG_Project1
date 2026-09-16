@@ -64,6 +64,8 @@ python app.py serve-dashboard
 
 ## 실데이터 실행 검증의 범위
 
+완료한 실행의 입력·탐색 예산·점수·저장 모델 재검증은 [공식 실측 자료 실행 기록](OBSERVED_BENCHMARK_RESULT.md)에서 확인합니다. 설정에 정의한 전체 탐색과 실제 완료한 제한 실험을 구분합니다.
+
 CI의 `tools/run_observed_benchmark_pilot.py`는 저장소의 공식 원본으로 Gold를 생성하고, 관측 충족률과 연속 입력창 충족률 기준으로 발전소 1개 연도를 선정합니다. 실제 자료로 1/24시간, CNN 입력창 24/168시간을 실행하되 CPU 자원과 탐색 횟수를 제한합니다. `tools/verify_benchmark_model_artifacts.py`는 저장된 가중치·전처리값을 다시 불러와 재학습 없이 전체 Test 예측을 재현합니다. 화면에도 `bounded_observed_pilot`로 표시합니다. 이는 실데이터 연결·학습·평가의 제한된 실험이며 전체 발전소의 충분한 최적화 결과는 아닙니다.
 
 기존 구조 변경의 합성 데이터 동등성 CI는 새 예측 설계의 정확도 근거가 아닙니다. 과거 `92573c04`에 보관된 CNN/XGBoost checkpoint와 원래 평가 자료의 성능 재현은 별도 과제이며 이번 결과와 동일하다고 주장하지 않습니다. `controlled.json` 등 과거 실험 문서는 실행 가능한 현재 실험 스키마가 아니므로 `benchmark`가 거절합니다.
