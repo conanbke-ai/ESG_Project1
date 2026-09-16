@@ -21,7 +21,7 @@ jobs:
       - run: node --check dashboard/assets/dashboard.js
 
   model-regression:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       CUDA_VISIBLE_DEVICES: ''
@@ -36,12 +36,13 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.11.16'
       - name: Install shared CPU model environment
         id: model-environment
         run: |
-          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-          python -m pip install -e './candidate[dev,geo]'
+          python -m pip install 'torch==2.14.0+cpu' --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -c candidate/config/environments/benchmark_cpu_py311.constraints.txt -e './candidate[dev,geo]'
+          python -m pip check
           python -m pip freeze > runtime-versions.txt
       - name: Run complete regression suite
         working-directory: candidate
@@ -49,6 +50,9 @@ jobs:
       - name: Run bounded benchmark on retained official observations
         working-directory: candidate
         run: python tools/run_observed_benchmark_pilot.py
+      - name: Verify fresh retraining in the same recorded environment
+        working-directory: candidate
+        run: python tools/verify_benchmark_retraining.py
       - name: Save validation evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -60,6 +64,7 @@ jobs:
             candidate/artifacts/verification/observed_benchmark/observed_pilot_report.json
             candidate/artifacts/verification/observed_benchmark/pilot_experiment.json
             candidate/artifacts/verification/observed_benchmark/model_artifact_replay.json
+            candidate/artifacts/verification/observed_benchmark/retraining/
             candidate/artifacts/verification/observed_benchmark/observed_plant_year.csv
             candidate/artifacts/verification/observed_benchmark/provenance/
             candidate/artifacts/benchmarks/

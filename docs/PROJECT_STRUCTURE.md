@@ -11,6 +11,7 @@
 | `config/models/<model_id>.json` | 모델별 학습 조건 | 구현 폴더와 같은 모델 ID를 쓴다. 비밀키를 넣지 않는다. |
 | `config/experiments/` | 비교 실험·후보 연구 조건 | 구현 완료 여부와 실험 정의를 구분한다. 후보 이름만으로 구현된 모델이라고 표시하지 않는다. |
 | `config/architecture/` | 파일 역할과 이전 경로 대응표 | 새 모듈은 `modules.json`에 목적을 등록한다. |
+| `config/environments/` | 검증 환경의 패키지 버전 제약 | CPU·Python 대상과 근거 CI를 파일에 기록한다. 런타임 CPU 정보는 실행 보고서에 둔다. |
 | `config/*.json` | 검토한 발전소·기상 연결·행정구역·수신 경로 계약 | 설정의 근거와 버전을 유지한다. 실제 연락처는 로컬 설정에 둔다. |
 | `file/solar_data_file/` | 기존 공식 발전량 원본 보관 | 원본 이름과 byte를 보존한다. Python 파일을 만들지 않는다. |
 | `file/raw/` | 새로 수집한 Bronze와 수집 실행 manifest | 공급자 하위에 원본을 보관한다. ASOS는 관측소·기간·응답 snapshot으로 나눈다. |
@@ -29,7 +30,7 @@
 | `artifacts/evaluation/features/` | 특징 비교 평가 결과 | 기존 `output/evaluation/features/` 대신 사용한다. |
 | `artifacts/verification/`, `artifacts/notifications/` | 연결 검증 보고서·알림 outbox | 각 job manifest/DB 계약을 유지한다. |
 | `artifacts/legacy/`, `output/` | 이전 실행 결과 | 기존 파일을 임의 삭제하거나 새 모델 소스로 취급하지 않는다. |
-| `dashboard/src/` | 사람이 수정하는 화면별 JavaScript 원본 | `context`, `formatting`, `coverage`, `forecast`, `analysis`, `bootstrap`의 역할을 지킨다. |
+| `dashboard/src/` | 사람이 수정하는 화면별 JavaScript 원본 | `context`, `formatting`, `coverage`, `forecast`, `analysis`, `benchmark`, `bootstrap`의 역할을 지킨다. |
 | `dashboard/assets/dashboard.js` | 배포용으로 생성한 JavaScript | 직접 수정하지 않는다. `tools/build_dashboard_assets.py`로 만든다. |
 | `dashboard/assets/dashboard.css`, `dashboard/*.html` | 화면 스타일과 실제 정적 화면 진입점 | 화면 내용·스타일 변경은 이곳에서 한다. |
 | `dashboard/data/` | 화면이 읽는 생성 JSON·GeoJSON | Python reporting 결과다. 모델 구현이 아니다. |

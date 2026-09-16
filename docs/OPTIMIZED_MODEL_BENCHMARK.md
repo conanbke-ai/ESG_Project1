@@ -68,6 +68,8 @@ python app.py serve-dashboard
 
 CI의 `tools/run_observed_benchmark_pilot.py`는 저장소의 공식 원본으로 Gold를 생성하고, 관측 충족률과 연속 입력창 충족률 기준으로 발전소 1개 연도를 선정합니다. 실제 자료로 1/24시간, CNN 입력창 24/168시간을 실행하되 CPU 자원과 탐색 횟수를 제한합니다. `tools/verify_benchmark_model_artifacts.py`는 저장된 가중치·전처리값을 다시 불러와 재학습 없이 전체 Test 예측을 재현합니다. 화면에도 `bounded_observed_pilot`로 표시합니다. 이는 실데이터 연결·학습·평가의 제한된 실험이며 전체 발전소의 충분한 최적화 결과는 아닙니다.
 
+저장 모델 재예측과 새로 학습한 모델의 재현성은 별개입니다. CI는 `config/environments/benchmark_cpu_py311.constraints.txt`로 CPU 패키지 버전을 고정하고 실제 CPU/Torch 연산 설정을 남깁니다. 이어 `tools/verify_benchmark_retraining.py`가 같은 실측 입력으로 새 체크포인트·Optuna DB에서 학습을 반복해 모든 후보의 예측과 선택을 대조합니다. 이미 본 Test의 반복은 재현성 검사이며 새로운 확증 평가가 아닙니다. 실행 환경을 바꾼 CNN 결과가 달랐던 기록과 한계도 [실행 기록](OBSERVED_BENCHMARK_RESULT.md)에 보존합니다.
+
 기존 구조 변경의 합성 데이터 동등성 CI는 새 예측 설계의 정확도 근거가 아닙니다. 과거 `92573c04`에 보관된 CNN/XGBoost checkpoint와 원래 평가 자료의 성능 재현은 별도 과제이며 이번 결과와 동일하다고 주장하지 않습니다. `controlled.json` 등 과거 실험 문서는 실행 가능한 현재 실험 스키마가 아니므로 `benchmark`가 거절합니다.
 
 ASOS 키는 프로젝트 루트 `.env.local`의 `KMA_ASOS_SERVICE_KEY`에 둡니다. endpoint는 `https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList`입니다. 저장된 과거 관측자료로 실험할 때는 API 키를 사용하지 않습니다.

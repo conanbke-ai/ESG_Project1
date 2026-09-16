@@ -65,3 +65,26 @@ CNN의 이번 성능은 작은 네트워크·3 epochs라는 제한과 특정 발
 - 모델별 가중치·전처리·설정·예측 파일 hash는 `model_artifact_replay.json`에 기록했습니다.
 
 [검증 산출물](https://github.com/conanbke-ai/ESG_Project1/actions/runs/34295513571/artifacts/10083094821)에는 모델, 전처리, 설정, 실제 입력, 예측 CSV, 선택 근거와 대시보드 JSON이 포함됩니다. 이 CI 산출물의 보관 만료는 2026-09-23이며 별도 제공한 ZIP으로 결과를 보존할 수 있습니다.
+
+## 2026-09-16 후속 검수: 실행 환경과 재학습
+
+위 표는 9월 9일 실행 기록으로 보존합니다. 이후 모델 소스와 실측 입력을 바꾸지 않은 [CI 35046242140](https://github.com/conanbke-ai/ESG_Project1/actions/runs/35046242140)와 [CI 35046632278](https://github.com/conanbke-ai/ESG_Project1/actions/runs/35046632278)에서는 다음 결과가 나왔습니다. 두 실행 모두 전체 테스트 285개와 하위 검사 63개, 실측 학습, 저장 모델 재예측을 통과했습니다.
+
+| 예측 대상 | 선택 구간의 선택 | XGBoost Test MAE | CNN Test MAE | Hybrid Test MAE |
+|---|---|---:|---:|---:|
+| 1시간 후 | Hybrid | 0.016908 | 0.051547 | 0.021528 |
+| 24시간 후 | Hybrid | 0.021157 | 0.065813 | 0.027445 |
+
+단위는 MWh입니다. 이번 두 실행의 점수는 서로 동일하며, 선택된 CNN의 모델 파일·전처리·예측 CSV SHA도 일치했습니다. 1시간 CNN은 24시간 입력창을 선택했습니다. 두 기간 모두 선택 구간에서 Hybrid를 골랐지만 Test에서 최선 단일 모델보다 나빴습니다. Hybrid의 일반화 개선을 입증하지 못했다는 판단은 유지합니다.
+
+반면 **9월 9일과 9월 16일 사이에는 CNN 재학습 결과가 달랐습니다.** 모델 소스 SHA, 입력 CSV SHA, 네 후보의 CNN 설정·특징 순서·전처리값·분할·학습 배치 횟수는 같았습니다. XGBoost 점수는 같았고, 두 실행 모두 저장 모델 재예측은 통과했습니다. 따라서 저장 모델 재예측 성공만으로 서로 다른 실행 환경의 재학습 결과까지 같다고 결론낼 수 없습니다.
+
+확인된 환경 차이에는 scikit-learn 1.9.0→1.9.1, threadpoolctl 3.6.0→3.7.0 등이 있습니다. 당시 CPU 종류와 Torch 연산 backend 설정은 기록되지 않아 **정확한 원인을 특정하지 못했습니다.** 패키지 차이를 직접 원인으로 단정하지 않습니다. PyTorch도 버전·플랫폼을 바꾼 결과의 완전한 재현을 보장하지 않습니다([공식 재현성 문서](https://docs.pytorch.org/docs/stable/notes/randomness.html)).
+
+후속 검증에는 다음을 추가했습니다.
+
+- `config/environments/benchmark_cpu_py311.constraints.txt`: 확인한 CPU 환경의 패키지 54개 버전 고정. CI는 Python 3.11.16과 Ubuntu 24.04를 사용합니다.
+- 실측 실행 보고서에 CPU 모델·ISA, Torch 빌드·스레드·backend 설정 기록.
+- `tools/verify_benchmark_retraining.py`: 같은 입력으로 체크포인트·Optuna DB를 새로 만들어 다시 학습하고, 모든 후보의 Validation/Calibration/Test 예측 및 최종 선택을 비교. 허용오차는 10⁻⁶ MWh입니다.
+
+이 검사는 기록된 같은 환경 안에서의 재학습 재현성을 확인합니다. 다른 CPU에서도 항상 같은 결과가 나온다는 보장이나 새로운 미사용 Test 평가를 대신하지 않습니다. 9월 16일 원본 산출물은 [CI artifact](https://github.com/conanbke-ai/ESG_Project1/actions/runs/35046632278/artifacts/10426593685)에 있으며, ZIP SHA256은 `542a357ea18b6cec5e37ae39cc10c99d1f210a472a8a29201a1f249d4a9b907d`입니다.

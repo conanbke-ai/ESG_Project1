@@ -1386,6 +1386,12 @@ Replay selected benchmark checkpoints on observed Test rows without training.
 
 `_sha256`, `_json`, `_resolve`, `_load_observations`, `_test_start`, `_indexed`, `_match_truth`, `_xgboost_replay`, `_cnn_replay`, `verify_selected_artifacts`, `main`
 
+### [tools/verify_benchmark_retraining.py](../tools/verify_benchmark_retraining.py)
+
+Repeat the observed pilot from fresh optimizer/checkpoint state in a new process.
+
+`read_json`, `sha256_file`, `write_report`, `artifact_path`, `_prediction_rows`, `compare_predictions`, `fresh_experiment`, `semantic_config`, `_candidates`, `_chosen_identity`, `compare_benchmarks`, `main`
+
 ### [tools/verify_model_reorganization.py](../tools/verify_model_reorganization.py)
 
 Compare two checkouts using frozen data and isolated, small CPU training runs.
@@ -1415,6 +1421,12 @@ Benchmark orchestration tests use labelled fixtures, never accuracy evidence.
 Decision-contract tests use tiny fixtures, not real-model accuracy evidence.
 
 `predictions`, `artifact_path`, `BenchmarkModelSelectionTests`, `BenchmarkModelSelectionTests.setUp`, `BenchmarkModelSelectionTests.run_selector`, `BenchmarkModelSelectionTests.test_hybrid_is_selected_on_later_calibration_and_test_cannot_reverse_it`, `BenchmarkModelSelectionTests.test_test_truth_changes_only_report_not_gate_or_selection`, `BenchmarkModelSelectionTests.test_gate_fit_excludes_selection_and_purged_hours`, `BenchmarkModelSelectionTests.test_gate_fit_excludes_selection_and_purged_hours.record_fit`, `BenchmarkModelSelectionTests.test_ties_keep_base_model_and_persistence_is_not_a_champion`, `BenchmarkModelSelectionTests.test_minimum_improvement_is_required`, `BenchmarkModelSelectionTests.test_group_metrics_sum_generation_and_do_not_clip_negative_r2`, `BenchmarkModelSelectionTests.test_constant_target_r2_is_json_null`, `BenchmarkModelSelectionTests.test_distinct_registry_ids_can_share_a_display_name`, `BenchmarkModelSelectionTests.test_output_contains_frozen_predictions_hashes_and_exact_provenance`, `BenchmarkModelSelectionTests.test_duplicate_or_nonfinite_or_missing_predictions_are_rejected`, `BenchmarkModelSelectionTests.test_horizon_and_truth_mismatches_are_rejected`, `BenchmarkModelSelectionTests.test_calibration_and_test_origin_overlap_is_rejected`, `BenchmarkModelSelectionTests.test_short_calibration_cannot_skip_the_purge`, `BenchmarkModelSelectionTests.test_existing_evidence_is_not_overwritten`
+
+### [tests/test_benchmark_retraining.py](../tests/test_benchmark_retraining.py)
+
+Reject real retraining drift while allowing timestamp/output relocation.
+
+`write_json`, `write_predictions`, `benchmark_fixture`, `BenchmarkRetrainingTests`, `BenchmarkRetrainingTests.setUp`, `BenchmarkRetrainingTests.candidate_file`, `BenchmarkRetrainingTests.change_json`, `BenchmarkRetrainingTests.test_all_candidates_and_splits_compared_across_timestamp_directories`, `BenchmarkRetrainingTests.test_relocated_artifacts_use_new_folder_even_when_original_exists`, `BenchmarkRetrainingTests.test_unselected_candidate_drift_fails_for_each_split`, `BenchmarkRetrainingTests.test_small_prediction_delta_passes_but_truth_must_be_exact`, `BenchmarkRetrainingTests.test_duplicate_forecast_keys_fail`, `BenchmarkRetrainingTests.test_existing_output_is_rejected_without_overwriting_evidence`, `BenchmarkRetrainingTests.test_frozen_model_change_fails_even_with_identical_predictions`, `BenchmarkRetrainingTests.test_frozen_lookback_change_fails`, `BenchmarkRetrainingTests.test_frozen_lookback_change_fails.change`, `BenchmarkRetrainingTests.test_resolved_training_setting_change_is_not_treated_as_relocation`, `BenchmarkRetrainingTests.test_final_blend_drift_fails_after_identical_candidate_predictions`, `BenchmarkRetrainingTests.test_missing_candidate_rejected_instead_of_comparing_intersection`, `BenchmarkRetrainingTests.test_source_or_input_fingerprint_change_fails`, `BenchmarkRetrainingTests.test_existing_optimizer_trials_or_resumed_checkpoint_fail`, `BenchmarkRetrainingTests.test_fresh_configuration_changes_only_storage_locations`
 
 ### [tests/test_candidate_intake.py](../tests/test_candidate_intake.py)
 

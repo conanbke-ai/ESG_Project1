@@ -12,6 +12,7 @@ import importlib.metadata
 import json
 import os
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 import sys
@@ -219,13 +220,91 @@ def configure_cpu_runtime() -> None:
 
 
 def runtime_versions() -> dict:
+    """Capture numeric-runtime evidence without changing backend settings.
+
+    Only selected CPU fields are read: hostnames, processor serial numbers, and
+    the process environment are deliberately excluded from this public report.
+    """
     packages = {}
     for name in ("numpy", "pandas", "scikit-learn", "torch", "xgboost", "optuna"):
         try:
             packages[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             packages[name] = "unavailable"
-    return {"python": sys.version, "packages": packages}
+    cpu = {
+        "model_name": platform.processor() or None,
+        "logical_processors": os.cpu_count(),
+        "isa_flags": [],
+        "source": "platform.processor",
+    }
+    try:
+        # Linux CI exposes the executing processor here. Keep only an explicit
+        # allowlist rather than copying machine-identifying /proc fields.
+        cpu_fields = {}
+        for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
+            key, separator, value = line.partition(":")
+            if separator:
+                cpu_fields.setdefault(key.strip().lower(), value.strip())
+        for name in ("model name", "hardware", "cpu part"):
+            if cpu_fields.get(name):
+                cpu["model_name"] = cpu_fields[name]
+                break
+        cpu.update({
+            "source": "/proc/cpuinfo",
+            "vendor": cpu_fields.get("vendor_id") or cpu_fields.get("cpu implementer"),
+            "family": cpu_fields.get("cpu family"),
+            "model": cpu_fields.get("model"),
+            "stepping": cpu_fields.get("stepping"),
+            "isa_flags": sorted(set((cpu_fields.get("flags") or cpu_fields.get("features") or "").split())),
+        })
+    except OSError:
+        pass
+    try:
+        cpu["available_logical_processors"] = len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        cpu["available_logical_processors"] = None
+
+    result = {
+        "python": sys.version,
+        "packages": packages,
+        "platform": {
+            "system": platform.system(), "release": platform.release(),
+            "machine": platform.machine(), "libc": list(platform.libc_ver()),
+            "python_implementation": platform.python_implementation(),
+            "python_compiler": platform.python_compiler(),
+        },
+        "cpu": cpu,
+    }
+    try:
+        import torch
+    except ImportError:
+        result["torch_runtime"] = {"available": False}
+    else:
+        result["torch_runtime"] = {
+            "available": True,
+            "build_config": torch.__config__.show(),
+            "cpu_capability": torch.backends.cpu.get_cpu_capability(),
+            "intraop_threads": torch.get_num_threads(),
+            "interop_threads": torch.get_num_interop_threads(),
+            "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
+            "deterministic_warn_only": torch.is_deterministic_algorithms_warn_only_enabled(),
+            "mkldnn": {
+                "available": torch.backends.mkldnn.is_available(),
+                "enabled": torch.backends.mkldnn.enabled,
+                "deterministic": getattr(torch.backends.mkldnn, "deterministic", None),
+            },
+            "cudnn": {
+                "available": torch.backends.cudnn.is_available(),
+                "version": torch.backends.cudnn.version(),
+                "enabled": torch.backends.cudnn.enabled,
+                "benchmark": torch.backends.cudnn.benchmark,
+                "deterministic": torch.backends.cudnn.deterministic,
+                "allow_tf32": torch.backends.cudnn.allow_tf32,
+            },
+            "cuda_available": torch.cuda.is_available(),
+            "cuda_build_version": torch.version.cuda,
+        }
+    return result
 
 
 def build_pilot_config(base: dict, dataset: Path, output: Path, project_root: Path, provenance: dict) -> dict:
@@ -356,6 +435,9 @@ def main() -> None:
         import torch
         torch.set_num_threads(1)
         torch.set_num_interop_threads(1)
+        # Refresh after thread configuration so the report describes training.
+        report["runtime"] = runtime_versions()
+        write_json(report_path, report)
         from solar_forecast.jobs.benchmark_job import BenchmarkService
         run_dir = BenchmarkService(project_root=root).run(pilot_config, smoke=False)
         from verify_benchmark_model_artifacts import verify_selected_artifacts
