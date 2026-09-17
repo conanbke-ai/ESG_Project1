@@ -82,6 +82,14 @@ def _test_start(split: dict) -> pd.Timestamp:
     return pd.Timestamp(boundaries["calibration_end"]) + pd.Timedelta(hours=int(boundaries["gap_hours"]))
 
 
+def _test_mask(timestamps, split: dict):
+    """Keep the stored Test interval fixed when later source rows are present."""
+    mask = timestamps > _test_start(split)
+    if split["boundaries"].get("test_end") is not None:
+        mask &= timestamps <= pd.Timestamp(split["boundaries"]["test_end"])
+    return mask
+
+
 def _indexed(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame.copy()
     result["plant_id"] = result["plant_id"].astype(str)
@@ -122,7 +130,7 @@ def _xgboost_replay(frame: pd.DataFrame, values: dict, details: dict, exported: 
     samples = build_forecast_samples(
         frame, values["feature_columns"], values["target_column"], values["forecast_horizon_hours"],
     )
-    samples = samples.loc[samples["timestamp"].gt(_test_start(preprocessing["temporal_split"]))]
+    samples = samples.loc[_test_mask(samples["timestamp"], preprocessing["temporal_split"])]
     expected = _indexed(samples.rename(columns={values["target_column"]: "y_true"}))
     truth = _match_truth(expected, exported, target_dtype=str(values.get("numeric_dtype", "float32")))
     model = XGBRegressor(n_jobs=1)
@@ -141,38 +149,29 @@ def _cnn_replay(frame: pd.DataFrame, values: dict, details: dict, exported: pd.D
     import torch
     from solar_forecast.evaluation.forecast_samples import forecast_window_positions
     from solar_forecast.models.cnn_bilstm.network import CnnBiLstmNetworkConfig, build_cnn_bilstm_network
+    from solar_forecast.models.cnn_bilstm.input_preprocessing import transform_inputs, validate_input_preprocessing
 
     model_path = _resolve(details["checkpoint_path"], run_dir)
     checkpoint = torch.load(model_path, map_location="cpu", weights_only=True)
     features = checkpoint["feature_columns"]
     if features != list(values["feature_columns"]):
         raise ValueError("Stored CNN feature order differs from resolved configuration")
-    preprocessing = checkpoint["preprocessing"]
-    if preprocessing["strategy"] != "training_split_median_with_missing_indicators":
-        raise ValueError("Unsupported stored CNN preprocessing")
+    preprocessing = validate_input_preprocessing(checkpoint["preprocessing"], features)
     split = preprocessing["temporal_split"]
     length = int(split["sequence_length"])
-    medians = np.array([preprocessing["feature_medians"][name] for name in features], dtype=np.float32)
-    if not np.isfinite(medians).all():
-        raise ValueError("Stored CNN medians must be finite")
     series = {}
     expected_frames = []
     origin_by_key = {}
     horizon = int(values["forecast_horizon_hours"])
     for plant, group in frame.groupby("plant_id", sort=True, observed=True):
         group = group.sort_values("timestamp", kind="stable")
-        numeric = group[features].to_numpy(dtype=np.float32, copy=True)
-        missing = ~np.isfinite(numeric)
-        missing_rows, missing_columns = np.where(missing)
-        numeric[missing_rows, missing_columns] = medians[missing_columns]
-        if preprocessing["append_missing_indicators"]:
-            numeric = np.concatenate([numeric, missing.astype(np.float32)], axis=1)
+        numeric = transform_inputs(group[features].to_numpy(dtype=np.float32), features, preprocessing)
         if numeric.shape[1] != checkpoint["config"]["n_features"]:
             raise ValueError("Stored CNN input width differs from preprocessing")
         times = pd.DatetimeIndex(group["timestamp"])
         target_values = group[values["target_column"]].to_numpy(dtype=np.float32)
         targets, origins = forecast_window_positions(times, horizon_hours=horizon, sequence_length=length)
-        keep = (times[targets] > _test_start(split)) & np.isfinite(target_values[targets]) & np.isfinite(target_values[origins])
+        keep = _test_mask(times[targets], split) & np.isfinite(target_values[targets]) & np.isfinite(target_values[origins])
         targets, origins = targets[keep], origins[keep]
         series[str(plant)] = numeric
         context = pd.DataFrame({
@@ -202,7 +201,7 @@ def _cnn_replay(frame: pd.DataFrame, values: dict, details: dict, exported: pd.D
     return np.concatenate(predictions), {
         **truth, "model_path": str(model_path), "model_sha256": _sha256(model_path),
         "preprocessing_sha256": hashlib.sha256(json.dumps(preprocessing, sort_keys=True).encode()).hexdigest(),
-        "preprocessing_source": "checkpoint_stored_training_medians_and_missing_indicators",
+        "preprocessing_source": "checkpoint_stored_preprocessing_no_refit",
         "sequence_length": length, "batch_size": batch_size,
     }
 
@@ -210,9 +209,13 @@ def _cnn_replay(frame: pd.DataFrame, values: dict, details: dict, exported: pd.D
 def verify_selected_artifacts(run_dir: Path, dataset: Path, *, prediction_atol: float = 1e-6) -> dict:
     """Reload each selected base model once; return evidence without fitting anything."""
 
+    from solar_forecast.models.shared.checkpoint_store import dataset_signature, PARTITION_FINGERPRINT_CONTRACT
+
     run_dir, dataset = Path(run_dir).resolve(), Path(dataset).resolve()
+    if not np.isfinite(prediction_atol) or prediction_atol < 0:
+        raise ValueError("Prediction tolerance must be finite and nonnegative")
     manifest = _json(run_dir / "manifest.json")
-    digest = _sha256(dataset)
+    digest = dataset_signature(dataset)
     if manifest.get("status") != "completed" or manifest["provenance"]["dataset_fingerprint"] != digest:
         raise ValueError("Replay requires a completed benchmark and its exact observed dataset")
     results = []
@@ -252,7 +255,9 @@ def verify_selected_artifacts(run_dir: Path, dataset: Path, *, prediction_atol: 
     return {
         "contract": "solar-benchmark-stored-model-replay.v1",
         "status": "passed" if results and all(item["status"] == "passed" for item in results) else "failed",
-        "dataset_sha256": digest, "models": results,
+        "dataset_sha256": digest,
+        "dataset_fingerprint_contract": PARTITION_FINGERPRINT_CONTRACT if dataset.is_dir() else "file_sha256",
+        "models": results,
         "training_performed": False, "preprocessors_refit": False,
         "historical_checkpoint_performance_verified": False,
         "scope": "selected_new_benchmark_artifacts_on_all_their_observed_Test_rows",

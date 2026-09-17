@@ -2,6 +2,15 @@
 
 현재 실측 기반 모델 최적화·하이브리드 채택 작업은 [실행 및 평가 계약](docs/OPTIMIZED_MODEL_BENCHMARK.md)을 따릅니다. `python app.py benchmark --plan`으로 모델별 탐색과 1·24·72시간 비교 설정을 확인할 수 있습니다. 과거 문서의 고정 24시간·동일 특징 조건보다 이 계약이 우선합니다.
 
+본 학습은 사용자 Windows 로컬 GPU에서 수행합니다. ChatGPT 작업 환경과 CI에서 본 학습을 시작하지 않습니다. 로컬에서 `python tools/run_local_benchmark.py --data file/standardized/model_ready_parts`를 사용하며 CUDA GPU가 없으면 학습 전에 종료합니다. 기본 날짜 고정 후보와 탐색 예산을 유지하고, `--preflight-only`는 학습 전 점검만 수행합니다.
+
+2026-09-17 전처리 보완은 발전량 원값·ASOS 결측 사유를 보존하고 CNN의 Train 전용 입력
+표준화 통계를 저장합니다. 확대 자료의 날짜 고정 분할 후보와 학습 없는 커버리지 점검은
+[분할 점검 방법](docs/OPTIMIZED_MODEL_BENCHMARK.md#날짜-고정-후보와-학습-전-점검)을 따릅니다.
+
+CI를 사용하지 않는 학습 준비는 `python tools/audit_forecast_readiness.py`로 실제 모델별
+표본·연속 입력창을 먼저 확인합니다. [로컬 학습·재개·저장 모델 검증 절차](docs/OPTIMIZED_MODEL_BENCHMARK.md#ci-없이-로컬에서-실행)를 제공합니다.
+
 [실측 실행 결과](docs/OBSERVED_BENCHMARK_RESULT.md)에는 공식 관측자료로 수행한 1·24시간 제한 실험과 저장 모델 재검증 근거를 기록했습니다. 24시간 Hybrid의 선택 구간 개선은 최종 Test에서 유지되지 않았습니다. 전체 데이터 최적화와 과거 저장 모델의 성능 재현은 아직 완료하지 않았습니다.
 
 후속 검수에서 실행 환경을 바꾼 CNN 재학습 결과의 차이도 확인했습니다. CPU 검증 환경의 패키지 버전을 고정하고, 저장 모델 재예측과 별도로 새 학습을 반복 비교하는 CI를 추가했습니다. 같은 환경의 재현성과 서로 다른 환경의 결과 비교를 구분합니다.

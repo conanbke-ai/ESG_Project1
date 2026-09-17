@@ -480,6 +480,8 @@ evaluation 패키지의 공개 import 경계; 실행은 명시적 명령에서 �
 - `load_experiment_config(path: Path, *, project_root: Path=PROJECT_ROOT)` — Validate the executable experiment, including explicitly bounded searches.
 - `build_candidate_configs(values: dict, horizon: int, run_dir: Path, *, project_root: Path=PROJECT_ROOT)` — Allow independent features/lookbacks while freezing target and time splits.
 - `experiment_plan(values: dict, *, project_root: Path=PROJECT_ROOT)` — Describe actual candidates without loading data or starting training.
+- `configure_smoke_experiment(values: dict)` — Create the bounded wiring plan without pretending to test calendar holdouts.
+- `_shared_split(values: dict)`
 - `_resolve_path(value: str, project_root: Path)`
 
 ## [evaluation/feature_ablation.py](../src/solar_forecast/evaluation/feature_ablation.py)
@@ -494,6 +496,16 @@ evaluation 패키지의 공개 import 경계; 실행은 명시적 명령에서 �
 - `FeatureAblationService.run(self, dataset_path: Path, output_dir: Path, *, n_splits: int=3, validation_window_hours: int=2160, calibration_fraction: float=0.1, test_fraction: float=0.15, gap_hours: int=168)`
 - `FeatureAblationService._rolling_folds(timestamps: pd.Series, *, n_splits: int, validation_window_hours: int, calibration_fraction: float, test_fraction: float, gap_hours: int)`
 - `FeatureAblationService._as_bool(series: pd.Series)`
+
+## [evaluation/forecast_readiness.py](../src/solar_forecast/evaluation/forecast_readiness.py)
+
+실제 모델의 예측 기준시각·연속 입력창·Train 입력 결측과 공통 평가 표본을 학습 전에 점검
+
+- `_SampleGeometry`
+- `_geometry(frame: pd.DataFrame, config: ModelJobConfig)`
+- `_feature_sanity(frame: pd.DataFrame, rows: np.ndarray, features: list[str], *, cnn: bool)`
+- `audit_forecast_frame(frame: pd.DataFrame, candidates: list[tuple[str, ModelJobConfig]], *, minimum_coverage: float)` — Audit one horizon on the trainer-filtered, dtype-converted observation frame.
+- `run_forecast_readiness(config_path: Path, *, data_path: Path | None=None, output_path: Path | None=None, project_root: Path=PROJECT_ROOT)` — Read Gold with actual trainer filters and report data readiness without ML frameworks.
 
 ## [evaluation/forecast_samples.py](../src/solar_forecast/evaluation/forecast_samples.py)
 
@@ -539,20 +551,35 @@ evaluation 패키지의 공개 import 경계; 실행은 명시적 명령에서 �
 - `_group_metrics(frame: pd.DataFrame, columns: Sequence[str])`
 - `aggregate_metrics(frame: pd.DataFrame)` — Return exact plant, region and national metrics from aligned predictions.
 
+## [evaluation/split_audit.py](../src/solar_forecast/evaluation/split_audit.py)
+
+학습 없이 시간 분할별 발전소·월·계절·Train 이력 유무와 제외 행 감사
+
+- `_coverage(frame: pd.DataFrame)`
+- `audit_temporal_frame(frame: pd.DataFrame, config: TemporalSplitConfig)` — Describe target-row coverage, not model accuracy or complete input windows.
+- `audit_temporal_frame.grouped_coverage(keys: list[str])`
+- `run_split_audit(config_path: Path, *, data_path: Path | None=None, output_path: Path | None=None, project_root: Path=PROJECT_ROOT)` — Load only Gold metadata/targets and write an auditable data-only report.
+
 ## [evaluation/temporal_split.py](../src/solar_forecast/evaluation/temporal_split.py)
 
 Train·Validation·Calibration·Test의 시간 경계와 purge gap 생성
 
-- `TemporalSplitConfig` — Leakage-safe four-way split shared by every forecasting model.
+- `_naive_timestamp(value: object, field: str)` — Require an explicit local timestamp; never silently convert time zones.
+- `TemporalSplitConfig` — Global four-way split, using fractions or four inclusive local timestamps.
 - `TemporalSplitConfig.__post_init__(self)`
+- `TemporalSplitConfig.from_mapping(cls, values: Mapping[str, object])` — Read the shared fields used by model and experiment configurations.
+- `TemporalSplitConfig.split_mode(self)`
 - `TemporalSplitConfig.train_fraction(self)`
 - `TemporalBoundaries`
 - `TemporalBoundaries.to_dict(self)`
+- `TemporalBoundaries.from_dict(cls, values: Mapping[str, object])` — Restore saved boundaries without recalculating them from new data.
+- `calendar_split_for_execution(values: Mapping[str, object], *, smoke: bool)` — Keep full-run dates; disclose fraction overrides for bounded smoke rows.
 - `TemporalFrameSplits`
 - `TemporalSplitter` — Apply one set of global timestamp boundaries to all plants.
 - `TemporalSplitter.__init__(self, config: TemporalSplitConfig | None=None)`
 - `TemporalSplitter.boundaries(self, timestamps: pd.Series | pd.Index)`
 - `TemporalSplitter.labels(self, timestamps: pd.Series | pd.Index, boundaries: TemporalBoundaries)`
+- `TemporalSplitter._timestamps(timestamps: pd.Series | pd.Index)`
 - `TemporalSplitter.split_frame(self, frame: pd.DataFrame, timestamp_column: str='timestamp')`
 
 ## [features/__init__.py](../src/solar_forecast/features/__init__.py)
@@ -565,10 +592,12 @@ features 패키지의 공개 import 경계; 실행은 명시적 명령에서 시
 
 ASOS 관측값 이름·타입 표준화와 관측소 좌표 결합
 
-- `KmaAsosNormalizer` — Normalize selected ASOS fields and join stable station coordinates.
+- `KmaAsosNormalizer` — Normalize station-hours before plant joins; retain missingness and QC reasons.
 - `KmaAsosNormalizer.__init__(self, station_metadata_path: Path)`
 - `KmaAsosNormalizer.read(self, paths: Iterable[Path], *, station_ids: Iterable[int] | None=None)`
 - `KmaAsosNormalizer.transform(self, frame: pd.DataFrame)`
+- `KmaAsosNormalizer._normalize_observation(result: pd.DataFrame, source: pd.DataFrame, column: str, aliases: tuple[str, ...])`
+- `KmaAsosNormalizer._join_station_history(self, result: pd.DataFrame)` — Use date-valid metadata; never extrapolate the newest dated record.
 
 ## [features/history_features.py](../src/solar_forecast/features/history_features.py)
 
@@ -735,12 +764,24 @@ models/cnn_bilstm 패키지의 공개 import 경계; 실행은 명시적 명령�
 
 저장된 CNN 모델 평가·체크포인트 비교·고정 보정 임계값 이상치 분석
 
+- `_checkpoint_model(data, device: Optional[torch.device]=None)`
 - `load_checkpoint(path: str, device: Optional[torch.device]=None)`
+- `_checkpoint_loaders(data, frame, target_column, feature_columns, sequence_config, entity_column=None, timestamp_column=None)` — Restore each checkpoint's feature transform and split; never fit on replay.
 - `evaluate_model(model: torch.nn.Module, data_loader, device: Optional[torch.device]=None)`
-- `compare_checkpoints(checkpoint_dir: str, frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, sequence_config: Optional[SequenceConfig]=None)` — Load all checkpoints in a directory and compare their metrics.
+- `compare_checkpoints(checkpoint_dir: str, frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, sequence_config: Optional[SequenceConfig]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None)` — Load all checkpoints in a directory and compare their metrics.
 - `detect_outliers_from_predictions(y_true: np.ndarray, y_pred: np.ndarray, contamination: float=0.05, *, calibration_residuals: np.ndarray | None=None)` — Apply a frozen calibration threshold; never rank the evaluated set itself.
 - `evaluate_and_analyze(checkpoint_path: str, frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, sequence_config: Optional[SequenceConfig]=None, contamination: float=0.05, output_dir: Optional[str]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None)` — Load a checkpoint, compute metrics, and perform outlier analysis.
 - `save_dataframe(df: pd.DataFrame, path: str)`
+
+## [models/cnn_bilstm/input_preprocessing.py](../src/solar_forecast/models/cnn_bilstm/input_preprocessing.py)
+
+CNN Train 입력의 중앙값·표준화 통계를 적합하고 저장 계약에 따라 재예측 입력 변환
+
+- `_feature_names(feature_columns: Sequence[str])`
+- `_effective_names(names: list[str], indicators: bool)`
+- `fit_input_preprocessing(blocks: Sequence[tuple[np.ndarray, np.ndarray]], feature_columns: Sequence[str], *, append_missing_indicators: bool=True)` — Fit median then population mean/std on unique input rows used in Train.
+- `validate_input_preprocessing(state: Mapping[str, object], feature_columns: Sequence[str])` — Reject incompatible artifacts; recognize old median-only states explicitly.
+- `transform_inputs(values: np.ndarray, feature_columns: Sequence[str], state: Mapping[str, object])` — Apply stored statistics without changing caller buffers or fitting anything.
 
 ## [models/cnn_bilstm/network.py](../src/solar_forecast/models/cnn_bilstm/network.py)
 
@@ -791,9 +832,9 @@ CNN 입력 길이·시간 분할 비율·배치 로더 설정
 - `_build_sequences(values: np.ndarray, targets: np.ndarray, sequence_length: int)` — Compatibility helper for small callers; the main path uses lazy windows.
 - `SequenceLoaders`
 - `_position_labels(n_targets: int, cfg: SequenceConfig)`
-- `_fit_and_transform_training_medians(series: Sequence[_EntitySeries], feature_columns: Sequence[str], *, append_missing_indicators: bool)`
-- `prepare_dataset_splits(frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, config: Optional[SequenceConfig]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None)` — Build one global four-way time split with lazy per-entity windows.
-- `prepare_datasets(frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, config: Optional[SequenceConfig]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None)` — Compatibility view returning Train/Validation/Test from four-way splits.
+- `_fit_and_transform_training_preprocessing(series: Sequence[_EntitySeries], feature_columns: Sequence[str], *, append_missing_indicators: bool)`
+- `prepare_dataset_splits(frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, config: Optional[SequenceConfig]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None, *, preprocessing_state: dict[str, object] | None=None)` — Build one global four-way time split with lazy per-entity windows.
+- `prepare_datasets(frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, config: Optional[SequenceConfig]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None, *, preprocessing_state: dict[str, object] | None=None)` — Compatibility view returning Train/Validation/Test from four-way splits.
 - `sequence_from_csv(path: str, target_column: str, feature_columns: Optional[Sequence[str]]=None, config: Optional[SequenceConfig]=None)`
 - `reconstruct_targets_from_loader(loader: DataLoader)`
 
@@ -864,7 +905,7 @@ models/shared 패키지의 공개 import 경계; 실행은 명시적 명령에�
 
 - `stable_signature(payload: Mapping[str, Any] | list[Any] | tuple[Any, ...])`
 - `dataframe_signature(frame: pd.DataFrame, columns: list[str])` — Hash selected frame values without serializing a second tabular copy.
-- `dataset_signature(source: Path)` — Fingerprint one file or partitioned dataset independently of the model.
+- `dataset_signature(source: Path)` — Hash input bytes; directory copies/timestamps must not change identity.
 - `training_fingerprint(config: ModelJobConfig)`
 - `capture_rng_state()`
 - `restore_rng_state(state: Mapping[str, Any] | None)`
@@ -947,7 +988,7 @@ XGBoost 데이터 준비·학습·예측·모델 산출물 계약 구현
 
 - `XGBoostTrainer` — Concrete training strategy that owns XGBoost-specific persistence.
 - `XGBoostTrainer.train(self, config: ModelJobConfig, run_dir: Path, smoke: bool=False)`
-- `XGBoostTrainer._chronological_split(frame: pd.DataFrame, *, validation_fraction: float, calibration_fraction: float, test_fraction: float, purge_gap_hours: int, calendar_timestamps: pd.Series | None=None, prediction_task: str='observed_conditions_estimation')`
+- `XGBoostTrainer._chronological_split(frame: pd.DataFrame, *, validation_fraction: float, calibration_fraction: float, test_fraction: float, purge_gap_hours: int, calendar_timestamps: pd.Series | None=None, prediction_task: str='observed_conditions_estimation', calendar_split: dict[str, object] | None=None)`
 - `XGBoostTrainer._load(config: ModelJobConfig, *, columns: list[str], numeric_columns: list[str], energy_source: str | None, smoke: bool)`
 - `XGBoostTrainer._prediction_frame(context: pd.DataFrame, actual: np.ndarray, predicted: np.ndarray, *, split: str)`
 - `train(config: ModelJobConfig, *, run_dir: Path, smoke: bool=False)`
@@ -1357,6 +1398,18 @@ registry·품질·모델 결과를 대시보드 JSON과 정적 게시 파일로 
 
 ## 개발 도구와 검증 파일
 
+### [tools/audit_forecast_readiness.py](../tools/audit_forecast_readiness.py)
+
+학습 없이 실제 예측 표본·연속 입력창·Train 피처를 점검.
+
+`main`
+
+### [tools/audit_temporal_split.py](../tools/audit_temporal_split.py)
+
+Audit plant/month/season split coverage without importing model frameworks.
+
+`main`
+
 ### [tools/build_dashboard_assets.py](../tools/build_dashboard_assets.py)
 
 Build the browser bundle from named view sources, without a Node dependency.
@@ -1368,6 +1421,12 @@ Build the browser bundle from named view sources, without a Node dependency.
 Check module ownership, naming, imports, generated assets, and source/artifact separation.
 
 `module_exports`, `check_structure`, `main`
+
+### [tools/run_local_benchmark.py](../tools/run_local_benchmark.py)
+
+기존 Gold로 사용자 로컬 GPU 학습·저장 모델 재예측·화면 생성을 실행한다.
+
+`_write_json`, `_resolve`, `_read_inputs`, `_configure_environment`, `_load_dependencies`, `run_local_benchmark`, `main`
 
 ### [tools/run_observed_benchmark_pilot.py](../tools/run_observed_benchmark_pilot.py)
 
@@ -1385,7 +1444,7 @@ Generate the complete Python symbol and dashboard source index from real files.
 
 Replay selected benchmark checkpoints on observed Test rows without training.
 
-`_sha256`, `_json`, `_resolve`, `_load_observations`, `_test_start`, `_indexed`, `_match_truth`, `_xgboost_replay`, `_cnn_replay`, `verify_selected_artifacts`, `main`
+`_sha256`, `_json`, `_resolve`, `_load_observations`, `_test_start`, `_test_mask`, `_indexed`, `_match_truth`, `_xgboost_replay`, `_cnn_replay`, `verify_selected_artifacts`, `main`
 
 ### [tools/verify_benchmark_retraining.py](../tools/verify_benchmark_retraining.py)
 
@@ -1405,6 +1464,18 @@ Compare two checkouts using frozen data and isolated, small CPU training runs.
 
 `test_supported_influence_factor_is_accepted`, `test_equipment_failure_claim_is_rejected`
 
+### [tests/test_asos_observation_contract.py](../tests/test_asos_observation_contract.py)
+
+ASOS station-hour normalization and provenance regression tests.
+
+`observations`, `station`, `AsosObservationContractTests`, `AsosObservationContractTests.setUp`, `AsosObservationContractTests.tearDown`, `AsosObservationContractTests.write_metadata`, `AsosObservationContractTests.test_preserves_blank_zero_and_qc_reasons_without_mutating_input`, `AsosObservationContractTests.test_non_finite_non_numeric_and_ranges_are_masked_with_reason`, `AsosObservationContractTests.test_metadata_move_boundary_and_expiry_do_not_borrow_latest`, `AsosObservationContractTests.test_future_observations_and_metadata_do_not_modify_past`, `AsosObservationContractTests.test_absent_and_undated_metadata_have_explicit_status`, `AsosObservationContractTests.test_malformed_metadata_does_not_become_open_ended_history`, `AsosObservationContractTests.test_shared_station_and_latest_duplicate_have_identical_provenance`, `AsosObservationContractTests.test_api_masks_only_documented_bad_flags_and_clears_stale_qc`, `AsosObservationContractTests.test_download_qc_cannot_attach_to_an_api_replacement`
+
+### [tests/test_benchmark_checkpoint_identity.py](../tests/test_benchmark_checkpoint_identity.py)
+
+Benchmark restarts reuse training state without reusing changed experiments.
+
+`BenchmarkCheckpointIdentityTests`, `BenchmarkCheckpointIdentityTests._experiment`, `BenchmarkCheckpointIdentityTests._with_values`, `BenchmarkCheckpointIdentityTests.test_new_report_directory_reuses_every_candidate_checkpoint`, `BenchmarkCheckpointIdentityTests.test_changed_training_meaning_never_reuses_state`, `BenchmarkCheckpointIdentityTests.test_trial_budget_extension_keeps_same_training_identity`, `BenchmarkCheckpointIdentityTests.test_standalone_training_keeps_existing_output_path_identity`
+
 ### [tests/test_benchmark_dashboard.py](../tests/test_benchmark_dashboard.py)
 
 Projection integrity tests; fixture scores are not PV accuracy evidence.
@@ -1415,7 +1486,7 @@ Projection integrity tests; fixture scores are not PV accuracy evidence.
 
 Benchmark orchestration tests use labelled fixtures, never accuracy evidence.
 
-`_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`
+`_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`, `BenchmarkJobTests.test_gzip_partition_directory_reaches_training_but_parquet_does_not`
 
 ### [tests/test_benchmark_model_selection.py](../tests/test_benchmark_model_selection.py)
 
@@ -1429,6 +1500,12 @@ Reject real retraining drift while allowing timestamp/output relocation.
 
 `write_json`, `write_predictions`, `benchmark_fixture`, `BenchmarkRetrainingTests`, `BenchmarkRetrainingTests.setUp`, `BenchmarkRetrainingTests.candidate_file`, `BenchmarkRetrainingTests.change_json`, `BenchmarkRetrainingTests.test_all_candidates_and_splits_compared_across_timestamp_directories`, `BenchmarkRetrainingTests.test_relocated_artifacts_use_new_folder_even_when_original_exists`, `BenchmarkRetrainingTests.test_unselected_candidate_drift_fails_for_each_split`, `BenchmarkRetrainingTests.test_small_prediction_delta_passes_but_truth_must_be_exact`, `BenchmarkRetrainingTests.test_duplicate_forecast_keys_fail`, `BenchmarkRetrainingTests.test_existing_output_is_rejected_without_overwriting_evidence`, `BenchmarkRetrainingTests.test_frozen_model_change_fails_even_with_identical_predictions`, `BenchmarkRetrainingTests.test_frozen_lookback_change_fails`, `BenchmarkRetrainingTests.test_frozen_lookback_change_fails.change`, `BenchmarkRetrainingTests.test_resolved_training_setting_change_is_not_treated_as_relocation`, `BenchmarkRetrainingTests.test_final_blend_drift_fails_after_identical_candidate_predictions`, `BenchmarkRetrainingTests.test_missing_candidate_rejected_instead_of_comparing_intersection`, `BenchmarkRetrainingTests.test_source_or_input_fingerprint_change_fails`, `BenchmarkRetrainingTests.test_existing_optimizer_trials_or_resumed_checkpoint_fail`, `BenchmarkRetrainingTests.test_fresh_configuration_changes_only_storage_locations`
 
+### [tests/test_calendar_split_audit.py](../tests/test_calendar_split_audit.py)
+
+Calendar coverage and population tests; fixtures are not model accuracy evidence.
+
+`_fixture`, `CalendarSplitTests`, `CalendarSplitTests.test_calendar_is_unchanged_by_added_data_and_shared_by_plants`, `CalendarSplitTests.test_purge_and_inclusive_test_end`, `CalendarSplitTests.test_rejects_partial_unordered_timezone_and_nonfinite_config`, `CalendarSplitTests.test_rejects_aware_and_mixed_timezone_data`, `CalendarSplitTests.test_saved_boundaries_round_trip_without_recomputation`, `CalendarSplitTests.test_fraction_mode_remains_four_way_and_global`, `CalendarSplitTests.test_all_model_candidates_receive_same_frozen_dates`, `CalendarSplitTests.test_plan_rejects_calendar_intervals_shorter_than_forecast_purge`, `CalendarSplitTests.test_calendar_smoke_records_fraction_override_and_keeps_four_partitions`, `SplitAuditTests`, `SplitAuditTests.test_audit_accounts_for_exclusions_purge_cap_and_cold_start`, `SplitAuditTests.test_audit_exposes_empty_partitions_and_rejects_duplicate_keys`, `SplitAuditTests.test_data_only_command_works_and_uses_horizon_specific_purge`
+
 ### [tests/test_candidate_intake.py](../tests/test_candidate_intake.py)
 
 자동 검증 파일.
@@ -1439,7 +1516,13 @@ Reject real retraining drift while allowing timestamp/output relocation.
 
 자동 검증 파일.
 
-`_dummy_frame`, `_short_seq_config`, `test_train_and_save_creates_timestamped_dir`, `test_compare_checkpoints_reads_nested_runs`, `test_evaluate_and_analyze_saves_outputs`, `test_entity_sequences_never_cross_plants_and_split_chronologically`, `test_anomaly_threshold_is_frozen_from_calibration_not_test_ranking`, `test_lazy_windows_keep_all_missing_train_feature_as_zero_plus_mask`, `test_imputation_owns_buffer_and_preserves_input`, `test_historical_cnn_context_matches_tabular_forecast_and_excludes_future_inputs`, `test_historical_lookbacks_keep_common_split_calendar`, `test_final_hidden_readout_uses_both_top_layer_final_states`, `test_omitted_readout_retains_legacy_last_output_semantics`, `test_checkpoint_preserves_readout_and_exact_predictions`, `test_network_rejects_unknown_readout`, `_tiny_network_search_space`, `test_trial_and_final_fit_use_the_same_selected_readout`, `test_readout_study_does_not_reuse_legacy_or_different_readout_trials`
+`_dummy_frame`, `_short_seq_config`, `test_train_and_save_creates_timestamped_dir`, `test_compare_checkpoints_reads_nested_runs`, `test_evaluate_and_analyze_saves_outputs`, `test_entity_sequences_never_cross_plants_and_split_chronologically`, `test_anomaly_threshold_is_frozen_from_calibration_not_test_ranking`, `test_lazy_windows_keep_all_missing_train_feature_as_zero_plus_mask`, `test_imputation_owns_buffer_and_preserves_input`, `test_historical_cnn_context_matches_tabular_forecast_and_excludes_future_inputs`, `test_historical_lookbacks_keep_common_split_calendar`, `test_final_hidden_readout_uses_both_top_layer_final_states`, `test_omitted_readout_retains_legacy_last_output_semantics`, `test_checkpoint_preserves_readout_and_exact_predictions`, `test_network_rejects_unknown_readout`, `_tiny_network_search_space`, `test_trial_and_final_fit_use_the_same_selected_readout`, `test_readout_study_does_not_reuse_legacy_or_different_readout_trials`, `test_checkpoint_evaluation_reuses_saved_statistics_without_refit`, `test_checkpoint_evaluation_reuses_saved_statistics_without_refit.no_fit`, `test_frozen_calendar_checkpoint_keeps_boundaries_when_data_grows`
+
+### [tests/test_cnn_input_preprocessing.py](../tests/test_cnn_input_preprocessing.py)
+
+CPU/NumPy contract checks; runnable without Torch, Optuna, or pytest.
+
+`CnnInputPreprocessingTests`, `CnnInputPreprocessingTests.setUp`, `CnnInputPreprocessingTests.test_train_only_population_statistics_after_imputation`, `CnnInputPreprocessingTests.test_held_out_values_do_not_change_fitted_state`, `CnnInputPreprocessingTests.test_multiple_plants_use_row_weighted_train_statistics`, `CnnInputPreprocessingTests.test_constant_all_missing_and_nonfinite_values`, `CnnInputPreprocessingTests.test_json_roundtrip_replays_without_mutation`, `CnnInputPreprocessingTests.test_old_median_only_artifact_stays_unscaled`, `CnnInputPreprocessingTests.test_unknown_or_incompatible_artifacts_are_rejected`, `CnnInputPreprocessingTests.test_invalid_feature_schema_and_missing_training_rows`
 
 ### [tests/test_collector_admission.py](../tests/test_collector_admission.py)
 
@@ -1476,6 +1559,12 @@ Gold construction must not invent feature-selection performance evidence.
 자동 검증 파일.
 
 `test_preprocessing_selects_numeric_and_cleans_rows`, `test_train_fitted_imputer_does_not_use_future_values`, `test_latest_file_discovery`, `test_training_loader_pushes_filters_and_float32_conversion_into_chunks`, `test_forecast_model_quality_gate_cannot_be_disabled_or_replaced`, `test_feature_ablation_fails_closed_without_training_eligibility`, `test_full_pipeline_creates_report`
+
+### [tests/test_forecast_readiness.py](../tests/test_forecast_readiness.py)
+
+정확한 시각 표본·연속창·학습 입력 통계의 데이터 전용 검증.
+
+`ForecastReadinessTests`, `ForecastReadinessTests.frame`, `ForecastReadinessTests.candidates`, `ForecastReadinessTests.test_exact_origin_window_counts_and_train_only_features`, `ForecastReadinessTests.test_all_missing_cnn_requires_enabled_missing_indicators`, `ForecastReadinessTests.test_gap_loss_matches_actual_hourly_windows_and_conserves_rows`, `ForecastReadinessTests.test_non_finite_origin_and_target_do_not_become_samples`, `ForecastReadinessTests.test_reject_duplicate_non_hourly_timezone_and_empty_partition`, `ForecastReadinessTests.test_feature_subsets_share_rows_and_preserve_order`, `ForecastReadinessTests.test_file_runner_uses_trainer_solar_quality_filters_and_hashes`, `ForecastReadinessTests.test_file_runner_uses_trainer_solar_quality_filters_and_hashes.mutate_partitions`
 
 ### [tests/test_forecast_samples.py](../tests/test_forecast_samples.py)
 
@@ -1519,6 +1608,12 @@ Synthetic regression cases for collector identity; not production row counts.
 
 `KospoIdentityTests`, `KospoIdentityTests.setUp`, `KospoIdentityTests.raw_frame`, `KospoIdentityTests.silver`, `KospoIdentityTests.write_silver`, `KospoIdentityTests.metadata`, `KospoIdentityTests.station_frame`, `KospoIdentityTests.reviewed`, `KospoIdentityTests.registry`, `KospoIdentityTests.test_new_collector_uses_generator_identity_without_changing_values`, `KospoIdentityTests.test_other_generators_are_not_mapped_by_department`, `KospoIdentityTests.test_generator_whitespace_is_normalized_but_suffixes_are_not_guessed`, `KospoIdentityTests.test_company_and_department_are_both_required`, `KospoIdentityTests.test_repeated_resolution_is_idempotent_and_preserves_meters`, `KospoIdentityTests.test_legacy_admission_records_rule_and_preserves_file_hash`, `KospoIdentityTests.test_conflicting_id_is_rejected_by_admission`, `KospoIdentityTests.test_identity_aliases_cannot_double_count_one_meter_in_one_file`, `KospoIdentityTests.test_stale_generator_id_cannot_be_silently_reassigned`, `KospoIdentityTests.test_historical_partitions_without_unit_are_unchanged`, `KospoIdentityTests.test_read_projection_still_rejects_missing_required_columns`, `KospoIdentityTests.test_real_address_does_not_bypass_weather_gate_or_infer_capacity`, `KospoIdentityTests.test_approved_legacy_and_new_snapshots_reconcile_without_double_count`, `KospoIdentityTests.test_synthetic_admission_to_gold_build_with_explicit_weather_review`
 
+### [tests/test_local_benchmark_runner.py](../tests/test_local_benchmark_runner.py)
+
+로컬 실행 단계·실패 중단 계약 검증; 모델 정확도는 모의 검증하지 않는다.
+
+`LocalBenchmarkRunnerTests`, `LocalBenchmarkRunnerTests.setUp`, `LocalBenchmarkRunnerTests.setUp.readiness`, `LocalBenchmarkRunnerTests.setUp.TrainingFixture`, `LocalBenchmarkRunnerTests.setUp.TrainingFixture.__init__`, `LocalBenchmarkRunnerTests.setUp.TrainingFixture.run`, `LocalBenchmarkRunnerTests.setUp.replay`, `LocalBenchmarkRunnerTests.setUp.DashboardFixture`, `LocalBenchmarkRunnerTests.setUp.DashboardFixture.__init__`, `LocalBenchmarkRunnerTests.setUp.DashboardFixture.build`, `LocalBenchmarkRunnerTests._execute`, `LocalBenchmarkRunnerTests.test_full_run_preserves_budget_and_uses_exact_returned_run`, `LocalBenchmarkRunnerTests.test_preflight_never_calls_training_replay_or_dashboard`, `LocalBenchmarkRunnerTests.test_missing_dependency_fails_before_readiness_or_training`, `LocalBenchmarkRunnerTests.test_old_gold_fails_before_importing_frameworks`, `LocalBenchmarkRunnerTests.test_bad_coverage_never_starts_training`, `LocalBenchmarkRunnerTests.test_failed_replay_keeps_completed_run_and_skips_dashboard`, `LocalBenchmarkRunnerTests.test_replay_mode_uses_saved_experiment_without_audit_or_training`, `LocalBenchmarkRunnerTests.test_unsupported_dashboard_output_fails_before_training`, `LocalGpuRequirementTests`, `LocalGpuRequirementTests.test_missing_cuda_rejects_training_before_thread_setup`, `LocalGpuRequirementTests.test_cpu_remains_available_for_replay_without_training`
+
 ### [tests/test_model_checkpoints.py](../tests/test_model_checkpoints.py)
 
 자동 검증 파일.
@@ -1548,6 +1643,18 @@ Strict artifact comparisons must never manufacture model performance evidence.
 자동 검증 파일.
 
 `_event`, `_alert`, `_route`, `_Directory`, `_Directory.__init__`, `_Directory.resolve`, `_Provider`, `_Provider.__init__`, `_Provider.send`, `_queue`, `_live_settings`, `test_external_delivery_requires_environment_and_separate_live_gate`, `test_dashboard_evaluation_and_unreviewed_events_are_rejected`, `test_stable_event_id_distinguishes_multiple_signals_at_same_timestamp`, `test_data_quality_alert_cannot_be_routed_to_plant_manager`, `test_plant_manager_route_cannot_cross_a_plant_boundary`, `test_enqueue_is_idempotent_and_persists_no_phone_or_api_secret`, `test_dry_run_suppresses_without_resolving_contact_or_calling_provider`, `test_live_dispatch_records_provider_acceptance_and_not_delivery`, `test_transient_failure_uses_exponential_retry_then_accepts`, `test_ambiguous_provider_outcome_is_quarantined_without_automatic_retry`, `test_permanent_kakao_failure_falls_back_to_sms_with_distinct_key`, `test_expired_dispatch_lease_is_in_doubt_not_automatically_resent`, `test_failure_audit_redacts_phone_and_bearer_token`, `_Response`, `_Response.json`, `_Session`, `_Session.__init__`, `_Session.post`, `_solapi_settings`, `_provider_message`, `test_solapi_uses_v4_hmac_and_approved_alimtalk_template_contract`, `test_solapi_credentials_cannot_be_redirected_to_another_host`, `test_solapi_long_sms_fallback_is_sent_as_lms_text_message`, `test_solapi_ambiguous_transport_outcomes_are_not_classified_as_retryable`, `test_solapi_ambiguous_transport_outcomes_are_not_classified_as_retryable.Session`, `test_solapi_ambiguous_transport_outcomes_are_not_classified_as_retryable.Session.post`, `test_solapi_accepts_registered_service_sender_but_requires_mobile_recipient`, `test_mapping_directory_is_runtime_only_and_missing_contact_falls_back`, `test_operational_event_rejects_other_energy_sources_and_fault_claims`, `test_operational_event_accepts_self_contained_nested_detector_and_evidence`, `test_operational_notification_requires_clean_physical_units_and_ranges`, `test_operational_event_batch_verifies_hash_count_and_excludes_contacts`, `_write_routes`, `test_runtime_route_directory_resolves_contacts_only_for_live_dispatch`, `test_notify_anomalies_cli_defaults_to_preview_and_has_explicit_live_gate`, `test_notify_anomalies_cli_dry_run_validates_manifest_and_uses_separate_outbox`, `test_notify_anomalies_cli_validates_all_rows_before_mutating_outbox`, `test_notify_anomalies_cli_live_is_blocked_without_environment_gate`, `test_notify_anomalies_cli_rejects_any_custom_preview_outbox`
+
+### [tests/test_observed_preprocessing.py](../tests/test_observed_preprocessing.py)
+
+Observed targets and missing-weather reasons survive feature construction.
+
+`ObservedPreprocessingTests`, `ObservedPreprocessingTests.frame`, `ObservedPreprocessingTests.test_invalid_targets_cannot_reenter_through_history`, `ObservedPreprocessingTests.test_review_flags_do_not_delete_or_downweight_generation`, `ObservedPreprocessingTests.test_missing_weather_is_not_claimed_as_measured_zero`, `ObservedPreprocessingTests.test_invalid_weather_is_missing_before_observation_masks`, `ObservedPreprocessingTests.test_later_changes_do_not_change_past_features`, `ObservedPreprocessingTests.test_future_daily_profile_detection_does_not_rewrite_past_history`, `ObservedPreprocessingTests.test_unknown_solar_position_is_not_classified_as_night`
+
+### [tests/test_partition_model_replay.py](../tests/test_partition_model_replay.py)
+
+Dataset identity/replay plumbing tests; no model accuracy is simulated.
+
+`PartitionReplayTests`, `PartitionReplayTests.setUp`, `PartitionReplayTests.test_partition_identity_survives_copy_and_timestamp_changes`, `PartitionReplayTests.test_same_size_same_mtime_content_change_is_detected`, `PartitionReplayTests.test_file_fingerprint_remains_plain_sha256`, `PartitionReplayTests.test_manifest_or_partition_inventory_change_invalidates_identity`, `PartitionReplayTests.test_missing_and_empty_sources_are_rejected`, `PartitionReplayTests.test_replay_accepts_partition_source_but_no_models_never_passes`
 
 ### [tests/test_plant_registry.py](../tests/test_plant_registry.py)
 

@@ -2,6 +2,7 @@
 file/KMA_data_file/.asos_collection.lock
 file/KMA_data_file/*.part
 **/__pycache__/
+*.egg-info/
 .pytest_cache/
 .idea/
 *.py[cod]

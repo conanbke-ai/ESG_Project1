@@ -177,6 +177,10 @@
       "purpose": "시간 순서를 지키는 rolling-origin 특징 조합 비교 실험",
       "kind": "implementation"
     },
+    "evaluation/forecast_readiness.py": {
+      "purpose": "실제 모델의 예측 기준시각·연속 입력창·Train 입력 결측과 공통 평가 표본을 학습 전에 점검",
+      "kind": "implementation"
+    },
     "evaluation/forecast_samples.py": {
       "purpose": "발전소별 관측 시작 시각과 예측 목표 정렬, 시간창 연속성 검증",
       "kind": "implementation"
@@ -191,6 +195,10 @@
     },
     "evaluation/regression_metrics.py": {
       "purpose": "예측 정합성 검증과 발전소·지역·전국 회귀 오차 집계",
+      "kind": "implementation"
+    },
+    "evaluation/split_audit.py": {
+      "purpose": "학습 없이 시간 분할별 발전소·월·계절·Train 이력 유무와 제외 행 감사",
       "kind": "implementation"
     },
     "evaluation/temporal_split.py": {
@@ -275,6 +283,10 @@
     },
     "models/cnn_bilstm/evaluation.py": {
       "purpose": "저장된 CNN 모델 평가·체크포인트 비교·고정 보정 임계값 이상치 분석",
+      "kind": "implementation"
+    },
+    "models/cnn_bilstm/input_preprocessing.py": {
+      "purpose": "CNN Train 입력의 중앙값·표준화 통계를 적합하고 저장 계약에 따라 재예측 입력 변환",
       "kind": "implementation"
     },
     "models/cnn_bilstm/network.py": {

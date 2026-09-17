@@ -44,7 +44,9 @@ def observation_to_weather_row(item: dict) -> dict[str, str]:
         if flag_name in item:
             flag = str(item[flag_name] if item[flag_name] is not None else "")
             row[flag_name] = flag
-            if flag not in {"", "0"}:
+            # KMA defines 1 as error and 9 as missing. Blank or an unknown
+            # token is retained for auditing, not silently classified as error.
+            if flag.strip() in {"1", "1.0", "9", "9.0"}:
                 row[column] = ""
     return row
 
@@ -90,7 +92,14 @@ def merge_weather_rows(weather_root: Path, rows: list[dict[str, str]]) -> list[P
         merged = {_weather_row_key(row): row for row in existing}
         for row in incoming:
             key = _weather_row_key(row)
-            merged[key] = {**merged.get(key, {}), **row}
+            updated = {**merged.get(key, {}), **row}
+            for field, column in ASOS_API_COLUMNS.items():
+                for qc_column in (field + "Qcflg", column.split("(", 1)[0] + " QC플래그"):
+                    if column in row and qc_column not in row and qc_column in updated:
+                        # A replacement observation cannot inherit the QC of
+                        # the previous revision. Omitted values keep their QC.
+                        updated[qc_column] = ""
+            merged[key] = updated
         temporary = path.with_name(path.name + ".part")
         with temporary.open("w", encoding="cp949", newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=columns)

@@ -10,8 +10,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from solar_forecast.models.cnn_bilstm.sequence_data import (
     SequenceConfig,
     prepare_dataset_splits,
-    prepare_datasets,
 )
+from solar_forecast.models.cnn_bilstm.input_preprocessing import validate_input_preprocessing
 from solar_forecast.models.cnn_bilstm.network import (
     CnnBiLstmNetworkConfig,
     build_cnn_bilstm_network,
@@ -20,13 +20,75 @@ from solar_forecast.models.cnn_bilstm.optimization import evaluate_cnn_bilstm_lo
 from solar_forecast.infrastructure.artifact_store import create_run_directory
 
 
-def load_checkpoint(path: str, device: Optional[torch.device] = None):
-    data = torch.load(path, map_location=device or "cpu", weights_only=False)
+def _checkpoint_model(data, device: Optional[torch.device] = None):
     cfg = CnnBiLstmNetworkConfig(**data["config"])
     model = build_cnn_bilstm_network(cfg, device=device or torch.device("cpu"))
     model.load_state_dict(data["model_state"])
     model.eval()
     return model, cfg
+
+
+def load_checkpoint(path: str, device: Optional[torch.device] = None):
+    data = torch.load(path, map_location=device or "cpu", weights_only=True)
+    return _checkpoint_model(data, device)
+
+
+def _checkpoint_loaders(
+    data, frame, target_column, feature_columns, sequence_config,
+    entity_column=None, timestamp_column=None,
+):
+    """Restore each checkpoint's feature transform and split; never fit on replay."""
+    preprocessing = data.get("preprocessing")
+    if not isinstance(preprocessing, dict):
+        raise ValueError("Checkpoint has no saved preprocessing; replay cannot refit it")
+    saved_features = data.get("feature_columns") or list(
+        preprocessing.get("effective_feature_columns", [])[:len(preprocessing.get("feature_medians", {}))]
+    )
+    features = list(feature_columns) if feature_columns is not None else saved_features
+    if features != saved_features:
+        raise ValueError("Requested feature order differs from checkpoint")
+    frozen = validate_input_preprocessing(preprocessing, features)
+    saved_config = data.get("sequence_config")
+    if saved_config:
+        cfg = SequenceConfig(**saved_config)
+        if sequence_config is not None:
+            for field in saved_config:
+                if field not in {"batch_size", "shuffle", "num_workers"} and getattr(sequence_config, field) != getattr(cfg, field):
+                    raise ValueError(f"Requested sequence config differs from checkpoint: {field}")
+            cfg = sequence_config
+    else:
+        # Legacy median-only artifacts saved split settings, but not the complete
+        # SequenceConfig. Recover available settings rather than re-estimating.
+        split = frozen.get("temporal_split") or {}
+        fractions = split.get("fractions") or {}
+        settings = {
+            "sequence_length": split.get("sequence_length", 24),
+            "append_missing_indicators": frozen["append_missing_indicators"],
+            "val_size": fractions.get("validation", 0.15),
+            "calibration_size": fractions.get("calibration", 0.10),
+            "test_size": fractions.get("test", 0.15),
+        }
+        if split.get("evaluation_protocol") == "historical_rolling_origin_with_observation_updates":
+            settings.update(prediction_task="historical_forecast", forecast_horizon_hours=split["forecast_horizon_hours"])
+        if sequence_config is not None:
+            for field, value in settings.items():
+                if getattr(sequence_config, field) != value:
+                    raise ValueError(f"Requested legacy sequence config differs from checkpoint: {field}")
+            cfg = sequence_config
+        else:
+            cfg = SequenceConfig(**settings)
+    for name, requested in (("target_column", target_column), ("entity_column", entity_column), ("timestamp_column", timestamp_column)):
+        if name in data and requested is not None and data[name] != requested:
+            raise ValueError(f"Requested {name} differs from checkpoint")
+    loaders = prepare_dataset_splits(
+        frame, target_column, features, cfg,
+        entity_column or data.get("entity_column"),
+        timestamp_column or data.get("timestamp_column"),
+        preprocessing_state=frozen,
+    )
+    if loaders.n_features != data["config"]["n_features"]:
+        raise ValueError("Stored CNN input width differs from saved preprocessing")
+    return loaders
 
 
 def evaluate_model(
@@ -46,22 +108,27 @@ def compare_checkpoints(
     target_column: str,
     feature_columns: Optional[Sequence[str]] = None,
     sequence_config: Optional[SequenceConfig] = None,
+    entity_column: Optional[str] = None,
+    timestamp_column: Optional[str] = None,
 ) -> pd.DataFrame:
     """Load all checkpoints in a directory and compare their metrics."""
 
-    cfg = sequence_config or SequenceConfig()
-    _, _, test_loader, _ = prepare_datasets(frame, target_column, feature_columns, cfg)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     rows: List[Dict[str, object]] = []
     # Internal resumable states are also .pt files but do not implement the
     # deployable model artifact contract below.
     for checkpoint in Path(checkpoint_dir).rglob("cnn_bilstm.pt"):
-        model, model_cfg = load_checkpoint(str(checkpoint), device=device)
-        metrics = evaluate_model(model, test_loader, device=device)
+        data = torch.load(checkpoint, map_location="cpu", weights_only=True)
+        loaders = _checkpoint_loaders(
+            data, frame, target_column, feature_columns, sequence_config,
+            entity_column, timestamp_column,
+        )
+        model, model_cfg = _checkpoint_model(data, device=device)
+        metrics = evaluate_model(model, loaders.test, device=device)
         rows.append({"checkpoint": checkpoint.name, **metrics, **model_cfg.__dict__})
 
-    return pd.DataFrame(rows).sort_values(by="loss")
+    return pd.DataFrame(rows).sort_values(by="loss") if rows else pd.DataFrame()
 
 
 def detect_outliers_from_predictions(
@@ -113,21 +180,17 @@ def evaluate_and_analyze(
     If ``output_dir`` is provided, anomalies and metrics are saved in a timestamped subdirectory.
     """
 
-    cfg = sequence_config or SequenceConfig()
-    loaders = prepare_dataset_splits(
-        frame,
-        target_column,
-        feature_columns,
-        cfg,
-        entity_column,
-        timestamp_column,
+    data = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    loaders = _checkpoint_loaders(
+        data, frame, target_column, feature_columns, sequence_config,
+        entity_column, timestamp_column,
     )
     calibration_true_all: List[np.ndarray] = []
     calibration_pred_all: List[np.ndarray] = []
     y_true_all: List[np.ndarray] = []
     y_pred_all: List[np.ndarray] = []
 
-    model, _ = load_checkpoint(checkpoint_path)
+    model, _ = _checkpoint_model(data)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     model.eval()

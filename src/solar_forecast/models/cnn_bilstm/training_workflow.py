@@ -22,6 +22,7 @@ from solar_forecast.models.cnn_bilstm.sequence_data import (
     prepare_dataset_splits,
     prepare_datasets,
 )
+from solar_forecast.models.cnn_bilstm.input_preprocessing import INPUT_PREPROCESSING_CONTRACT
 from solar_forecast.models.cnn_bilstm.network import (
     CnnBiLstmNetworkConfig,
     build_cnn_bilstm_network,
@@ -135,6 +136,7 @@ def train_cnn_bilstm(
             fingerprint=stable_signature(
                 {
                     "checkpoint_contract": CHECKPOINT_CONTRACT,
+                    "input_preprocessing_contract": INPUT_PREPROCESSING_CONTRACT,
                     "data": dataframe_signature(
                         frame,
                         [
@@ -230,6 +232,7 @@ def train_cnn_bilstm(
         checkpoint_signature = stable_signature(
             {
                 "model_config": model_cfg.__dict__,
+                "input_preprocessing_contract": INPUT_PREPROCESSING_CONTRACT,
                 "epochs": epochs,
                 "train_sequences": len(train_loader.dataset),
                 "validation_sequences": len(val_loader.dataset),
@@ -312,7 +315,8 @@ def train_cnn_bilstm(
 
     if use_reinforcement:
         train_loader, val_loader, adaptive_test_loader, _ = prepare_datasets(
-            frame, target_column, feature_columns, cfg, entity_column, timestamp_column
+            frame, target_column, feature_columns, cfg, entity_column, timestamp_column,
+            preprocessing_state=preprocessing_state,
         )
         base_checkpoint_stage = checkpoint_stage
         base_checkpoint_resumed = checkpoint_resumed
@@ -320,6 +324,7 @@ def train_cnn_bilstm(
         adaptive_signature = stable_signature(
             {
                 "model_config": model_cfg.__dict__,
+                "input_preprocessing_contract": INPUT_PREPROCESSING_CONTRACT,
                 "bandit_config": adaptive_config.__dict__,
                 "epochs": 30,
                 "train_sequences": len(train_loader.dataset),
@@ -361,7 +366,11 @@ def train_cnn_bilstm(
         {
             "model_state": model.state_dict(),
             "config": model_cfg.__dict__,
-            "feature_columns": list(feature_columns or []),
+            "feature_columns": preprocessing_state["feature_columns"],
+            "sequence_config": cfg.__dict__,
+            "target_column": target_column,
+            "entity_column": entity_column,
+            "timestamp_column": timestamp_column,
             "preprocessing": preprocessing_state,
         },
         temporary_checkpoint,

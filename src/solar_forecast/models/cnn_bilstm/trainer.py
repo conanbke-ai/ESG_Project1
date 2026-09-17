@@ -5,6 +5,7 @@ import gc
 from pathlib import Path
 
 from solar_forecast.models.cnn_bilstm.sequence_config import SequenceConfig
+from solar_forecast.evaluation.temporal_split import calendar_split_for_execution
 from solar_forecast.evaluation.forecast_samples import (
     HISTORICAL_FORECAST_TASK,
     forecast_evaluation_contract,
@@ -72,6 +73,7 @@ class CnnBiLstmTrainer:
         )
         historical = task_contract["task"] == HISTORICAL_FORECAST_TASK
         requested_length = int(config.values.get("sequence_length", 168))
+        calendar_split, smoke_override = calendar_split_for_execution(config.values, smoke=smoke)
         sequence = SequenceConfig(
             # Benchmark candidates must keep their declared lookback. A short
             # dataset is an invalid candidate, not a silently different model.
@@ -90,6 +92,7 @@ class CnnBiLstmTrainer:
             ),
             prediction_task=config.values.get("prediction_task"),
             forecast_horizon_hours=task_contract["horizon_hours"] if historical else 1,
+            **calendar_split,
         )
         optimization_settings = OptimizationSettings.from_values(
             config.values,
@@ -136,6 +139,8 @@ class CnnBiLstmTrainer:
         if smoke:
             optimizer_artifact = {"enabled": False, "reason": "smoke_mode"}
         temporal_split = artifacts.get("temporal_split") or {}
+        if smoke_override is not None:
+            temporal_split["smoke_split_override"] = smoke_override
         test_period = temporal_split.get("test_period") or {}
         return {
             "source": str(source), "checkpoint_path": str(artifacts["checkpoint_path"]),

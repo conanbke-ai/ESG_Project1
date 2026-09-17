@@ -139,24 +139,20 @@ class LeakageSafeFeatureEngineer:
         solar_elevation_sin, clear_sky_proxy = self._solar_geometry(result, timestamp_column)
         result["solar_elevation_sin"] = solar_elevation_sin
         result["clear_sky_irradiance_proxy"] = clear_sky_proxy
-        result["is_daylight"] = solar_elevation_sin.gt(0).astype(int)
+        result["is_daylight"] = solar_elevation_sin.gt(0).astype(float).where(
+            solar_elevation_sin.notna()
+        )
 
-        # In the retained ASOS hourly exports, precipitation is event-like and
-        # most dry hours are blank. Treat a blank as dry only while independent
-        # core sensors are present, and retain the observation mask either way.
-        if "precipitation_mm" in result:
-            core = [
-                column for column in ("temperature_c", "wind_speed_mps", "humidity_pct")
-                if column in result
-            ]
-            core_available = result[core].notna().sum(axis=1).ge(2) if core else False
-            dry_blank = result["precipitation_mm"].isna() & core_available
-            result.loc[dry_blank, "precipitation_mm"] = 0.0
+        # Missing rain is not proven dry merely because other sensors work.
+        # An instantaneous night flag also does not prove the entire preceding
+        # hourly accumulation was dark. Preserve missing observations; any
+        # model-side imputation has its own Train-fitted, saved contract.
 
-        night = result["is_daylight"].eq(0) & result["solar_elevation_sin"].notna()
-        for column in ("sunshine_hours", "solar_irradiance_mj_m2"):
-            if column in result:
-                result.loc[night & result[column].isna(), column] = 0.0
+        # Keep measured targets for auditing, but never feed impossible or
+        # negative/nonfinite targets back through lag/rolling input features.
+        history_values = pd.to_numeric(result[target_column], errors="coerce")
+        history_valid = np.isfinite(history_values) & history_values.ge(0)
+        result["_history_generation"] = history_values.where(history_valid)
 
         timestamp = result[timestamp_column]
         result["hour"] = timestamp.dt.hour
@@ -168,10 +164,10 @@ class LeakageSafeFeatureEngineer:
         result["dayofyear_cos"] = np.cos(2 * np.pi * timestamp.dt.dayofyear / 365.25)
 
         for lag in (self.policy.forecast_horizon_hours, self.policy.weekly_lag_hours):
-            lookup = result[[entity_column, timestamp_column, target_column]].copy()
+            lookup = result[[entity_column, timestamp_column, "_history_generation"]].copy()
             lookup[timestamp_column] += pd.to_timedelta(lag, unit="h")
             feature = f"generation_lag_{lag}h_mwh"
-            lookup = lookup.rename(columns={target_column: feature})
+            lookup = lookup.rename(columns={"_history_generation": feature})
             result = result.merge(
                 lookup,
                 on=[entity_column, timestamp_column],
@@ -183,7 +179,7 @@ class LeakageSafeFeatureEngineer:
 
         rolling_parts: list[pd.DataFrame] = []
         for entity, group in result.groupby(entity_column, sort=False):
-            series = group.set_index(timestamp_column)[target_column]
+            series = group.set_index(timestamp_column)["_history_generation"]
             hourly = series.reindex(pd.date_range(series.index.min(), series.index.max(), freq="h"))
             available = hourly.shift(self.policy.forecast_horizon_hours).notna().astype(float)
             rolling_source = hourly.shift(self.policy.forecast_horizon_hours)
@@ -213,7 +209,9 @@ class LeakageSafeFeatureEngineer:
             validate="one_to_one",
             sort=False,
         )
-        return result.sort_values([timestamp_column, entity_column], kind="stable").reset_index(drop=True)
+        return result.drop(columns="_history_generation").sort_values(
+            [timestamp_column, entity_column], kind="stable"
+        ).reset_index(drop=True)
 
     @staticmethod
     def _solar_geometry(

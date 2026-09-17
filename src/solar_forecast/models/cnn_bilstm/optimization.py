@@ -28,6 +28,7 @@ from solar_forecast.models.shared.checkpoint_store import (
 )
 
 from solar_forecast.models.cnn_bilstm.sequence_data import SequenceConfig, prepare_dataset_splits
+from solar_forecast.models.cnn_bilstm.input_preprocessing import INPUT_PREPROCESSING_CONTRACT
 from solar_forecast.models.cnn_bilstm.network import (
     CNNBiLSTM,
     CnnBiLstmNetworkConfig,
@@ -216,6 +217,7 @@ def optimize_cnn_bilstm(
         # whose categorical readout choices change.
         settings = settings.scoped(stable_signature({
             "network_contract": "cnn_bilstm_readout.v1",
+            "input_preprocessing_contract": INPUT_PREPROCESSING_CONTRACT,
             "readout": search_space.get("readout", _DEFAULT_READOUT_SEARCH),
         }))
     if min(trial_epochs, early_stopping_patience) < 1:
@@ -254,6 +256,7 @@ def optimize_cnn_bilstm(
         checkpoint_signature = stable_signature(
             {
                 "model_config": model_cfg.__dict__,
+                "input_preprocessing_contract": INPUT_PREPROCESSING_CONTRACT,
                 "lr": lr,
                 "weight_decay": weight_decay,
                 "trial_epochs": trial_epochs,
@@ -463,6 +466,7 @@ def train_with_best_trial(
     checkpoint_signature = stable_signature(
         {
             "model_config": model_cfg.__dict__,
+            "input_preprocessing_contract": INPUT_PREPROCESSING_CONTRACT,
             "best_params": best_params,
             "epochs": epochs,
             "train_sequences": len(train_loader.dataset),

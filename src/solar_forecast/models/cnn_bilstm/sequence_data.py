@@ -21,6 +21,9 @@ from solar_forecast.evaluation.forecast_samples import (
 )
 
 from solar_forecast.models.cnn_bilstm.sequence_config import SequenceConfig
+from solar_forecast.models.cnn_bilstm.input_preprocessing import (
+    fit_input_preprocessing, transform_inputs, validate_input_preprocessing,
+)
 
 
 class SequenceDataset(Dataset):
@@ -155,73 +158,20 @@ def _position_labels(n_targets: int, cfg: SequenceConfig) -> dict[str, np.ndarra
     }
 
 
-def _fit_and_transform_training_medians(
+def _fit_and_transform_training_preprocessing(
     series: Sequence[_EntitySeries],
     feature_columns: Sequence[str],
     *,
     append_missing_indicators: bool,
 ) -> dict[str, object]:
-    # Compute one feature at a time. Concatenating every entity's full Train
-    # matrix duplicates O(rows * features) memory before lazy windows even run.
-    feature_count = len(feature_columns)
-    medians = np.zeros(feature_count, dtype=np.float32)
-    all_missing_mask = np.ones(feature_count, dtype=bool)
-    for feature_index in range(feature_count):
-        feature_parts = [
-            item.features[item.train_feature_rows, feature_index]
-            for item in series
-            if item.train_feature_rows.any()
-        ]
-        if not feature_parts:
-            continue
-        values = np.concatenate(feature_parts).astype(np.float32, copy=False)
-        values = values[np.isfinite(values)]
-        if values.size:
-            medians[feature_index] = np.median(values)
-            all_missing_mask[feature_index] = False
-    all_missing = [
-        feature_columns[index]
-        for index, is_missing in enumerate(all_missing_mask)
-        if is_missing
-    ]
-    if all_missing and not append_missing_indicators:
-        raise ValueError(
-            "Training split has no observed values and missing indicators are disabled for: "
-            f"{all_missing}"
-        )
-    medians = np.nan_to_num(medians, nan=0.0).astype(np.float32)
+    state = fit_input_preprocessing(
+        [(item.features, item.train_feature_rows) for item in series],
+        feature_columns,
+        append_missing_indicators=append_missing_indicators,
+    )
     for item in series:
-        # pandas may expose a read-only NumPy view. Imputation owns its buffer
-        # so neither read-only views nor writable caller data are modified.
-        numeric = item.features.astype(np.float32, copy=True)
-        missing = ~np.isfinite(numeric)
-        missing_row, missing_feature = np.where(missing)
-        numeric[missing_row, missing_feature] = medians[missing_feature]
-        if append_missing_indicators:
-            transformed = np.empty(
-                (len(numeric), numeric.shape[1] * 2), dtype=np.float32
-            )
-            transformed[:, : numeric.shape[1]] = numeric
-            transformed[:, numeric.shape[1] :] = missing
-            item.features = transformed
-        else:
-            item.features = numeric
-    return {
-        "strategy": "training_split_median_with_missing_indicators",
-        "feature_medians": {
-            column: float(medians[index]) for index, column in enumerate(feature_columns)
-        },
-        "all_missing_training_features": all_missing,
-        "append_missing_indicators": append_missing_indicators,
-        "effective_feature_columns": [
-            *feature_columns,
-            *(
-                [f"{column}__missing" for column in feature_columns]
-                if append_missing_indicators
-                else []
-            ),
-        ],
-    }
+        item.features = transform_inputs(item.features, feature_columns, state)
+    return state
 
 
 def prepare_dataset_splits(
@@ -231,6 +181,8 @@ def prepare_dataset_splits(
     config: Optional[SequenceConfig] = None,
     entity_column: Optional[str] = None,
     timestamp_column: Optional[str] = None,
+    *,
+    preprocessing_state: dict[str, object] | None = None,
 ) -> SequenceLoaders:
     """Build one global four-way time split with lazy per-entity windows."""
 
@@ -240,6 +192,19 @@ def prepare_dataset_splits(
         excluded = {target_column, entity_column, timestamp_column}
         feature_columns = [column for column in frame.columns if column not in excluded]
     feature_columns = list(feature_columns)
+    frozen_preprocessing = (
+        validate_input_preprocessing(preprocessing_state, feature_columns)
+        if preprocessing_state is not None else None
+    )
+    if frozen_preprocessing is not None and frozen_preprocessing["append_missing_indicators"] != cfg.append_missing_indicators:
+        raise ValueError("Sequence config missing indicators differ from saved preprocessing")
+    if frozen_preprocessing is not None:
+        saved_split = frozen_preprocessing.get("temporal_split") or {}
+        if saved_split.get("sequence_length", cfg.sequence_length) != cfg.sequence_length:
+            raise ValueError("Sequence length differs from saved preprocessing")
+        saved_horizon = saved_split.get("forecast_horizon_hours")
+        if saved_horizon is not None and (not historical or saved_horizon != cfg.forecast_horizon_hours):
+            raise ValueError("Forecast horizon differs from saved preprocessing")
     if historical:
         if not entity_column or not timestamp_column:
             raise ValueError("Historical forecasting requires entity_column and timestamp_column")
@@ -263,11 +228,22 @@ def prepare_dataset_splits(
                 calibration_fraction=cfg.calibration_size,
                 test_fraction=cfg.test_size,
                 gap_hours=max(cfg.purge_gap_hours, cfg.forecast_horizon_hours) if historical else cfg.purge_gap_hours,
+                train_end=cfg.train_end,
+                validation_end=cfg.validation_end,
+                calibration_end=cfg.calibration_end,
+                test_end=cfg.test_end,
             )
         )
-        boundaries = splitter.boundaries(frame[timestamp_column])
-    elif cfg.purge_gap_hours:
-        raise ValueError("purge_gap_hours requires a timestamp_column")
+        stored_split = (frozen_preprocessing or {}).get("temporal_split") or {}
+        stored_boundaries = stored_split.get("boundaries")
+        if frozen_preprocessing is not None and stored_boundaries is None:
+            raise ValueError("Timestamp replay requires saved temporal boundaries")
+        boundaries = (
+            TemporalBoundaries.from_dict(stored_boundaries)
+            if stored_boundaries is not None else splitter.boundaries(frame[timestamp_column])
+        )
+    elif cfg.purge_gap_hours or cfg.train_end is not None:
+        raise ValueError("purge gap/calendar boundaries require a timestamp_column")
 
     sort_columns = [
         column for column in (entity_column, timestamp_column) if column is not None
@@ -367,15 +343,23 @@ def prepare_dataset_splits(
             f"No sequences were assigned to {empty}; reduce purge gap or sequence length"
         )
 
-    preprocessing_state = _fit_and_transform_training_medians(
-        series,
-        feature_columns,
-        append_missing_indicators=cfg.append_missing_indicators,
-    )
+    if frozen_preprocessing is None:
+        preprocessing_state = _fit_and_transform_training_preprocessing(
+            series, feature_columns,
+            append_missing_indicators=cfg.append_missing_indicators,
+        )
+    else:
+        preprocessing_state = frozen_preprocessing
+        for item in series:
+            item.features = transform_inputs(item.features, feature_columns, preprocessing_state)
     datasets = {
         name: LazyWindowSequenceDataset(series, name, cfg.sequence_length)
         for name in ("train", "validation", "calibration", "test")
     }
+    if frozen_preprocessing is not None and not timestamp_column:
+        stored_counts = (frozen_preprocessing.get("temporal_split") or {}).get("counts")
+        if stored_counts is not None and stored_counts != {name: len(dataset) for name, dataset in datasets.items()}:
+            raise ValueError("Legacy positional replay cannot change dataset size without saved timestamp boundaries")
     loaders = {
         name: DataLoader(
             dataset,
@@ -404,33 +388,21 @@ def prepare_dataset_splits(
         "boundaries": boundaries.to_dict() if boundaries else None,
         "test_period": (
             {
-                "start": pd.to_datetime(
-                    prepared.loc[
-                        pd.to_datetime(prepared[timestamp_column], errors="coerce").gt(
-                            boundaries.calibration_end
-                            + pd.Timedelta(hours=boundaries.gap_hours)
-                        ),
-                        timestamp_column,
-                    ],
-                    errors="coerce",
-                ).min().isoformat(),
-                "end": pd.to_datetime(
-                    prepared.loc[
-                        pd.to_datetime(prepared[timestamp_column], errors="coerce").gt(
-                            boundaries.calibration_end
-                            + pd.Timedelta(hours=boundaries.gap_hours)
-                        ),
-                        timestamp_column,
-                    ],
-                    errors="coerce",
-                ).max().isoformat(),
+                "start": pd.to_datetime(prepared.loc[
+                    splitter.labels(prepared[timestamp_column], boundaries).eq("test").fillna(False),
+                    timestamp_column,
+                ]).min().isoformat(),
+                "end": pd.to_datetime(prepared.loc[
+                    splitter.labels(prepared[timestamp_column], boundaries).eq("test").fillna(False),
+                    timestamp_column,
+                ]).max().isoformat(),
             }
-            if timestamp_column and boundaries
-            else None
+            if timestamp_column and boundaries else None
         ),
         "window_materialization": "lazy_per_batch",
     }
-    preprocessing_state["temporal_split"] = split_metadata
+    if frozen_preprocessing is None:
+        preprocessing_state["temporal_split"] = split_metadata
     for loader in loaders.values():
         loader.preprocessing_state = preprocessing_state
         loader.split_metadata = split_metadata
@@ -452,6 +424,8 @@ def prepare_datasets(
     config: Optional[SequenceConfig] = None,
     entity_column: Optional[str] = None,
     timestamp_column: Optional[str] = None,
+    *,
+    preprocessing_state: dict[str, object] | None = None,
 ) -> Tuple[DataLoader, DataLoader, DataLoader, int]:
     """Compatibility view returning Train/Validation/Test from four-way splits."""
 
@@ -462,6 +436,7 @@ def prepare_datasets(
         config,
         entity_column,
         timestamp_column,
+        preprocessing_state=preprocessing_state,
     )
     return splits.train, splits.validation, splits.test, splits.n_features
 

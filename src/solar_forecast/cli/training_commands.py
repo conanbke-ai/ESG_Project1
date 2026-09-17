@@ -9,13 +9,17 @@ from solar_forecast.cli.arguments import parse_csv_values, build_sequence_config
 
 
 def handle_benchmark_command(args: argparse.Namespace) -> None:
-    from solar_forecast.evaluation.experiment_config import experiment_plan, load_experiment_config
-    from solar_forecast.jobs.benchmark_job import BenchmarkService
+    from solar_forecast.evaluation.experiment_config import configure_smoke_experiment, experiment_plan, load_experiment_config
 
     path = Path(args.config)
     if args.plan:
-        print(json.dumps(experiment_plan(load_experiment_config(path)), ensure_ascii=False, indent=2))
+        values = load_experiment_config(path)
+        if args.smoke:
+            values = configure_smoke_experiment(values)
+        print(json.dumps(experiment_plan(values), ensure_ascii=False, indent=2))
         return
+    from solar_forecast.jobs.benchmark_job import BenchmarkService
+
     run_dir = BenchmarkService().run(path, smoke=args.smoke)
     print(f"Benchmark completed: {run_dir}")
     if not args.smoke:

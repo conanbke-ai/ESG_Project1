@@ -32,7 +32,7 @@ from solar_forecast.datasets.plant_registry import (
     NationwidePlantRegistryBuilder,
     ReviewedStationMappingCatalog,
 )
-from solar_forecast.features.asos_features import KmaAsosNormalizer
+from solar_forecast.features.asos_features import KmaAsosNormalizer, WEATHER_PROVENANCE_COLUMNS
 
 
 @dataclass(frozen=True)
@@ -178,8 +178,16 @@ class NationwideModelDatasetBuilder:
             how="left",
             validate="many_to_one",
         )
-        result = self.engineer.transform(result)
+        present = result["weather_station_hour_present"].astype("boolean").fillna(False).astype(bool)
+        result["weather_station_hour_present"] = present
+        for column in WEATHER_PROVENANCE_COLUMNS:
+            if column.endswith(("_observed", "_invalid")):
+                result[column] = result[column].astype("boolean").fillna(False).astype(bool)
+            elif column.endswith("_missing_reason") or column == "station_metadata_status":
+                result.loc[~present, column] = "station_hour_missing"
         result = self.quality_policy.apply(result)
+        result = self.engineer.transform(result)
+        present = result["weather_station_hour_present"].astype(bool)
         # Keep genuine gaps and cold-start rows. Dropping incomplete history
         # would preferentially retain healthy sensors/plants and bias training.
         context = ["timestamp", "company", "plant_id", "plant", "region"]
@@ -195,7 +203,8 @@ class NationwideModelDatasetBuilder:
         ):
             if column in result:
                 context.append(column)
-        result = result[[*context, *MODEL_READY_FEATURES, *QUALITY_COLUMNS, "generation_mwh"]]
+        result = result[[*context, *MODEL_READY_FEATURES, *WEATHER_PROVENANCE_COLUMNS,
+                         *QUALITY_COLUMNS, "generation_mwh"]]
         destination = Path(destination)
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(destination.name + ".tmp")
@@ -254,6 +263,11 @@ class NationwideModelDatasetBuilder:
                 "withheld_plants": int(weather_unavailable["plant_id"].nunique())
                 if not weather_unavailable.empty
                 else 0,
+                "missing_station_hour_rows": int((~present).sum()),
+                "missing_station_hour_keys": int(result.loc[
+                    ~present, ["station_id", "timestamp"]
+                ].drop_duplicates().shape[0]),
+                "metadata_status_rows": result["station_metadata_status"].value_counts().to_dict(),
                 "policy": (
                     "retain generation in Silver but withhold it from Gold until the matching "
                     "official KMA annual file is present"
@@ -310,7 +324,15 @@ class NationwideModelDatasetBuilder:
             },
             "history_rule": "lags are >=24h; rolling 7d is shifted by 24h",
             "history_missing_policy": (
-                "preserve NaN and availability features; never delete a row only because history is missing"
+                "quality gate before feature engineering; mask negative/nonfinite "
+                "generation in lag and rolling inputs while preserving raw targets; preserve NaN "
+                "and availability features without dropping incomplete-history rows"
+            ),
+            "preprocessing_contract": "solar-observed-preprocessing.v2",
+            "weather_provenance_columns": WEATHER_PROVENANCE_COLUMNS,
+            "weather_missing_policy": (
+                "preserve missing station-hour/variable observations; no assumed dry-rain zeros "
+                "or instantaneous-night conversion of hourly accumulations; model imputers fit Train only"
             ),
             "energy_source_filter": (
                 "not applied in the nationwide model-ready table; each model job selects its technology"

@@ -22,6 +22,8 @@ from solar_forecast.config_loader import ModelJobConfig, PROJECT_ROOT
 
 
 CHECKPOINT_CONTRACT = "solar-training-checkpoint.v2"
+PARTITION_FINGERPRINT_CONTRACT = "solar-partition-content-fingerprint.v2"
+BENCHMARK_CHECKPOINT_CONTRACT = "solar-benchmark-training-identity.v1"
 
 
 def stable_signature(payload: Mapping[str, Any] | list[Any] | tuple[Any, ...]) -> str:
@@ -57,23 +59,32 @@ def dataframe_signature(
 
 
 def dataset_signature(source: Path) -> str:
-    """Fingerprint one file or partitioned dataset independently of the model."""
+    """Hash input bytes; directory copies/timestamps must not change identity.
+
+    File fingerprints keep the original SHA256 contract. Partition fingerprints
+    are versioned because legacy size/mtime inventories did not verify bytes.
+    """
 
     source = Path(source)
     if source.is_file():
         return sha256_file(source)
+    if not source.is_dir():
+        raise FileNotFoundError(f"Dataset is unavailable: {source}")
     manifest = source.parent / "model_ready_manifest.json"
     inventory = [
         {
             "path": path.relative_to(source).as_posix(),
             "bytes": path.stat().st_size,
-            "mtime_ns": path.stat().st_mtime_ns,
+            "sha256": sha256_file(path),
         }
         for path in sorted(source.rglob("*"))
         if path.is_file()
     ]
+    if not inventory:
+        raise ValueError(f"Partitioned dataset is empty: {source}")
     return stable_signature(
         {
+            "contract": PARTITION_FINGERPRINT_CONTRACT,
             "manifest_sha256": sha256_file(manifest) if manifest.exists() else None,
             "partition_inventory": inventory,
         }
@@ -84,6 +95,12 @@ def training_fingerprint(config: ModelJobConfig) -> str:
     values = json.loads(json.dumps(config.values, ensure_ascii=False, default=str))
     values.pop("resume", None)
     values.pop("checkpoint", None)
+    if values.get("checkpoint_identity_contract") == BENCHMARK_CHECKPOINT_CONTRACT:
+        # A benchmark invocation creates a new evidence directory. That path
+        # must not turn the same training job into a new checkpoint/study.
+        # Standalone training retains its existing fingerprint contract.
+        values.pop("output_root", None)
+        values.pop("prediction_root", None)
     optimizer = values.get("optimizer")
     if isinstance(optimizer, dict):
         for operational_key in (

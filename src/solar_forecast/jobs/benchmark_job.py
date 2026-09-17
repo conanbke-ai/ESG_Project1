@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from copy import deepcopy
 import hashlib
 import importlib.metadata
 import json
@@ -13,7 +12,8 @@ import numpy as np
 import pandas as pd
 
 from solar_forecast.config_loader import PROJECT_ROOT
-from solar_forecast.evaluation.experiment_config import build_candidate_configs, experiment_plan, load_experiment_config
+from solar_forecast.datasets.repository import DatasetRepository
+from solar_forecast.evaluation.experiment_config import build_candidate_configs, configure_smoke_experiment, experiment_plan, load_experiment_config
 from solar_forecast.infrastructure.artifact_store import create_run_directory, sha256_file, write_json_atomic
 from solar_forecast.jobs.training_job import TrainingService
 from solar_forecast.models.shared.checkpoint_store import dataset_signature
@@ -80,19 +80,12 @@ class BenchmarkService:
 
         values = load_experiment_config(config_path, project_root=self.project_root)
         if smoke:
-            values = deepcopy(values)
-            values["horizons_hours"] = [1]
-            values["selection_gap_hours"] = 0
-            values.setdefault("split", {})["purge_gap_hours"] = 0
-            values["optimization_scope"] = "smoke_wiring_only"
-            for model, settings in values["models"].items():
-                settings["feature_sets"] = settings["feature_sets"][:1]
-                if model == "cnn_bilstm":
-                    settings["sequence_lengths"] = [24]
+            values = configure_smoke_experiment(values)
         plan = experiment_plan(values, project_root=self.project_root)
         source = Path(plan["input_dataset"])
-        if not source.exists() or (source.is_dir() and not any(source.rglob("*.csv")) and not any(source.rglob("*.parquet"))):
-            raise FileNotFoundError(f"Observed Gold dataset is unavailable: {source}. Run prepare-data first.")
+        # Use the actual training loader's format rules, including CSV.GZ
+        # partitions; reject unsupported inputs before creating an expensive run.
+        DatasetRepository._training_files(source)
         output_root = Path(values.get("output_root", "artifacts/benchmarks"))
         output_root = output_root if output_root.is_absolute() else self.project_root / output_root
         run_dir = create_run_directory(output_root)

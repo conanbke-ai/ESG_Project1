@@ -11,7 +11,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from solar_forecast.models.hybrid.dynamic_gate import normalize_prediction_columns
 from solar_forecast.infrastructure.artifact_store import replace_file_atomic
-from solar_forecast.evaluation.temporal_split import TemporalSplitConfig, TemporalSplitter
+from solar_forecast.evaluation.temporal_split import TemporalSplitConfig, TemporalSplitter, calendar_split_for_execution
 from solar_forecast.evaluation.forecast_samples import (
     FORECAST_CONTEXT_COLUMNS,
     HISTORICAL_FORECAST_TASK,
@@ -81,6 +81,7 @@ class XGBoostTrainer:
                 horizon_hours=task_contract["horizon_hours"],
             )
         requested_gap = 0 if smoke else int(config.values.get("purge_gap_hours", 168))
+        calendar_split, smoke_override = calendar_split_for_execution(config.values, smoke=smoke)
         train_frame, validation_frame, calibration_frame, test_frame, split_metadata = (
             self._chronological_split(
             frame,
@@ -90,8 +91,11 @@ class XGBoostTrainer:
             purge_gap_hours=max(requested_gap, task_contract["horizon_hours"]) if historical else requested_gap,
             calendar_timestamps=calendar_timestamps,
             prediction_task=task_contract["task"],
+            calendar_split=calendar_split,
             )
         )
+        if smoke_override is not None:
+            split_metadata["smoke_split_override"] = smoke_override
         run_dir.mkdir(parents=True, exist_ok=True)
         checkpoint_store = TrainingCheckpointStore.from_config(config)
         optimization_settings = OptimizationSettings.from_values(
@@ -285,6 +289,7 @@ class XGBoostTrainer:
         purge_gap_hours: int,
         calendar_timestamps: pd.Series | None = None,
         prediction_task: str = "observed_conditions_estimation",
+        calendar_split: dict[str, object] | None = None,
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, object]]:
         if "timestamp" not in frame:
             raise ValueError("XGBoost forecasting requires a timestamp column for temporal splitting")
@@ -294,6 +299,7 @@ class XGBoostTrainer:
                 calibration_fraction=calibration_fraction,
                 test_fraction=test_fraction,
                 gap_hours=purge_gap_hours,
+                **(calendar_split or {}),
             )
         )
         calendar = calendar_timestamps if calendar_timestamps is not None else frame["timestamp"]
@@ -307,9 +313,7 @@ class XGBoostTrainer:
         if empty:
             raise ValueError(f"Temporal split produced empty partitions {empty}; use more data")
         test_calendar = pd.to_datetime(calendar)
-        test_calendar = test_calendar[
-            test_calendar.gt(boundaries.calibration_end + pd.Timedelta(hours=boundaries.gap_hours))
-        ]
+        test_calendar = test_calendar.loc[splitter.labels(test_calendar, boundaries).eq("test").fillna(False)]
         metadata = {
             "protocol": "global_timestamp_train_validation_calibration_test",
             "evaluation_protocol": (

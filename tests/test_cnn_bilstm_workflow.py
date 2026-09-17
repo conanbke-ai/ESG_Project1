@@ -15,7 +15,7 @@ from solar_forecast.models.cnn_bilstm.optimization import train_with_best_trial
 from solar_forecast.models.cnn_bilstm.sequence_config import SequenceConfig
 from solar_forecast.models.cnn_bilstm.sequence_data import LazyWindowSequenceDataset
 from solar_forecast.models.cnn_bilstm.sequence_data import _EntitySeries
-from solar_forecast.models.cnn_bilstm.sequence_data import _fit_and_transform_training_medians
+from solar_forecast.models.cnn_bilstm.sequence_data import _fit_and_transform_training_preprocessing
 from solar_forecast.models.cnn_bilstm.sequence_data import prepare_dataset_splits
 from solar_forecast.models.cnn_bilstm.sequence_data import prepare_datasets
 from solar_forecast.models.cnn_bilstm.evaluation import compare_checkpoints
@@ -81,6 +81,9 @@ def test_train_and_save_creates_timestamped_dir(tmp_path):
     assert predictions["split"].eq("test").all()
     checkpoint = torch.load(run_dir / "cnn_bilstm.pt", weights_only=True)
     assert checkpoint["config"]["readout"] == "final_hidden"
+    assert checkpoint["preprocessing"]["schema_version"] == 2
+    assert checkpoint["preprocessing"]["target_transform"] == "identity"
+    assert checkpoint["sequence_config"]["sequence_length"] == cfg.sequence_length
     assert json.loads((run_dir / "best_params.json").read_text())["readout"] == "final_hidden"
 
 
@@ -171,7 +174,8 @@ def test_entity_sequences_never_cross_plants_and_split_chronologically():
     )
     for loader in (train, validation, test):
         for features, _ in loader:
-            values = features.numpy()[:, :, 0]
+            state = loader.preprocessing_state
+            values = features.numpy()[:, :, 0] * state["feature_scales"]["f0"] + state["feature_means"]["f0"]
             assert all((row < 50).all() or (row > 50).all() for row in values)
     train_targets = next(iter(train))[1].numpy()
     validation_targets = next(iter(validation))[1].numpy()
@@ -238,12 +242,13 @@ def test_imputation_owns_buffer_and_preserves_input(read_only, append_missing_in
         timestamps=np.arange(4),
     )
 
-    state = _fit_and_transform_training_medians(
+    state = _fit_and_transform_training_preprocessing(
         [series], ["first", "second"], append_missing_indicators=append_missing_indicators,
     )
 
     assert state["feature_medians"] == {"first": 3.0, "second": 20.0}
-    np.testing.assert_array_equal(series.features[:, :2], [[1, 20], [3, 10], [5, 30], [1000, 9000]])
+    reconstructed = series.features[:, :2] * np.array(list(state["feature_scales"].values())) + np.array(list(state["feature_means"].values()))
+    np.testing.assert_allclose(reconstructed, [[1, 20], [3, 10], [5, 30], [1000, 9000]], rtol=1e-6)
     np.testing.assert_array_equal(source, original)
     assert source.flags.writeable == (not read_only)
     assert series.features.flags.writeable
@@ -275,10 +280,12 @@ def test_historical_cnn_context_matches_tabular_forecast_and_excludes_future_inp
             origin = pd.Timestamp(row["forecast_origin"])
             observed = tabular.loc[pd.Timestamp(row["timestamp"])]
             assert origin == observed["forecast_origin"]
-            assert float(features[-1, 0]) == observed["weather"]
+            state = splits.train.preprocessing_state
+            reconstructed = features[:, 0].numpy() * state["feature_scales"]["weather"] + state["feature_means"]["weather"]
+            assert reconstructed[-1] == pytest.approx(observed["weather"], abs=1e-4)
             assert float(target) == observed["target"]
             assert row["persistence_pred"] == observed["persistence_pred"]
-            np.testing.assert_array_equal(np.diff(features[:, 0]), np.ones(11))
+            np.testing.assert_allclose(np.diff(reconstructed), np.ones(11), atol=1e-4)
     training = splits.train.dataset.series[0]
     latest_train_origin = training.origin_positions[training.target_positions["train"]].max()
     assert not training.train_feature_rows[latest_train_origin + 1:].any()
@@ -419,3 +426,51 @@ def test_readout_study_does_not_reuse_legacy_or_different_readout_trials(tmp_pat
     assert legacy.best_value == -123.0
     assert final_hidden.best_params["readout"] == "final_hidden"
     assert last_output.best_params["readout"] == "last_output"
+
+
+def test_checkpoint_evaluation_reuses_saved_statistics_without_refit(tmp_path, monkeypatch):
+    from solar_forecast.models.cnn_bilstm.evaluation import _checkpoint_loaders
+    import solar_forecast.models.cnn_bilstm.sequence_data as sequence_data
+
+    frame = _dummy_frame(160)
+    cfg = _short_seq_config()
+    splits = prepare_dataset_splits(frame, "target", ["f0", "f1", "f2"], cfg)
+    data = {
+        "config": {"n_features": splits.n_features},
+        "preprocessing": splits.train.preprocessing_state,
+        "feature_columns": ["f0", "f1", "f2"],
+        "sequence_config": cfg.__dict__,
+        "target_column": "target",
+    }
+    def no_fit(*args, **kwargs):
+        raise AssertionError("Checkpoint replay must never fit preprocessing")
+    monkeypatch.setattr(sequence_data, "fit_input_preprocessing", no_fit)
+    changed = frame.copy()
+    changed.loc[:20, "f0"] = 1e6
+    replay = _checkpoint_loaders(data, changed, "target", None, None)
+    assert replay.train.preprocessing_state["feature_means"] == splits.train.preprocessing_state["feature_means"]
+    np.testing.assert_array_equal(replay.test.dataset[0][0], splits.test.dataset[0][0])
+    with pytest.raises(ValueError, match="feature order"):
+        _checkpoint_loaders(data, changed, "target", ["f1", "f0", "f2"], None)
+    with pytest.raises(ValueError, match="sequence config"):
+        _checkpoint_loaders(data, changed, "target", None, SequenceConfig(sequence_length=12))
+
+
+def test_frozen_calendar_checkpoint_keeps_boundaries_when_data_grows():
+    frame = pd.DataFrame({
+        "timestamp": pd.date_range("2024-01-01", periods=360, freq="h"),
+        "plant_id": "a", "feature": np.arange(360), "target": np.arange(360),
+    })
+    cfg = SequenceConfig(
+        sequence_length=6, prediction_task="historical_forecast", forecast_horizon_hours=1,
+        train_end="2024-01-05T23:00:00", validation_end="2024-01-08T23:00:00",
+        calibration_end="2024-01-10T23:00:00", test_end="2024-01-12T23:00:00",
+    )
+    splits = prepare_dataset_splits(frame.iloc[:300], "target", ["feature"], cfg, "plant_id", "timestamp")
+    replay = prepare_dataset_splits(
+        frame, "target", ["feature"], cfg, "plant_id", "timestamp",
+        preprocessing_state=splits.train.preprocessing_state,
+    )
+    assert replay.split_metadata["boundaries"] == splits.split_metadata["boundaries"]
+    assert replay.split_metadata["counts"] == splits.split_metadata["counts"]
+    assert replay.split_metadata["test_period"]["end"] == "2024-01-12T23:00:00"

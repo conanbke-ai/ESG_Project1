@@ -28,8 +28,24 @@ class SequenceConfig:
     num_workers: int = 0
     prediction_task: str | None = None
     forecast_horizon_hours: int = 1
+    train_end: str | None = None
+    validation_end: str | None = None
+    calibration_end: str | None = None
+    test_end: str | None = None
 
     def __post_init__(self) -> None:
+        from solar_forecast.evaluation.temporal_split import TemporalSplitConfig
+
+        TemporalSplitConfig(
+            validation_fraction=self.val_size,
+            calibration_fraction=self.calibration_size,
+            test_fraction=self.test_size,
+            gap_hours=self.purge_gap_hours,
+            train_end=self.train_end,
+            validation_end=self.validation_end,
+            calibration_end=self.calibration_end,
+            test_end=self.test_end,
+        )
         if self.sequence_length < 1 or self.batch_size < 1:
             raise ValueError("sequence_length and batch_size must be positive")
         fractions = (self.test_size, self.val_size, self.calibration_size)

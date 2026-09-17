@@ -29,6 +29,7 @@ QUALITY_COLUMNS = [
     "quality_train_eligible",
     "quality_review_required",
     "quality_missing_generation",
+    "quality_nonfinite_generation",
     "quality_negative_generation",
     "quality_capacity_exceeded",
     "quality_daylight_zero",
@@ -104,6 +105,9 @@ class GenerationQualityPolicy:
             result["energy_source"] = "unknown"
 
         result["quality_missing_generation"] = result["generation_mwh"].isna()
+        result["quality_nonfinite_generation"] = (
+            result["generation_mwh"].notna() & ~np.isfinite(result["generation_mwh"])
+        )
         result["quality_negative_generation"] = result["generation_mwh"].lt(0).fillna(False)
 
         if "capacity_mw" in result:
@@ -122,13 +126,13 @@ class GenerationQualityPolicy:
             if column not in result:
                 continue
             values = pd.to_numeric(result[column], errors="coerce")
-            invalid = pd.Series(False, index=result.index)
+            invalid = values.notna() & ~np.isfinite(values)
             if lower is not None:
                 invalid |= values.lt(lower).fillna(False)
             if upper is not None:
                 invalid |= values.gt(upper).fillna(False)
             weather_flags.append(invalid)
-            weather_missing.append(values.isna())
+            weather_missing.append(values.isna() | invalid)
             # Invalid observations are missing, never zero. The flag retains
             # the reason so a later train-fitted imputer can handle them.
             result[column] = values.mask(invalid)
@@ -137,6 +141,14 @@ class GenerationQualityPolicy:
             if weather_flags
             else False
         )
+        # The station-level normalizer may already have masked bad observations.
+        # Carry its per-variable reason flags through the plant-level quality view.
+        weather_invalid_columns = [
+            f"{column}_invalid" for column in WEATHER_RANGES
+            if f"{column}_invalid" in result
+        ]
+        if weather_invalid_columns:
+            result["quality_invalid_weather"] |= result[weather_invalid_columns].fillna(False).astype(bool).any(axis=1)
         result["quality_missing_weather"] = (
             pd.concat(weather_missing, axis=1).any(axis=1)
             if weather_missing
@@ -164,6 +176,7 @@ class GenerationQualityPolicy:
         # can look identical at row level.
         result["quality_train_eligible"] = ~(
             result["quality_missing_generation"]
+            | result["quality_nonfinite_generation"]
             | result["quality_negative_generation"]
             | result["quality_daily_aggregate_profile"]
         )
@@ -306,6 +319,7 @@ class GenerationQualityPolicy:
     def _quality_codes(frame: pd.DataFrame) -> pd.Series:
         pairs = (
             ("quality_missing_generation", "missing_generation"),
+            ("quality_nonfinite_generation", "nonfinite_generation"),
             ("quality_negative_generation", "negative_generation"),
             ("quality_capacity_exceeded", "capacity_exceeded"),
             ("quality_daylight_zero", "daylight_zero"),

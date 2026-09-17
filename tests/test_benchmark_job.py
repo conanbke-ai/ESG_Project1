@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import Mock
 
 import numpy as np
 import pandas as pd
@@ -93,6 +94,31 @@ class BenchmarkJobTests(unittest.TestCase):
             path.write_text('{"name":"legacy_24h"}')
             with self.assertRaisesRegex(ValueError, "contract"):
                 load_experiment_config(path)
+
+    def test_gzip_partition_directory_reaches_training_but_parquet_does_not(self):
+        import gzip
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "parts"
+            source.mkdir()
+            config = load_experiment_config(PROJECT_ROOT / "config/experiments/optimized.json")
+            config.update(input_dataset=str(source), output_root=str(root / "runs"))
+            path = root / "experiment.json"
+            write_json_atomic(path, config)
+            trainer = Mock()
+            trainer.run.side_effect = RuntimeError("fixture reached trainer")
+            (source / "unsupported.parquet").write_bytes(b"fixture")
+            with self.assertRaises(FileNotFoundError):
+                BenchmarkService(training_service=trainer).run(path)
+            trainer.run.assert_not_called()
+            self.assertFalse((root / "runs").exists())
+            (source / "unsupported.parquet").unlink()
+            with gzip.open(source / "part.csv.gz", "wt") as stream:
+                stream.write("fixture_only\n1\n")
+            with self.assertRaisesRegex(RuntimeError, "fixture reached trainer"):
+                BenchmarkService(training_service=trainer).run(path)
+            trainer.run.assert_called_once()
 
 
 if __name__ == "__main__":
