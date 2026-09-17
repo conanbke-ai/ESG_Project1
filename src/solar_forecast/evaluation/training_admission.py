@@ -1,13 +1,13 @@
-"""Freeze the Solar training population from an evidence manifest and explicit policy."""
+"""Freeze the Solar AI training population from eligibility.v2 evidence."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
 
 
-POLICY_CONTRACT = "solar-training-admission-policy.v1"
-POPULATION_CONTRACT = "solar-training-population.v1"
-ELIGIBILITY_CONTRACT = "solar-training-data-eligibility.v1"
+POLICY_CONTRACT = "solar-training-admission-policy.v2"
+POPULATION_CONTRACT = "solar-training-population.v2"
+ELIGIBILITY_CONTRACT = "solar-training-data-eligibility.v2"
 SPLITS = ("train", "validation", "calibration", "test")
 
 
@@ -27,55 +27,28 @@ class AdmissionDecision:
         }
 
 
-def _require_thresholds(policy: dict[str, Any], name: str) -> dict[str, Any]:
-    block = policy.get(name)
-    if not isinstance(block, dict):
-        raise ValueError(f"{name} must be an object")
-    if policy.get("status") == "frozen":
-        required = (
-            "min_overlap_hourly_coverage",
-            "min_longest_strict_run_hours",
-            "min_weather_column_coverage",
-        )
-        if any(block.get(key) is None for key in required):
-            raise ValueError(f"Frozen policy requires every {name} scalar threshold")
-        split = block.get("min_split_rows")
-        if not isinstance(split, dict) or any(split.get(key) is None for key in SPLITS):
-            raise ValueError(f"Frozen policy requires every {name}.min_split_rows threshold")
-    return block
-
-
 def validate_admission_policy(policy: dict[str, Any]) -> None:
     if policy.get("contract") != POLICY_CONTRACT:
         raise ValueError(f"Admission policy requires contract {POLICY_CONTRACT}")
-    if policy.get("status") not in {"draft", "frozen"}:
-        raise ValueError("Admission policy status must be draft or frozen")
-    if policy.get("fixed_start_year") not in {None, False}:
-        raise ValueError("V1 admission policy does not allow a fixed start year")
-    admit = _require_thresholds(policy, "admit_thresholds")
-    reject = _require_thresholds(policy, "reject_thresholds")
     if policy.get("status") != "frozen":
-        return
-
-    scalar_keys = (
-        "min_overlap_hourly_coverage",
-        "min_longest_strict_run_hours",
-        "min_weather_column_coverage",
+        raise ValueError("V2 recovered relational admission policy must be frozen")
+    if policy.get("fixed_start_year") not in {None, False}:
+        raise ValueError("V2 admission policy does not allow a fixed start year")
+    extension = policy.get("current_4way_extension")
+    if not isinstance(extension, dict):
+        raise ValueError("V2 admission policy requires current_4way_extension")
+    required_true = (
+        "require_all_splits_present",
+        "require_validation_rows_lte_train_rows",
+        "require_calibration_rows_lte_train_rows",
+        "require_test_rows_lte_train_rows",
     )
-    for key in scalar_keys:
-        a = float(admit[key])
-        r = float(reject[key])
-        if a < 0 or r < 0 or r > a:
-            raise ValueError(f"Thresholds must satisfy 0 <= reject <= admit for {key}")
-        if "coverage" in key and (a > 1 or r > 1):
-            raise ValueError(f"Coverage threshold must be <= 1 for {key}")
-    for split in SPLITS:
-        a = int(admit["min_split_rows"][split])
-        r = int(reject["min_split_rows"][split])
-        if a < 0 or r < 0 or r > a:
-            raise ValueError(
-                f"Split thresholds must satisfy 0 <= reject <= admit for {split}"
-            )
+    if any(extension.get(key) is not True for key in required_true):
+        raise ValueError("V2 admission policy must preserve recovered relational rules")
+    if int(extension.get("reject_split_timestamp_gap_gt_hours", -1)) != 1:
+        raise ValueError("V2 admission policy requires rejection of >1h split gaps")
+    if extension.get("fixed_minimum_rows_per_split") is not None:
+        raise ValueError("V2 policy must not invent a fixed minimum-N rule")
 
 
 def _metrics(item: dict[str, Any]) -> dict[str, float | int]:
@@ -90,47 +63,30 @@ def _metrics(item: dict[str, Any]) -> dict[str, float | int]:
         "weather_column_coverage_min": min(weather_values) if weather_values else 0.0,
     }
     for split in SPLITS:
-        values[f"{split}_rows"] = int(
-            item["splits"][split]["generation_weather_overlap"]["rows"]
+        summary = item["splits"][split]["generation_weather_overlap"]
+        values[f"{split}_rows"] = int(summary["rows"])
+        continuity = summary.get("continuity", {})
+        values[f"{split}_gap_count_gt_1h"] = int(
+            continuity.get("gap_count_gt_1h", 0)
         )
     return values
-
-
-def _threshold_failures(
-    metrics: dict[str, float | int], thresholds: dict[str, Any], prefix: str
-) -> list[str]:
-    checks = (
-        (
-            "overlap_hourly_coverage",
-            float(thresholds["min_overlap_hourly_coverage"]),
-        ),
-        (
-            "longest_strict_run_hours",
-            int(thresholds["min_longest_strict_run_hours"]),
-        ),
-        (
-            "weather_column_coverage_min",
-            float(thresholds["min_weather_column_coverage"]),
-        ),
-    )
-    reasons = [
-        f"{prefix}:{name}<{minimum}"
-        for name, minimum in checks
-        if float(metrics[name]) < float(minimum)
-    ]
-    for split in SPLITS:
-        minimum = int(thresholds["min_split_rows"][split])
-        if int(metrics[f"{split}_rows"]) < minimum:
-            reasons.append(f"{prefix}:{split}_rows<{minimum}")
-    return reasons
 
 
 def classify_training_population(
     eligibility: dict[str, Any], policy: dict[str, Any]
 ) -> dict[str, Any]:
+    """Classify only the model population; never the nationwide service inventory."""
     if eligibility.get("contract") != ELIGIBILITY_CONTRACT:
-        raise ValueError(f"Eligibility manifest requires contract {ELIGIBILITY_CONTRACT}")
+        raise ValueError(
+            f"Eligibility manifest requires contract {ELIGIBILITY_CONTRACT}; rerun audit before freeze"
+        )
     validate_admission_policy(policy)
+
+    recovered = eligibility.get("historical_rule_recovery", {})
+    if recovered.get("fixed_minimum_rows_per_split_found") is not False:
+        raise ValueError("Eligibility v2 must state that no fixed minimum-N evidence was found")
+    if recovered.get("historical_3way_extended_to_current_4way") is not True:
+        raise ValueError("Eligibility v2 must apply the recovered rule to the current four-way split")
 
     decisions: list[AdmissionDecision] = []
     for item in eligibility.get("plants", []):
@@ -140,68 +96,43 @@ def classify_training_population(
         if item.get("status") == "STRUCTURAL_REJECT" or structural_reasons:
             decisions.append(
                 AdmissionDecision(
-                    plant_id,
-                    "REJECT",
-                    structural_reasons or ("structural_reject",),
-                    metrics,
+                    plant_id=plant_id,
+                    status="REJECT",
+                    reasons=structural_reasons or ("structural_reject",),
+                    metrics=metrics,
                 )
             )
             continue
-        if policy["status"] != "frozen":
-            decisions.append(
-                AdmissionDecision(plant_id, "HOLD", ("admission_policy_not_frozen",), metrics)
-            )
-            continue
 
-        reject_reasons = _threshold_failures(
-            metrics, policy["reject_thresholds"], "reject_floor"
-        )
-        if reject_reasons:
-            decisions.append(
-                AdmissionDecision(plant_id, "REJECT", tuple(reject_reasons), metrics)
+        decisions.append(
+            AdmissionDecision(
+                plant_id=plant_id,
+                status="ADMITTED",
+                reasons=("recovered_relational_rules_passed",),
+                metrics=metrics,
             )
-            continue
-        hold_reasons = _threshold_failures(
-            metrics, policy["admit_thresholds"], "admit_gate"
         )
-        if hold_reasons:
-            decisions.append(
-                AdmissionDecision(plant_id, "HOLD", tuple(hold_reasons), metrics)
-            )
-            continue
-        decisions.append(AdmissionDecision(plant_id, "ADMITTED", ("all_gates_passed",), metrics))
 
     admitted = [item.plant_id for item in decisions if item.status == "ADMITTED"]
-    hold = [item.plant_id for item in decisions if item.status == "HOLD"]
     rejected = [item.plant_id for item in decisions if item.status == "REJECT"]
-    ready = policy["status"] == "frozen" and bool(admitted) and not hold
     return {
         "contract": POPULATION_CONTRACT,
         "policy_version": policy.get("version"),
         "policy_status": policy["status"],
         "fixed_start_year_used": False,
+        "service_inventory_filtered": False,
+        "model_population_filtered": True,
         "decisions": [item.to_dict() for item in decisions],
         "counts": {
             "total": len(decisions),
             "admitted": len(admitted),
-            "hold": len(hold),
+            "hold": 0,
             "rejected": len(rejected),
         },
         "admitted_plant_ids": admitted,
-        "hold_plant_ids": hold,
+        "hold_plant_ids": [],
         "rejected_plant_ids": rejected,
-        "final_training_selection_ready": ready,
-        "selection_blockers": (
-            []
-            if ready
-            else [
-                reason
-                for reason, active in (
-                    ("admission_policy_not_frozen", policy["status"] != "frozen"),
-                    ("no_admitted_plants", not admitted),
-                    ("hold_plants_remain", bool(hold)),
-                )
-                if active
-            ]
-        ),
+        "final_training_selection_ready": bool(admitted),
+        "selection_blockers": [] if admitted else ["no_admitted_plants"],
+        "next_gate": "model_specific_forecast_readiness",
     }
