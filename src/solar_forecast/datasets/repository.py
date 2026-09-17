@@ -88,20 +88,35 @@ class DatasetRepository:
         columns: Sequence[str],
         numeric_columns: Sequence[str],
         equals_filters: dict[str, object] | None = None,
+        allowed_values_filters: dict[str, Sequence[object]] | None = None,
         truthy_filter: str | None = None,
         row_limit: int | None = None,
         policy: DatasetLoadPolicy | None = None,
     ) -> tuple[Path, pd.DataFrame, DatasetLoadReport]:
-        """Read only model columns and push row filters into bounded CSV chunks."""
+        """Read only model columns and push row filters into bounded CSV chunks.
+
+        ``allowed_values_filters`` is reserved for explicit model-population
+        allow-lists such as the frozen admitted plant IDs. It is applied only
+        in model/evaluation loading paths and does not alter source or service
+        inventory data.
+        """
 
         source = Path(data_path)
         load_policy = policy or DatasetLoadPolicy()
         files = self._training_files(source)
         requested = list(dict.fromkeys(columns))
         filter_columns = list((equals_filters or {}).keys())
+        filter_columns.extend((allowed_values_filters or {}).keys())
         if truthy_filter:
             filter_columns.append(truthy_filter)
         usecols = list(dict.fromkeys([*requested, *filter_columns]))
+        allowed_sets = {
+            column: {str(value) for value in values}
+            for column, values in (allowed_values_filters or {}).items()
+        }
+        if any(not values for values in allowed_sets.values()):
+            raise ValueError("allowed_values_filters must not contain an empty allow-list")
+
         parts: list[pd.DataFrame] = []
         scanned_rows = 0
         retained_rows = 0
@@ -117,6 +132,8 @@ class DatasetRepository:
                 mask = pd.Series(True, index=chunk.index)
                 for column, value in (equals_filters or {}).items():
                     mask &= chunk[column].astype(str).eq(str(value))
+                for column, allowed in allowed_sets.items():
+                    mask &= chunk[column].astype(str).isin(allowed)
                 if truthy_filter:
                     values = chunk[truthy_filter]
                     if not pd.api.types.is_bool_dtype(values):
