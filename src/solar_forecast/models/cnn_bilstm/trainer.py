@@ -44,11 +44,13 @@ class CnnBiLstmTrainer:
             memory_limit_mb=int(config.values.get("memory_limit_mb", 1536)),
             numeric_dtype=str(config.values.get("numeric_dtype", "float32")),
         )
+        admitted = list(config.values.get("admitted_plant_ids") or [])
         source, raw, load_report = DatasetRepository(source.parent).load_training_frame(
             source,
             columns=[*passthrough, *feature_columns, target],
             numeric_columns=[*feature_columns, target],
             equals_filters={"energy_source": str(energy_source)} if energy_source else None,
+            allowed_values_filters={"plant_id": admitted} if admitted else None,
             truthy_filter=require_model_quality_filter(config.values),
             row_limit=10_000 if smoke else None,
             policy=policy,
@@ -75,8 +77,6 @@ class CnnBiLstmTrainer:
         requested_length = int(config.values.get("sequence_length", 168))
         calendar_split, smoke_override = calendar_split_for_execution(config.values, smoke=smoke)
         sequence = SequenceConfig(
-            # Benchmark candidates must keep their declared lookback. A short
-            # dataset is an invalid candidate, not a silently different model.
             sequence_length=(
                 requested_length if historical and not smoke
                 else min(requested_length, max(2, len(frame) // 5))
@@ -150,6 +150,7 @@ class CnnBiLstmTrainer:
             "features": prepared.feature_columns,
             "metrics": artifacts["metrics"],
             "n_rows": len(frame),
+            "admitted_plant_ids": admitted,
             "temporal_split": temporal_split,
             "evaluation_contract": {
                 "dataset_fingerprint": dataset_signature(source),
