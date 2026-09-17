@@ -55,7 +55,6 @@ def handle_prepare_data_command(args: argparse.Namespace) -> None:
 
 def handle_audit_candidate_data_command(args: argparse.Namespace) -> None:
     from solar_forecast.collectors import KrcYeongamCandidateIntakeService
-    from solar_forecast.datasets.preparation_service import DataPreparationService
 
     result = KrcYeongamCandidateIntakeService(
         source_dir=Path(args.source_dir),
@@ -69,3 +68,26 @@ def handle_audit_candidate_data_command(args: argparse.Namespace) -> None:
     )
     print(f"Admission status: {result.status}")
     print(f"Candidate manifest: {result.manifest_path}")
+
+
+def handle_training_data_eligibility_command(args: argparse.Namespace) -> None:
+    """Audit Gold plant-period continuity/split sufficiency without training."""
+    from solar_forecast.evaluation.training_eligibility import run_training_eligibility_audit
+
+    report = run_training_eligibility_audit(
+        Path(args.config),
+        data_path=Path(args.data) if args.data else None,
+        output_path=Path(args.output) if args.output else None,
+    )
+    population = report["population"]
+    print(
+        "Training-data eligibility: "
+        f"{population['candidate_plants']} candidates, "
+        f"{population['structurally_rejected_plants']} structural rejects, "
+        f"{population['quality_eligible_target_rows']} quality-eligible target rows"
+    )
+    print("Final thresholds applied: no")
+    print("Training selection ready: no")
+    print(f"Next decision: {report['next_decision']}")
+    if args.output:
+        print(f"Eligibility manifest: {args.output}")
