@@ -1,0 +1,46 @@
+{
+  "contract": "solar-training-admission-policy.v1",
+  "version": "2026-09-17-draft-1",
+  "status": "draft",
+  "fixed_start_year": null,
+  "selection_basis": [
+    "quality_train_eligible",
+    "generation_weather_overlap",
+    "continuous_hourly_coverage",
+    "weather_feature_coverage",
+    "global_temporal_split_effective_rows",
+    "purge_and_sequence_history_loss"
+  ],
+  "admit_thresholds": {
+    "min_overlap_hourly_coverage": null,
+    "min_longest_strict_run_hours": null,
+    "min_weather_column_coverage": null,
+    "min_split_rows": {
+      "train": null,
+      "validation": null,
+      "calibration": null,
+      "test": null
+    }
+  },
+  "reject_thresholds": {
+    "min_overlap_hourly_coverage": null,
+    "min_longest_strict_run_hours": null,
+    "min_weather_column_coverage": null,
+    "min_split_rows": {
+      "train": null,
+      "validation": null,
+      "calibration": null,
+      "test": null
+    }
+  },
+  "decision_semantics": {
+    "ADMITTED": "Meets every frozen admit threshold and has no structural rejection reason.",
+    "HOLD": "Structurally usable but below one or more admit thresholds without crossing a frozen reject floor, or policy is still draft.",
+    "REJECT": "Structurally unusable or crosses at least one frozen reject floor."
+  },
+  "notes": [
+    "Do not replace this draft with arbitrary round numbers. Freeze thresholds only after reviewing the real candidate distribution from training_data_eligibility.json/review.csv.",
+    "A calendar year is evidence, not an admission rule. fixed_start_year must stay null/false unless a future canonical data contract explicitly requires one.",
+    "Final training selection must preserve the common temporal split and must not choose per-plant test windows after looking at performance."
+  ]
+}
