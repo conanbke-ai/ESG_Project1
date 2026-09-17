@@ -1,6 +1,6 @@
 {
   "contract": "solar-training-admission-policy.v1",
-  "version": "2026-09-17-draft-1",
+  "version": "2026-09-17-draft-2",
   "status": "draft",
   "fixed_start_year": null,
   "selection_basis": [
@@ -9,8 +9,45 @@
     "continuous_hourly_coverage",
     "weather_feature_coverage",
     "global_temporal_split_effective_rows",
-    "purge_and_sequence_history_loss"
+    "purge_and_sequence_history_loss",
+    "recovered_historical_selection_rules"
   ],
+  "recovered_historical_reference": {
+    "source_commit": "2441c7fb51ec2bb1410b1b2f090f32928cbad27e",
+    "actual_preprocessing_split": {
+      "mode": "calendar",
+      "train": "timestamp <= 2021-12-31T23:59:59",
+      "validation": "2022-01-01T00:00:00 <= timestamp <= 2023-12-31T23:59:59",
+      "test": "timestamp >= 2024-01-01T00:00:00",
+      "purge_hours": 24
+    },
+    "plant_selection_rules": {
+      "require_presence_in_train_validation_test": true,
+      "reject_any_split_with_timestamp_gap_gt_hours": 1,
+      "require_validation_rows_lte_train_rows": true,
+      "require_test_rows_lte_train_rows": true
+    },
+    "explicit_fixed_minimum_rows_per_split": null,
+    "minimum_rows_evidence_status": "NOT_FOUND_IN_VERSIONED_PREPROCESSING_CODE_PPT_OR_README",
+    "excluded_bad_plants_evidence": "Historical excluded_bad_plants.csv stores train/val/test counts for 12 plants rejected because validation or test rows exceeded train rows.",
+    "generic_cli_fractional_default": {
+      "scope": "reusable CNN CLI utility, not the historical pre-generated train/val/test data contract",
+      "train_fraction": 0.6,
+      "validation_fraction": 0.2,
+      "test_fraction": 0.2
+    }
+  },
+  "current_experiment_reference": {
+    "source": "config/experiments/optimized.json",
+    "mode": "fraction",
+    "train_fraction": 0.6,
+    "validation_fraction": 0.15,
+    "calibration_fraction": 0.1,
+    "test_fraction": 0.15,
+    "purge_gap_hours": 168,
+    "minimum_common_coverage": 0.95,
+    "note": "This is the current four-way experiment contract after Calibration was separated; it must not be misreported as the historical three-way preprocessing split."
+  },
   "admit_thresholds": {
     "min_overlap_hourly_coverage": null,
     "min_longest_strict_run_hours": null,
@@ -39,8 +76,11 @@
     "REJECT": "Structurally unusable or crosses at least one frozen reject floor."
   },
   "notes": [
-    "Do not replace this draft with arbitrary round numbers. Freeze thresholds only after reviewing the real candidate distribution from training_data_eligibility.json/review.csv.",
-    "A calendar year is evidence, not an admission rule. fixed_start_year must stay null/false unless a future canonical data contract explicitly requires one.",
-    "Final training selection must preserve the common temporal split and must not choose per-plant test windows after looking at performance."
+    "Do not replace missing historical minimum-row evidence with arbitrary round numbers. No explicit fixed minimum N per split has been found in the versioned historical preprocessing notebook, PPT, README, or recovered exclusion table.",
+    "The historical implemented eligibility rule was relational: all three splits present, no >1h continuity gap, and validation/test counts must not exceed train count.",
+    "The old generic 60/20/20 CLI default is not the same thing as the historical calendar-based train/validation/test preprocessing contract.",
+    "The current experiment is 60/15/10/15 because Calibration is separate; preserve that distinction when comparing old and current results.",
+    "A calendar year is evidence, not a permanent admission rule. fixed_start_year must stay null/false unless a future canonical data contract explicitly requires one.",
+    "Final training selection must preserve a common temporal split and must not choose per-plant test windows after looking at performance."
   ]
 }
