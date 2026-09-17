@@ -1,16 +1,15 @@
 {
-  "contract": "solar-training-admission-policy.v1",
-  "version": "2026-09-17-draft-2",
-  "status": "draft",
+  "contract": "solar-training-admission-policy.v2",
+  "version": "2026-09-17-frozen-relational-1",
+  "status": "frozen",
   "fixed_start_year": null,
   "selection_basis": [
     "quality_train_eligible",
     "generation_weather_overlap",
-    "continuous_hourly_coverage",
-    "weather_feature_coverage",
-    "global_temporal_split_effective_rows",
-    "purge_and_sequence_history_loss",
-    "recovered_historical_selection_rules"
+    "split_presence",
+    "split_hourly_continuity",
+    "non_train_split_rows_lte_train",
+    "purge_and_sequence_history_loss"
   ],
   "recovered_historical_reference": {
     "source_commit": "2441c7fb51ec2bb1410b1b2f090f32928cbad27e",
@@ -29,13 +28,7 @@
     },
     "explicit_fixed_minimum_rows_per_split": null,
     "minimum_rows_evidence_status": "NOT_FOUND_IN_VERSIONED_PREPROCESSING_CODE_PPT_OR_README",
-    "excluded_bad_plants_evidence": "Historical excluded_bad_plants.csv stores train/val/test counts for 12 plants rejected because validation or test rows exceeded train rows.",
-    "generic_cli_fractional_default": {
-      "scope": "reusable CNN CLI utility, not the historical pre-generated train/val/test data contract",
-      "train_fraction": 0.6,
-      "validation_fraction": 0.2,
-      "test_fraction": 0.2
-    }
+    "excluded_bad_plants_evidence": "Historical excluded_bad_plants.csv stores train/val/test counts for 12 plants rejected because validation or test rows exceeded train rows."
   },
   "current_experiment_reference": {
     "source": "config/experiments/optimized.json",
@@ -45,42 +38,31 @@
     "calibration_fraction": 0.1,
     "test_fraction": 0.15,
     "purge_gap_hours": 168,
-    "minimum_common_coverage": 0.95,
-    "note": "This is the current four-way experiment contract after Calibration was separated; it must not be misreported as the historical three-way preprocessing split."
+    "minimum_common_coverage": 0.95
   },
-  "admit_thresholds": {
-    "min_overlap_hourly_coverage": null,
-    "min_longest_strict_run_hours": null,
-    "min_weather_column_coverage": null,
-    "min_split_rows": {
-      "train": null,
-      "validation": null,
-      "calibration": null,
-      "test": null
-    }
-  },
-  "reject_thresholds": {
-    "min_overlap_hourly_coverage": null,
-    "min_longest_strict_run_hours": null,
-    "min_weather_column_coverage": null,
-    "min_split_rows": {
-      "train": null,
-      "validation": null,
-      "calibration": null,
-      "test": null
-    }
+  "current_4way_extension": {
+    "require_all_splits_present": true,
+    "reject_split_timestamp_gap_gt_hours": 1,
+    "require_validation_rows_lte_train_rows": true,
+    "require_calibration_rows_lte_train_rows": true,
+    "require_test_rows_lte_train_rows": true,
+    "fixed_minimum_rows_per_split": null,
+    "rationale": "Calibration is a current selection partition, so the recovered non-Train<=Train rule is applied consistently to Validation, Calibration, and Test without inventing a new minimum-N threshold."
   },
   "decision_semantics": {
-    "ADMITTED": "Meets every frozen admit threshold and has no structural rejection reason.",
-    "HOLD": "Structurally usable but below one or more admit thresholds without crossing a frozen reject floor, or policy is still draft.",
-    "REJECT": "Structurally unusable or crosses at least one frozen reject floor."
+    "ADMITTED": "Passes the frozen recovered relational rules in eligibility.v2. Model-specific usable sample counts are checked later by forecast readiness.",
+    "REJECT": "Fails one or more frozen structural/relational rules. The source/service population remains preserved.",
+    "HOLD": "Reserved for future policy states requiring explicit human review; frozen relational v2 should normally emit no HOLD decisions."
+  },
+  "population_separation": {
+    "service_inventory_filtered_by_this_policy": false,
+    "model_population_filtered_by_this_policy": true,
+    "documentation": "docs/DATA_POPULATION_AND_MODEL_ELIGIBILITY.md"
   },
   "notes": [
-    "Do not replace missing historical minimum-row evidence with arbitrary round numbers. No explicit fixed minimum N per split has been found in the versioned historical preprocessing notebook, PPT, README, or recovered exclusion table.",
-    "The historical implemented eligibility rule was relational: all three splits present, no >1h continuity gap, and validation/test counts must not exceed train count.",
-    "The old generic 60/20/20 CLI default is not the same thing as the historical calendar-based train/validation/test preprocessing contract.",
-    "The current experiment is 60/15/10/15 because Calibration is separate; preserve that distinction when comparing old and current results.",
-    "A calendar year is evidence, not a permanent admission rule. fixed_start_year must stay null/false unless a future canonical data contract explicitly requires one.",
-    "Final training selection must preserve a common temporal split and must not choose per-plant test windows after looking at performance."
+    "No fixed minimum N per split is introduced because no versioned evidence for such a historical rule was found.",
+    "The admission policy filters only the AI model population. EPSIS nationwide service inventory is not filtered by model eligibility.",
+    "After this population gate, forecast_readiness remains responsible for model-specific lookback/horizon and effective sample losses.",
+    "The current 60/15/10/15 split is not presented as the historical calendar split; only the plant-selection principle is recovered and extended."
   ]
 }
