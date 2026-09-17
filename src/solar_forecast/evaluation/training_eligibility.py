@@ -13,8 +13,9 @@ from solar_forecast.evaluation.temporal_split import TemporalSplitConfig, Tempor
 from solar_forecast.infrastructure.artifact_store import sha256_file, write_json_atomic
 
 
-ELIGIBILITY_CONTRACT = "solar-training-data-eligibility.v1"
+ELIGIBILITY_CONTRACT = "solar-training-data-eligibility.v2"
 SPLITS = ("train", "validation", "calibration", "test")
+NON_TRAIN_SPLITS = ("validation", "calibration", "test")
 WEATHER_COLUMNS = (
     "temperature_c",
     "precipitation_mm",
@@ -76,11 +77,17 @@ def _continuity(times: pd.Series) -> dict[str, object]:
 
 def _partition_summary(frame: pd.DataFrame) -> dict[str, object]:
     if frame.empty:
-        return {"rows": 0, "months": [], "seasons": []}
+        return {
+            "rows": 0,
+            "months": [],
+            "seasons": [],
+            "continuity": _continuity(pd.Series(dtype="datetime64[ns]")),
+        }
     return {
         "rows": int(len(frame)),
         "months": sorted(frame["timestamp"].dt.strftime("%Y-%m").unique().tolist()),
         "seasons": sorted(frame["timestamp"].dt.month.map(SEASONS).unique().tolist()),
+        "continuity": _continuity(frame["timestamp"]),
     }
 
 
@@ -90,11 +97,14 @@ def audit_training_eligibility(
     *,
     weather_columns: tuple[str, ...] = WEATHER_COLUMNS,
 ) -> dict[str, object]:
-    """Build evidence for plant-period admission without inventing minimum thresholds.
+    """Apply recovered historical plant-selection rules before model-specific readiness.
 
-    The result intentionally distinguishes structural rejection from threshold review.
-    Final minimum duration/coverage/sample thresholds are chosen only after this report
-    is inspected on the real Gold population.
+    Recovered versioned preprocessing evidence did not contain a fixed minimum N per
+    split. The enforced structural rules are therefore relational and temporal:
+    every split must exist, each split must be strictly hourly-continuous, and each
+    non-Train split must not contain more overlap rows than Train. The historical
+    3-way rule is extended to the current 4-way contract by applying the same
+    comparison to Validation, Calibration, and Test.
     """
     required = {"timestamp", "plant_id", "generation_mwh", "quality_train_eligible"}
     if missing := required - set(frame.columns):
@@ -128,14 +138,22 @@ def audit_training_eligibility(
         weather_continuity = _continuity(weather_overlap["timestamp"])
         split_summary: dict[str, object] = {}
         empty_overlap_splits: list[str] = []
+        gap_overlap_splits: list[str] = []
+        overlap_rows_by_split: dict[str, int] = {}
+
         for name in SPLITS:
             target_part = plant.loc[plant["split"].eq(name)]
             overlap_part = weather_overlap.loc[weather_overlap["split"].eq(name)]
+            target_summary = _partition_summary(target_part)
+            overlap_summary = _partition_summary(overlap_part)
+            overlap_rows_by_split[name] = int(overlap_summary["rows"])
             if overlap_part.empty:
                 empty_overlap_splits.append(name)
+            elif int(overlap_summary["continuity"]["gap_count_gt_1h"]) > 0:
+                gap_overlap_splits.append(name)
             split_summary[name] = {
-                "eligible_target": _partition_summary(target_part),
-                "generation_weather_overlap": _partition_summary(overlap_part),
+                "eligible_target": target_summary,
+                "generation_weather_overlap": overlap_summary,
             }
 
         weather_coverage = {}
@@ -152,6 +170,20 @@ def audit_training_eligibility(
             hard_reasons.append("no_generation_weather_overlap")
         if empty_overlap_splits:
             hard_reasons.append("empty_overlap_splits:" + ",".join(empty_overlap_splits))
+        if gap_overlap_splits:
+            hard_reasons.append("hourly_gap_gt_1h_in_splits:" + ",".join(gap_overlap_splits))
+
+        train_rows = overlap_rows_by_split.get("train", 0)
+        larger_than_train = [
+            name
+            for name in NON_TRAIN_SPLITS
+            if overlap_rows_by_split.get(name, 0) > train_rows
+        ]
+        if larger_than_train:
+            hard_reasons.append(
+                "non_train_split_rows_exceed_train:" + ",".join(larger_than_train)
+            )
+
         status = "STRUCTURAL_REJECT" if hard_reasons else "CANDIDATE_REQUIRES_THRESHOLD_REVIEW"
         plants.append({
             "plant_id": str(plant_id),
@@ -160,6 +192,7 @@ def audit_training_eligibility(
             "target_continuity": target_continuity,
             "generation_weather_overlap": weather_continuity,
             "weather_column_coverage": weather_coverage,
+            "split_overlap_rows": overlap_rows_by_split,
             "splits": split_summary,
         })
 
@@ -167,8 +200,15 @@ def audit_training_eligibility(
     rejected = [item for item in plants if item["status"] == "STRUCTURAL_REJECT"]
     return {
         "contract": ELIGIBILITY_CONTRACT,
-        "selection_stage": "evidence_first_before_final_thresholds",
+        "selection_stage": "recovered_relational_rules_before_model_specific_readiness",
         "fixed_start_year_used": False,
+        "historical_rule_recovery": {
+            "fixed_minimum_rows_per_split_found": False,
+            "require_every_split_present": True,
+            "reject_timestamp_gap_gt_hours": 1,
+            "require_each_non_train_split_rows_lte_train": True,
+            "historical_3way_extended_to_current_4way": True,
+        },
         "weather_columns": list(available_weather),
         "boundaries": boundaries.to_dict(),
         "split_mode": split_config.split_mode,
@@ -183,8 +223,8 @@ def audit_training_eligibility(
         "final_thresholds_applied": False,
         "final_training_selection_ready": False,
         "next_decision": (
-            "Inspect real overlap/duration/split distributions, then freeze explicit minimum "
-            "coverage and effective-sample thresholds before filtering training input."
+            "Freeze the recovered relational admission policy, then run model-specific "
+            "forecast readiness so XGBoost/CNN effective sample losses remain explicit."
         ),
         "prediction_or_training_performed": False,
         "test_used_for_selection": False,
