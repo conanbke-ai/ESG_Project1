@@ -1,7 +1,7 @@
 {
   "contract": "solar-optimized-experiment.v1",
-  "name": "observed_calendar_candidate_20260917",
-  "description": "실제 확보 데이터의 커버리지 검토용 날짜 고정 후보. 2024년 상반기까지 Train, 3분기 Validation, 4분기 Calibration, 2025 Test. 최적 분할이나 새로운 미관측 Test라고 주장하지 않으며 학습은 별도 명령으로 실행합니다.",
+  "name": "observed_calendar_reference_20260917",
+  "description": "2026-09-17 coverage audit에 사용한 날짜 고정 reference. 현재 canonical 실행 설정은 config/experiments/optimized.json이며, 이 파일은 과거 감사 근거 보존용으로만 유지합니다.",
   "seed": 42,
   "input_dataset": "file/standardized/model_ready_parts",
   "output_root": "artifacts/benchmarks",
@@ -12,7 +12,7 @@
   ],
   "optimization_scope": "configured_search_budget",
   "minimum_common_coverage": 0.95,
-  "minimum_relative_improvement": 0.0,
+  "minimum_relative_improvement": 0,
   "selection_gap_hours": 168,
   "split": {
     "train_end": "2024-06-30T23:00:00",
@@ -76,6 +76,8 @@
     "purpose": "employment_portfolio_historical_model_comparison",
     "historical_checkpoint_baseline": "not_reproduced_by_this_experiment",
     "split_status": "coverage_audited_candidate_not_accuracy_selected",
-    "evaluation_status": "historical_development_evaluation_not_unseen_confirmation"
+    "evaluation_status": "historical_development_evaluation_not_unseen_confirmation",
+    "reference_only": true,
+    "superseded_by": "config/experiments/optimized.json"
   }
 }
