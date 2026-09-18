@@ -18,7 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Audit per-plant generation/KMA overlap, continuity and temporal-split "
-            "coverage before freezing final training admission thresholds."
+            "coverage before freezing the model training population."
         )
     )
     parser.add_argument(
@@ -120,7 +120,7 @@ def main() -> int:
     print(
         "Training-data eligibility audit complete: "
         f"plants={population['plants']}, "
-        f"candidates={population['candidate_plants']}, "
+        f"structurally_eligible={population['candidate_plants']}, "
         f"structural_rejects={population['structurally_rejected_plants']}, "
         f"quality_eligible_rows={population['quality_eligible_target_rows']}"
     )
