@@ -1,7 +1,7 @@
 {
   "contract": "solar-optimized-experiment.v1",
-  "name": "historical_observed_solar_benchmark",
-  "description": "기존 CNN 성능의 동일 재현을 선행 조건으로 두지 않고, 실측 자료에서 모델별 특징·구조·입력 길이·학습 설정을 독립 개선한 뒤 같은 예측 기간끼리 비교합니다.",
+  "name": "historical_observed_solar_global_calendar_benchmark",
+  "description": "발전소마다 다른 비율 경계를 만들지 않고 모든 모델·발전소에 동일한 calendar cutoff를 적용합니다. 발전소별 실제 split 비율은 가용 이력 차이로 달라질 수 있으며, eligibility를 통과한 동일 시간 cohort에서 모델을 비교합니다.",
   "seed": 42,
   "input_dataset": "file/standardized/model_ready_parts",
   "output_root": "artifacts/benchmarks",
@@ -12,12 +12,13 @@
   ],
   "optimization_scope": "configured_search_budget",
   "minimum_common_coverage": 0.95,
-  "minimum_relative_improvement": 0.0,
+  "minimum_relative_improvement": 0,
   "selection_gap_hours": 168,
   "split": {
-    "validation_fraction": 0.15,
-    "calibration_fraction": 0.1,
-    "test_fraction": 0.15,
+    "train_end": "2024-06-30T23:00:00",
+    "validation_end": "2024-09-30T23:00:00",
+    "calibration_end": "2024-12-31T23:00:00",
+    "test_end": "2025-12-31T23:00:00",
     "purge_gap_hours": 168
   },
   "feature_sets": {
@@ -73,6 +74,17 @@
   "provenance": {
     "data_origin": "quality_gated_official_generation_and_asos_observations",
     "purpose": "employment_portfolio_historical_model_comparison",
-    "historical_checkpoint_baseline": "not_reproduced_by_this_experiment"
+    "historical_checkpoint_baseline": "not_reproduced_by_this_experiment",
+    "split_status": "global_calendar_canonical_reaudit_required_on_current_local_gold",
+    "evaluation_status": "historical_development_evaluation_not_unseen_confirmation"
+  },
+  "split_policy": {
+    "mode": "global_calendar",
+    "same_boundaries_for_all_plants": true,
+    "per_plant_fraction_split_allowed": false,
+    "plant_specific_actual_ratios_may_differ": true,
+    "short_history_policy": "exclude_from_main_cohort_or_report_separately; never move that plant's Test window",
+    "boundary_change_policy": "if coverage is insufficient, revise one global versioned boundary set before training; never choose per-plant cutoffs or move boundaries after viewing Test performance",
+    "current_boundary_basis": "2026-09-17 coverage-audited calendar candidate promoted to canonical development-evaluation split; current local Gold must be re-audited before training"
   }
 }
