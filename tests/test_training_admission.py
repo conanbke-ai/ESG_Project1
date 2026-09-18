@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from solar_forecast.evaluation.training_admission import classify_training_population
+from solar_forecast.preprocessing.training_admission import classify_training_population
 
 
 SPLITS = ("train", "validation", "calibration", "test")
@@ -30,7 +30,7 @@ def _plant(
     hard_reasons = reasons or (["empty_overlap_splits:test"] if structural else [])
     return {
         "plant_id": plant_id,
-        "status": "STRUCTURAL_REJECT" if structural else "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+        "status": "STRUCTURAL_REJECT" if structural else "STRUCTURALLY_ELIGIBLE",
         "hard_reject_reasons": hard_reasons,
         "generation_weather_overlap": {
             "hourly_coverage": coverage,
