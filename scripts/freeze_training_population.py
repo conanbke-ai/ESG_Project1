@@ -12,7 +12,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from solar_forecast.evaluation.training_admission import classify_training_population
+from solar_forecast.preprocessing.training_admission import classify_training_population
 from solar_forecast.infrastructure.artifact_store import sha256_file, write_json_atomic
 
 
