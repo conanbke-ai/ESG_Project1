@@ -21,7 +21,9 @@ def load_experiment_config(path: Path, *, project_root: Path = PROJECT_ROOT) -> 
     values = json.loads(path.read_text(encoding="utf-8"))
     if values.get("contract") != EXPERIMENT_CONTRACT:
         raise ValueError(f"Experiment requires contract {EXPERIMENT_CONTRACT}")
-    _shared_split(values)
+    split_config = _shared_split(values)
+    if values.get("name") == "historical_observed_solar_global_calendar_benchmark" and split_config.split_mode != "calendar":
+        raise ValueError("Canonical Solar benchmark requires one global calendar split; per-plant/fraction split is not allowed")
     horizons = values.get("horizons_hours", [])
     if not horizons or any(type(h) is not int or h <= 0 for h in horizons) or len(set(horizons)) != len(horizons):
         raise ValueError("horizons_hours must contain distinct positive integers")
