@@ -82,12 +82,13 @@ def handle_training_data_eligibility_command(args: argparse.Namespace) -> None:
     population = report["population"]
     print(
         "Training-data eligibility: "
-        f"{population['candidate_plants']} candidates, "
+        f"{population['candidate_plants']} structurally eligible, "
         f"{population['structurally_rejected_plants']} structural rejects, "
         f"{population['quality_eligible_target_rows']} quality-eligible target rows"
     )
-    print("Final thresholds applied: no")
-    print("Training selection ready: no")
+    print(f"Structural rules applied: {str(report['structural_rules_applied']).lower()}")
+    print("Fixed minimum-row threshold used: false")
+    print("Training admission freeze is the next preprocessing gate.")
     print(f"Next decision: {report['next_decision']}")
     if args.output:
         print(f"Eligibility manifest: {args.output}")
