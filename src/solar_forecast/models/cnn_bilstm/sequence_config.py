@@ -1,0 +1,61 @@
+"""CNN 입력 길이·시간 분할 비율·배치 로더 설정."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from solar_forecast.evaluation.forecast_samples import (
+    HISTORICAL_FORECAST_TASK,
+    validate_forecast_horizon,
+)
+
+
+@dataclass(frozen=True)
+class SequenceConfig:
+    """Sequence construction and leakage-safe four-way temporal split settings.
+
+    ``shuffle`` applies only to batches inside the already isolated training
+    partition. It never randomizes chronological split membership.
+    """
+
+    sequence_length: int = 24
+    test_size: float = 0.15
+    val_size: float = 0.15
+    calibration_size: float = 0.10
+    purge_gap_hours: int = 0
+    batch_size: int = 64
+    shuffle: bool = True
+    append_missing_indicators: bool = True
+    num_workers: int = 0
+    prediction_task: str | None = None
+    forecast_horizon_hours: int = 1
+    train_end: str | None = None
+    validation_end: str | None = None
+    calibration_end: str | None = None
+    test_end: str | None = None
+
+    def __post_init__(self) -> None:
+        from solar_forecast.evaluation.temporal_split import TemporalSplitConfig
+
+        TemporalSplitConfig(
+            validation_fraction=self.val_size,
+            calibration_fraction=self.calibration_size,
+            test_fraction=self.test_size,
+            gap_hours=self.purge_gap_hours,
+            train_end=self.train_end,
+            validation_end=self.validation_end,
+            calibration_end=self.calibration_end,
+            test_end=self.test_end,
+        )
+        if self.sequence_length < 1 or self.batch_size < 1:
+            raise ValueError("sequence_length and batch_size must be positive")
+        fractions = (self.test_size, self.val_size, self.calibration_size)
+        if any(value <= 0 for value in fractions) or sum(fractions) >= 1:
+            raise ValueError(
+                "test_size + val_size + calibration_size must be positive and less than one"
+            )
+        if self.purge_gap_hours < 0:
+            raise ValueError("purge_gap_hours cannot be negative")
+        if self.prediction_task not in (None, "", HISTORICAL_FORECAST_TASK):
+            raise ValueError(f"Unsupported prediction_task: {self.prediction_task}")
+        if self.prediction_task == HISTORICAL_FORECAST_TASK:
+            validate_forecast_horizon(self.forecast_horizon_hours)

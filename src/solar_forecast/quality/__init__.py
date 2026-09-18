@@ -1,6 +1,6 @@
 """Physics-aware data quality policies and plant diagnostics."""
 
-from .policy import (
+from solar_forecast.quality.generation_quality import (
     GenerationQualityPolicy,
     PhysicalQualityConfig,
     PlantQualityProfiler,
