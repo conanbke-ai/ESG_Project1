@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from solar_forecast.evaluation.temporal_split import TemporalSplitConfig
-from solar_forecast.evaluation.training_eligibility import audit_training_eligibility
+from solar_forecast.preprocessing.training_eligibility import audit_training_eligibility
 
 
 def _frame() -> pd.DataFrame:
@@ -49,7 +49,7 @@ def test_eligibility_keeps_complete_overlap_and_rejects_empty_test_overlap() -> 
     assert report["fixed_start_year_used"] is False
     assert report["historical_rule_recovery"]["fixed_minimum_rows_per_split_found"] is False
     assert report["historical_rule_recovery"]["historical_3way_extended_to_current_4way"] is True
-    assert plants["plant-a"]["status"] == "CANDIDATE_REQUIRES_THRESHOLD_REVIEW"
+    assert plants["plant-a"]["status"] == "STRUCTURALLY_ELIGIBLE"
     assert plants["plant-a"]["hard_reject_reasons"] == []
     assert plants["plant-b"]["status"] == "STRUCTURAL_REJECT"
     assert "empty_overlap_splits:test" in plants["plant-b"]["hard_reject_reasons"]
