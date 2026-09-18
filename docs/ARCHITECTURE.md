@@ -56,7 +56,8 @@ python app.py job-contract notify-anomalies
 | --- | --- | --- |
 | CLI | `cli/parser.py`, `cli/*_commands.py` | 인자 선언과 기능별 명령 처리 |
 | 수집 | `collectors/` | 공급자 adapter, ASOS API와 브라우저 |
-| 데이터 | `datasets/`, `features/`, `quality/` | admission·registry·Gold·특징·품질 |
+| 전처리 | `preprocessing/` | 원본→Gold orchestration, 학습 모집단 eligibility/admission, 전처리 contract |
+| 데이터 구현 | `datasets/`, `features/`, `quality/` | 표준화 저장·registry·Gold·특징·품질 flag |
 | 모델 | `models/cnn_bilstm/`, `models/xgboost/`, `models/hybrid/` | 모델별 구현; 공통 지원은 `models/shared/` |
 | 실행 | `jobs/`, `pipeline/` | 독립 job 계약과 전체 파이프라인 adapter |
 | 평가·표시 | `evaluation/`, `reporting/`, `dashboard/src/` | 공통 평가와 정적 화면 원본 |
@@ -65,7 +66,7 @@ python app.py job-contract notify-anomalies
 
 `cnn/`과 바깥의 `cnn_bilstm.py`는 `cnn_bilstm/`로 통합했습니다. 설정→학습 연결은 `trainer.py`, 신경망 구조는 `network.py`, 학습은 `training_workflow.py`, 저장 모델 평가는 `evaluation.py`가 소유합니다. CLI와 패키지 공개 export는 필요한 기능을 실행할 때 의존성을 로딩합니다.
 
-ASOS 키와 수집 계약은 [KMA_ASOS_API.md](KMA_ASOS_API.md)에 정의합니다. API와 브라우저가 공통 관측소·시간 병합을 사용하며, 발전소별 registry 승인과 누수 방지 정책은 기존 Gold 경계에서 계속 검사합니다.
+발전소 데이터 전처리의 최종 경계와 변경 규칙은 [PLANT_DATA_PREPROCESSING_POLICY.md](PLANT_DATA_PREPROCESSING_POLICY.md)와 `config/plant_data_preprocessing_policy.json`에 정의합니다. ASOS 키와 수집 계약은 [KMA_ASOS_API.md](KMA_ASOS_API.md)에 정의합니다. API와 브라우저가 공통 관측소·시간 병합을 사용하며, 발전소별 registry 승인과 누수 방지 정책은 기존 Gold 경계에서 계속 검사합니다.
 
 의존성은 CLI에서 application service로, service에서 명시적 adapter로 흐릅니다. 데이터 I/O나
 파일 저장은 모델의 핵심 계산과 섞지 않습니다. 기존 호출자를 위한 함수형 API는 얇은 호환
@@ -97,8 +98,9 @@ facade로만 유지합니다.
 - `LazyWindowSequenceDataset`: 발전소별 원본 배열을 한 번만 보관하고 batch에서 시퀀스를 절단
 - `DatasetRepository.load_training_frame`: Gold 파티션에 컬럼 선택·발전원/품질 필터를 chunk 단계에서
   적용하고 float32 변환·명시적 메모리 예산을 강제
-- `DataPreparationService`: 전체 표준화와 `model_ready.csv.gz`/`model_ready_parts` 생성을 하나의
-  재현 가능한 유스케이스로 묶음
+- `DataPreparationService`: `preprocessing/` 경계에서 전체 표준화와 `model_ready.csv.gz`/`model_ready_parts` 생성을 하나의 재현 가능한 유스케이스로 묶음
+- `audit_training_eligibility`: 전 발전소에 같은 calendar boundary를 적용해 구조 적격성을 판정하고 모델별 readiness와 분리
+- `classify_training_population`: frozen preprocessing policy로 모델 모집단만 ADMITTED/REJECT로 고정하며 서비스 전국 현황은 변경하지 않음
 - `TrainingService`: 모델 전략 선택, 전역 학습 잠금, 성공/실패 manifest 관리
 - `JobContract`: collect/prepare/train/dashboard/notify/e2e의 입출력 manifest schema와 worker 전환
   가능성을 코드에서 조회 가능한 계약으로 고정
