@@ -7,7 +7,7 @@ from pathlib import Path
 
 def handle_prepare_data_command(args: argparse.Namespace) -> None:
     from solar_forecast.collectors import KrcYeongamCandidateIntakeService
-    from solar_forecast.datasets.preparation_service import DataPreparationService
+    from solar_forecast.preprocessing.preparation_service import DataPreparationService
 
     result = DataPreparationService(
         input_root=Path(args.input_root),
@@ -72,7 +72,7 @@ def handle_audit_candidate_data_command(args: argparse.Namespace) -> None:
 
 def handle_training_data_eligibility_command(args: argparse.Namespace) -> None:
     """Audit Gold plant-period continuity/split sufficiency without training."""
-    from solar_forecast.evaluation.training_eligibility import run_training_eligibility_audit
+    from solar_forecast.preprocessing.training_eligibility import run_training_eligibility_audit
 
     report = run_training_eligibility_audit(
         Path(args.config),
