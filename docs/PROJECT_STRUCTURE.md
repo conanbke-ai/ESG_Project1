@@ -47,17 +47,20 @@
 | --- | --- | --- |
 | `cli/` | 명령 옵션과 인자를 업무 객체로 전달 | `parser.py`, `collection_commands.py`, `training_commands.py` |
 | `collectors/` | 공식 공급자에서 원본 수집·공급자 스키마 변환 | `kma_api.py`, `kma_api_client.py`, `generation_collectors.py`, `generation_normalizers.py` |
-| `datasets/` | admission·registry·저장소·Gold 생성 | `collector_admission.py`, `plant_registry.py`, `model_dataset_builder.py`, `preparation_service.py` |
+| `preprocessing/` | 발전소 데이터 전처리 orchestration·계약·학습 모집단 eligibility/admission | `preparation_service.py`, `training_eligibility.py`, `training_admission.py`, `contracts.py` |
+| `datasets/` | 표준화 저장·registry·Gold builder·학습 데이터 repository | `archive_standardizer.py`, `collector_admission.py`, `plant_registry.py`, `model_dataset_builder.py`, `repository.py` |
 | `features/` | 관측값과 과거 데이터에서 학습 특징 계산 | `asos_features.py`, `history_features.py` |
-| `quality/` | 데이터의 물리·통계 품질과 학습 적격 여부 | `generation_quality.py` |
+| `quality/` | 발전량·기상의 물리/문맥 품질 flag와 row-level `quality_train_eligible` | `generation_quality.py` |
 | `models/` | 모델별 학습·평가 구현 | 아래 모델 표 참조 |
-| `evaluation/` | 공통 시간 분할·회귀 지표·특징·예측 동등성 비교 | `temporal_split.py`, `regression_metrics.py`, `feature_ablation.py`, `model_parity.py` |
+| `evaluation/` | 공통 시간 분할·모델별 readiness·회귀 지표·특징·예측/선택 평가 | `temporal_split.py`, `forecast_readiness.py`, `regression_metrics.py`, `feature_ablation.py`, `model_parity.py` |
 | `jobs/` | 독립 실행·잠금·manifest·dispatcher orchestration | `training_job.py`, `verification_job.py`, `notification_dispatch_job.py`, `contracts.py` |
 | `pipeline/` | 데이터·학습·리포트 adapter를 잇는 전체 실행 | `forecast_pipeline.py`, `cnn_training_adapter.py`, `contracts.py` |
 | `anomalies/` | 운영 이상치 이벤트와 설명 정책 | `event_batch.py`, `influence_policy.py` |
 | `notifications/` | outbox·수신 경로·외부 알림 전송 | `outbox_repository.py`, `recipient_routes.py`, `delivery_provider.py` |
 | `reporting/` | 모델·품질·설비 자료를 화면/보고서로 투영 | `dashboard_builder.py`, `model_analytics.py`, `national_solar_inventory.py` |
 | `infrastructure/` | 환경·파일 저장·오류·기본 경로 | `environment.py`, `artifact_store.py`, `project_paths.py` |
+
+전처리 최종 정책은 [PLANT_DATA_PREPROCESSING_POLICY.md](PLANT_DATA_PREPROCESSING_POLICY.md)와 `config/plant_data_preprocessing_policy.json`을 canonical로 한다. 기존 `datasets/preparation_service.py`, `evaluation/training_eligibility.py`, `evaluation/training_admission.py`는 호환 shim이며 새 코드는 `preprocessing/`을 직접 사용한다.
 
 CLI 도움말과 job 조회는 학습 프레임워크를 import하지 않는다. 패키지 `__init__.py`는 공개 export 경계이며 수집·학습을 시작하지 않는다. 기능 구현이 CLI 처리 함수를 역으로 import하지 않도록 구조 검사에서 막는다.
 
