@@ -33,20 +33,22 @@ python app.py serve-dashboard
 | Calibration 뒷부분 | 별도 purge 뒤 단일 모델과 Hybrid의 채택 평가 |
 | Test | 선택을 확정한 뒤 최종 결과 보고 |
 
-분할 기준은 모든 발전소의 원본 시간축으로 고정됩니다. 기본 구간 비율은 60/15/10/15이고 경계에는 purge가 적용되므로 실제 행 비율은 달라집니다. 외부 구간 purge는 최소 예측 기간 이상이며, 하이브리드 학습/선택 사이에도 별도 purge를 둡니다. Calibration을 알림 임계값 조정에 재사용하지 않습니다. 기존 이상치 분석과 새 벤치마크의 화면·산출물은 구분됩니다.
+분할 기준은 모든 발전소에 동일한 전역 calendar boundary로 고정합니다. 발전소별로 60/15/10/15 cutoff를 따로 계산하지 않습니다. 확보 시작시점 차이 때문에 발전소별 실제 행 비율은 달라질 수 있지만 Train/Validation/Calibration/Test의 시간 의미는 동일합니다. 공통 경계를 만족하지 못하는 short-history 발전소는 main cohort에서 제외하거나 별도 분석 대상으로 보고하며, 해당 발전소만 Test 구간을 이동하지 않습니다. 외부 구간 purge는 최소 예측 기간 이상이며, 하이브리드 학습/선택 사이에도 별도 purge를 둡니다. Calibration을 알림 임계값 조정에 재사용하지 않습니다. 기존 이상치 분석과 새 벤치마크의 화면·산출물은 구분됩니다.
 
 ### 날짜 고정 후보와 학습 전 점검
 
-기존 `optimized.json`의 비율 기본값은 유지합니다. 확대된 자료를 검토하기 위한
-`config/experiments/observed_calendar_candidate.json`은 Train 종료를 2024-06-30 23시,
+`config/experiments/optimized.json`은 이제 Train 종료를 2024-06-30 23시,
 Validation 종료를 2024-09-30 23시, Calibration 종료를 2024-12-31 23시,
-Test 종료를 2025-12-31 23시로 고정한 별도 후보입니다. 2024년 상반기까지 Train에 포함해
-신규 발전소의 이력을 확보하고 2025년 확보분을 평가에 남깁니다. 이것이 최적 날짜라는 뜻은
-아니며 Validation은 3분기에 치우치므로 계절별 일반화 한계를 함께 보고해야 합니다.
+Test 종료를 2025-12-31 23시로 고정한 전역 calendar split을 기본 계약으로 사용합니다.
+이 경계는 2026-09-17 coverage audit를 통과한 기존 날짜 고정 후보를 canonical development-evaluation
+split으로 승격한 것입니다. 2024년 상반기까지 Train에 포함해 신규 발전소의 이력을 확보하고
+2025년 확보분을 동일 Test 기간으로 평가합니다. Validation이 3분기에 치우친다는 계절 일반화
+한계는 그대로 보고합니다. 현재 로컬 Gold가 확장되었으므로 본 학습 전 동일 경계를 재감사하며,
+충분성 문제가 있으면 Test 성능을 보기 전에 하나의 공통 경계 세트만 새 버전으로 수정합니다.
 
 ```powershell
-python tools/audit_temporal_split.py --config config/experiments/observed_calendar_candidate.json --data file/standardized/model_ready_parts --output artifacts/audits/observed_calendar_split.json
-python app.py benchmark --config config/experiments/observed_calendar_candidate.json --plan
+python tools/audit_temporal_split.py --config config/experiments/optimized.json --data file/standardized/model_ready_parts --output artifacts/audits/observed_calendar_split.json
+python app.py benchmark --config config/experiments/optimized.json --plan
 ```
 
 첫 명령은 학습 없이 분할별 실제 발전소·월·계절·Train 이력 없는 발전소와 purge 제외 행을
@@ -90,7 +92,7 @@ CNN 연속 시간창 조건을 적용합니다. 미래 발전량과 누락 시�
 다른 학습 표본을 유지하고, 비교할 Validation/Calibration/Test의 공통 시각을 확인합니다.
 
 ```powershell
-python tools/audit_forecast_readiness.py --config config/experiments/observed_calendar_candidate.json --data file/standardized/model_ready_parts --output artifacts/data_audits/forecast_readiness.json
+python tools/audit_forecast_readiness.py --config config/experiments/optimized.json --data file/standardized/model_ready_parts --output artifacts/data_audits/forecast_readiness.json
 ```
 
 앞의 동일 Gold에서 확인한 **Train 표본 수**는 다음과 같습니다. 기상 포함/제외 피처셋은
@@ -168,11 +170,11 @@ Invoke-PvStep tools/check_structure.py
 
 # 기존 Gold가 이전 전처리로 생성됐다면 보완된 코드로 한 번 생성합니다.
 Invoke-PvStep app.py prepare-data
-Invoke-PvStep tools/audit_forecast_readiness.py --config config/experiments/observed_calendar_candidate.json --output artifacts/data_audits/forecast_readiness.json
-Invoke-PvStep app.py benchmark --config config/experiments/observed_calendar_candidate.json --plan
+Invoke-PvStep tools/audit_forecast_readiness.py --config config/experiments/optimized.json --output artifacts/data_audits/forecast_readiness.json
+Invoke-PvStep app.py benchmark --config config/experiments/optimized.json --plan
 
 # 본 학습: 후보 18개, Optuna 최대 150회, 최종 학습 18회입니다.
-Invoke-PvStep app.py benchmark --config config/experiments/observed_calendar_candidate.json
+Invoke-PvStep app.py benchmark --config config/experiments/optimized.json
 ```
 
 의존성 확인이나 감사가 실패하면 다음 단계로 진행하지 않습니다. 후보별 3,600초는 Optuna
