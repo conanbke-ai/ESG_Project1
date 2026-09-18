@@ -1,6 +1,6 @@
 {
   "contract": "solar-training-admission-policy.v2",
-  "version": "2026-09-17-frozen-relational-1",
+  "version": "2026-09-18-frozen-global-calendar-1",
   "status": "frozen",
   "fixed_start_year": null,
   "selection_basis": [
@@ -32,13 +32,16 @@
   },
   "current_experiment_reference": {
     "source": "config/experiments/optimized.json",
-    "mode": "fraction",
-    "train_fraction": 0.6,
-    "validation_fraction": 0.15,
-    "calibration_fraction": 0.1,
-    "test_fraction": 0.15,
+    "mode": "global_calendar",
+    "train_end": "2024-06-30T23:00:00",
+    "validation_end": "2024-09-30T23:00:00",
+    "calibration_end": "2024-12-31T23:00:00",
+    "test_end": "2025-12-31T23:00:00",
     "purge_gap_hours": 168,
-    "minimum_common_coverage": 0.95
+    "minimum_common_coverage": 0.95,
+    "same_boundaries_for_all_plants": true,
+    "per_plant_fraction_split_allowed": false,
+    "actual_split_ratios_may_differ_by_plant": true
   },
   "current_4way_extension": {
     "require_all_splits_present": true,
@@ -47,7 +50,7 @@
     "require_calibration_rows_lte_train_rows": true,
     "require_test_rows_lte_train_rows": true,
     "fixed_minimum_rows_per_split": null,
-    "rationale": "Calibration is a current selection partition, so the recovered non-Train<=Train rule is applied consistently to Validation, Calibration, and Test without inventing a new minimum-N threshold."
+    "rationale": "Calibration is a current selection partition. The recovered non-Train<=Train rule is applied to Validation, Calibration, and Test under one global calendar boundary set; no per-plant cutoff or invented minimum-N threshold is allowed."
   },
   "decision_semantics": {
     "ADMITTED": "Passes the frozen recovered relational rules in eligibility.v2. Model-specific usable sample counts are checked later by forecast readiness.",
@@ -61,8 +64,11 @@
   },
   "notes": [
     "No fixed minimum N per split is introduced because no versioned evidence for such a historical rule was found.",
+    "Main benchmark splitting is global-calendar, not per-plant percentage splitting. Every admitted plant receives the same Train/Validation/Calibration/Test timestamp boundaries.",
+    "Different plant history lengths may produce different realized split ratios; this does not change the common classification rule.",
+    "A short-history plant is excluded from the main cohort or reported separately; its Test window must not be moved to manufacture a desired percentage.",
+    "If current local Gold cannot support the canonical boundaries, revise and version one global boundary set before training. Never choose plant-specific boundaries or revise after inspecting Test performance.",
     "The admission policy filters only the AI model population. EPSIS nationwide service inventory is not filtered by model eligibility.",
-    "After this population gate, forecast_readiness remains responsible for model-specific lookback/horizon and effective sample losses.",
-    "The current 60/15/10/15 split is not presented as the historical calendar split; only the plant-selection principle is recovered and extended."
+    "After this population gate, forecast_readiness remains responsible for model-specific lookback/horizon and effective sample losses."
   ]
 }
