@@ -1,6 +1,6 @@
 # Development rules for AI/code agents
 
-This repository uses the common TORI development-orchestration baseline from `conanbke-ai/Tori_Common_Project@94207d2cff53603345bc38bb1dbebe34c714513d`.
+This repository uses the common TORI development-orchestration baseline from `conanbke-ai/Tori_Common_Project@aefeefd5d2871194daeba39dbd6273bead5ef38a`.
 
 ## Common entrypoint
 - Read latest `main`, this file, relevant model/data docs, open PRs/branches, and actual code/config before changing behavior.
@@ -31,3 +31,4 @@ This repository uses the common TORI development-orchestration baseline from `co
 - Material experiment/model decisions must update canonical docs and portfolio history without overstating metrics or deployment readiness.
 - Role triggers/regression baseline: common `docs/TORI_AGENT_TRIGGER_MATRIX.md` and `docs/TORI_ORCHESTRATION_REGRESSION_SCENARIOS.md`.
 - Runtime recovery/retry/reconnect/checkpoint changes use Runtime Reliability review; prompt/model/provider/context changes affecting generative output use AI Output Evaluation review.
+- Common routing regression result: `ORCHESTRATION_REGRESSION_PASS` (15/15 representative scenarios; first-pass routing gaps fixed in common policy).
