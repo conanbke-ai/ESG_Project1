@@ -11,7 +11,7 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from solar_forecast.evaluation.training_eligibility import run_training_eligibility_audit
+from solar_forecast.preprocessing.training_eligibility import run_training_eligibility_audit
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -125,7 +125,7 @@ def main() -> int:
         f"quality_eligible_rows={population['quality_eligible_target_rows']}"
     )
     print(f"fixed_start_year_used={report['fixed_start_year_used']}")
-    print(f"final_thresholds_applied={report['final_thresholds_applied']}")
+    print(f"structural_rules_applied={report['structural_rules_applied']}")
     print(f"final_training_selection_ready={report['final_training_selection_ready']}")
     print(f"manifest={output}")
     print(f"summary_csv={summary}")
