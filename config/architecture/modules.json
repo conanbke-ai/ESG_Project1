@@ -158,7 +158,7 @@
       "kind": "implementation"
     },
     "datasets/preparation_service.py": {
-      "purpose": "원본 표준화·collector admission·registry·Gold·품질 감사 orchestration",
+      "purpose": "preprocessing/preparation_service.py로 연결하는 compatibility shim",
       "kind": "implementation"
     },
     "datasets/repository.py": {
@@ -435,6 +435,34 @@
     },
     "reporting/sgis_boundaries.py": {
       "purpose": "공식 SGIS 원본 hash 검증과 지도 GeoJSON 경계 변환",
+      "kind": "implementation"
+    },
+    "preprocessing/__init__.py": {
+      "purpose": "발전소 데이터 전처리 패키지의 canonical 공개 import 경계",
+      "kind": "package"
+    },
+    "preprocessing/contracts.py": {
+      "purpose": "원본 보존→Gold→학습 모집단으로 이어지는 전처리 단계와 versioned contract 정의",
+      "kind": "implementation"
+    },
+    "preprocessing/preparation_service.py": {
+      "purpose": "원본 표준화·collector admission·registry·Gold·품질 감사를 조율하는 canonical 전처리 application service",
+      "kind": "implementation"
+    },
+    "preprocessing/training_eligibility.py": {
+      "purpose": "공통 calendar split에서 발전량·ASOS overlap·연속성·split 충분성을 검사해 구조 적격 발전소를 결정",
+      "kind": "implementation"
+    },
+    "preprocessing/training_admission.py": {
+      "purpose": "frozen 전처리 정책으로 구조 적격 발전소를 AI 모델 ADMITTED 모집단으로 고정",
+      "kind": "implementation"
+    },
+    "evaluation/training_eligibility.py": {
+      "purpose": "preprocessing/training_eligibility.py로 연결하는 compatibility shim",
+      "kind": "implementation"
+    },
+    "evaluation/training_admission.py": {
+      "purpose": "preprocessing/training_admission.py로 연결하는 compatibility shim",
       "kind": "implementation"
     }
   }
