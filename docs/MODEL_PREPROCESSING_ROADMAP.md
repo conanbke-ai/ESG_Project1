@@ -1,5 +1,7 @@
 # 품질 인지형 다발전소 예측 개선안
 
+> **정책 상태:** 발전소 데이터 전처리의 최종 canonical 기준은 [PLANT_DATA_PREPROCESSING_POLICY.md](PLANT_DATA_PREPROCESSING_POLICY.md)와 `config/plant_data_preprocessing_policy.json`입니다. 이 문서는 과거 검토·연구 후보와 모델 개선 배경을 보존하며, 전처리 기준이 충돌할 경우 최종 정책을 우선합니다.
+
 최종 보완일: 2026-09-17 (Asia/Seoul)
 
 ## 현재 구현 범위와 과거 제안의 구분
