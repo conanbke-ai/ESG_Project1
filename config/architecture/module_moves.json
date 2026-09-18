@@ -19,7 +19,7 @@
     "features/registry.py": "datasets/plant_registry.py",
     "features/service.py": "datasets/model_dataset_builder.py",
     "features/weather.py": "features/asos_features.py",
-    "preparation.py": "datasets/preparation_service.py",
+    "preparation.py": "preprocessing/preparation_service.py",
     "pipeline/dataset.py": "datasets/repository.py",
     "pipeline/preprocessing.py": "datasets/numeric_preprocessor.py",
     "models/cnn_bilstm.py": "models/cnn_bilstm/trainer.py",
@@ -63,7 +63,10 @@
     "settings.py": "config_loader.py",
     "infrastructure/error_report.py": "infrastructure/error_reporting.py",
     "infrastructure/local_env.py": "infrastructure/environment.py",
-    "artifacts/manifest.py": "infrastructure/artifact_store.py"
+    "artifacts/manifest.py": "infrastructure/artifact_store.py",
+    "datasets/preparation_service.py": "preprocessing/preparation_service.py",
+    "evaluation/training_eligibility.py": "preprocessing/training_eligibility.py",
+    "evaluation/training_admission.py": "preprocessing/training_admission.py"
   },
   "symbols": {
     "KmaAsosHourlyCollector": "KmaAsosBrowserCollector",
