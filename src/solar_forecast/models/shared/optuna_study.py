@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
+import warnings
 
 import optuna
 from optuna.storages import RetryHeartbeatStaleTrialCallback
@@ -202,14 +203,23 @@ class OptunaStudyService:
         if not storage_path.is_absolute():
             storage_path = self.project_root / storage_path
         storage_path.parent.mkdir(parents=True, exist_ok=True)
-        storage = optuna.storages.RDBStorage(
+
+        # The benchmark owns the user-facing console. Optuna's default INFO
+        # records and experimental API warnings make long GPU runs unreadable.
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+        with warnings.catch_warnings():
+            warnings.simplefilter(
+                "ignore",
+                category=optuna.exceptions.ExperimentalWarning,
+            )
+            storage = optuna.storages.RDBStorage(
             url=f"sqlite:///{storage_path.resolve().as_posix()}",
             heartbeat_interval=self.settings.heartbeat_interval_seconds,
             grace_period=self.settings.grace_period_seconds,
-            heartbeat_stale_trial_callback=RetryHeartbeatStaleTrialCallback(
-                max_retry=self.settings.max_failed_trial_retries
-            ),
-        )
+                heartbeat_stale_trial_callback=RetryHeartbeatStaleTrialCallback(
+                    max_retry=self.settings.max_failed_trial_retries
+                ),
+            )
         sampler = optuna.samplers.TPESampler(
             seed=self.settings.seed,
             n_startup_trials=self.settings.startup_trials,
@@ -234,13 +244,32 @@ class OptunaStudyService:
             for trial in study.trials
         )
         remaining = max(0, self.settings.max_trials - existing) + pending_retries
+
+        if existing:
+            print(
+                f"  기존 탐색 {min(existing, self.settings.max_trials)}/"
+                f"{self.settings.max_trials} 재사용",
+                flush=True,
+            )
         if remaining:
+            def console_progress(current_study: Study, trial: FrozenTrial) -> None:
+                self._print_trial_progress(current_study, trial)
+
             study.optimize(
                 objective,
                 n_trials=remaining,
                 timeout=self.settings.timeout_seconds,
                 gc_after_trial=True,
-                callbacks=list(callbacks),
+                callbacks=[*callbacks, console_progress],
+            )
+        elif existing:
+            best = study.best_trial
+            metrics = best.user_attrs.get("validation_metrics") or {}
+            mae = float(study.best_value)
+            suffix = self._metric_suffix(metrics)
+            print(
+                f"  추가 탐색 없음 · 최저 MAE {mae:.6f} MWh{suffix}",
+                flush=True,
             )
         executed = self._finished_trials(study.trials) - existing
         completed = [
@@ -290,6 +319,50 @@ class OptunaStudyService:
             existing_trials=existing,
             executed_trials=executed,
         )
+
+    def _print_trial_progress(
+        self,
+        study: Study,
+        trial: FrozenTrial,
+    ) -> None:
+        number = trial.number + 1
+        total = self.settings.max_trials
+        state = trial.state
+        if state == TrialState.COMPLETE:
+            metrics = trial.user_attrs.get("validation_metrics") or {}
+            mae = float(trial.value)
+            marker = " ★ 최저" if study.best_trial.number == trial.number else ""
+            print(
+                f"  탐색 {number}/{total} 완료 · MAE {mae:.6f} MWh"
+                f"{self._metric_suffix(metrics)}{marker}",
+                flush=True,
+            )
+        elif state == TrialState.PRUNED:
+            print(f"  탐색 {number}/{total} 조기 종료", flush=True)
+        elif state == TrialState.FAIL:
+            print(f"  탐색 {number}/{total} 실패", flush=True)
+
+    @staticmethod
+    def _metric_suffix(metrics: Mapping[str, Any]) -> str:
+        if not metrics:
+            return ""
+        parts: list[str] = []
+        rmse = metrics.get("rmse_mwh")
+        r2 = metrics.get("r2")
+        bias = metrics.get("bias_mwh")
+        daylight = metrics.get("daylight_mae_mwh")
+        skill = metrics.get("persistence_skill_pct")
+        if rmse is not None:
+            parts.append(f"RMSE {float(rmse):.4f}")
+        if r2 is not None:
+            parts.append(f"R² {float(r2):.3f}")
+        if bias is not None:
+            parts.append(f"Bias {float(bias):+.4f}")
+        if daylight is not None:
+            parts.append(f"주간MAE {float(daylight):.4f}")
+        if skill is not None:
+            parts.append(f"기준대비 {float(skill):+.1f}%")
+        return (" │ " + " · ".join(parts)) if parts else ""
 
     @staticmethod
     def _finished_trials(trials: list[FrozenTrial]) -> int:
