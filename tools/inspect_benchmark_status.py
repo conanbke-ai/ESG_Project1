@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import subprocess
 import sys
 import time
 from typing import Any, Iterable
@@ -39,6 +40,7 @@ class TrialStatus:
     latest_intermediate_value: float | None
     best_number: int | None
     best_value: float | None
+    recent_trials: list[dict[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -331,6 +333,66 @@ def _trial_status_for_study(
         """,
         (study_id,),
     ).fetchone()
+    recent_trials = [
+        {
+            "number": int(row["number"]),
+            "state": str(row["state"]),
+            "value": (
+                float(row["display_value"])
+                if row["display_value"] is not None
+                else None
+            ),
+            "started_at": (
+                str(row["datetime_start"])
+                if row["datetime_start"] is not None
+                else None
+            ),
+            "completed_at": (
+                str(row["datetime_complete"])
+                if row["datetime_complete"] is not None
+                else None
+            ),
+            "last_step": (
+                int(row["last_step"])
+                if row["last_step"] is not None
+                else None
+            ),
+        }
+        for row in connection.execute(
+            """
+            SELECT
+                t.number,
+                t.state,
+                t.datetime_start,
+                t.datetime_complete,
+                COALESCE(
+                    tv.value,
+                    (
+                        SELECT tiv.intermediate_value
+                        FROM trial_intermediate_values tiv
+                        WHERE tiv.trial_id = t.trial_id
+                        ORDER BY tiv.step DESC
+                        LIMIT 1
+                    )
+                ) AS display_value,
+                (
+                    SELECT tiv.step
+                    FROM trial_intermediate_values tiv
+                    WHERE tiv.trial_id = t.trial_id
+                    ORDER BY tiv.step DESC
+                    LIMIT 1
+                ) AS last_step
+            FROM trials t
+            LEFT JOIN trial_values tv
+              ON tv.trial_id = t.trial_id
+             AND tv.objective = 0
+            WHERE t.study_id = ?
+            ORDER BY t.number DESC
+            LIMIT 5
+            """,
+            (study_id,),
+        )
+    ]
     return TrialStatus(
         study_name=study_name,
         study_id=study_id,
@@ -351,6 +413,7 @@ def _trial_status_for_study(
         latest_intermediate_value=latest_value,
         best_number=int(best["number"]) if best is not None else None,
         best_value=float(best["value"]) if best is not None else None,
+        recent_trials=recent_trials,
     )
 
 
@@ -459,6 +522,9 @@ def summarize(
         "overall_status": overall,
         "benchmark_run": str(run_dir) if run_dir else None,
         "benchmark_manifest_status": run_status,
+        "benchmark_created_at": (
+            run_manifest.get("created_at_utc") if run_manifest else None
+        ),
         "lock": asdict(lock),
         "active_candidate_index": active_index,
         "candidates": candidate_rows,
@@ -548,11 +614,23 @@ def _clear_screen() -> None:
     print("\033[2J\033[H", end="", flush=True)
 
 
-def _progress_bar(current: int, total: int, width: int = 18) -> str:
+def _progress_bar(
+    current: int,
+    total: int,
+    width: int = 22,
+    *,
+    active: bool = False,
+) -> str:
     if total <= 0:
-        return "[" + "-" * width + "]"
-    filled = max(0, min(width, round(width * current / total)))
-    return "[" + "#" * filled + "-" * (width - filled) + "]"
+        return "░" * width
+    ratio = max(0.0, min(1.0, current / total))
+    filled = int(width * ratio)
+    head = 1 if active and filled < width and current > 0 else 0
+    return (
+        "█" * filled
+        + ("▌" if head else "")
+        + "░" * max(0, width - filled - head)
+    )
 
 
 def _compact_candidate_label(candidate_id: str) -> str:
@@ -560,22 +638,98 @@ def _compact_candidate_label(candidate_id: str) -> str:
     replacements = (
         ("observed_weather_history", "weather+history"),
         ("history_calendar", "history+calendar"),
-        ("_lookback_", " · LB"),
+        ("_lookback_", " · lookback "),
     )
     for old, new in replacements:
         label = label.replace(old, new)
-    if label.endswith("h") and "LB" in label:
-        label = label[:-1] + "h"
     return label
 
 
+def _parse_time(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _duration_text(
+    started_at: str | None,
+    completed_at: str | None = None,
+) -> str:
+    start = _parse_time(started_at)
+    if start is None:
+        return "-"
+    end = _parse_time(completed_at) or datetime.now(timezone.utc)
+    seconds = max(0, int((end - start).total_seconds()))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    return (
+        f"{hours:02d}:{minutes:02d}:{secs:02d}"
+        if hours
+        else f"{minutes:02d}:{secs:02d}"
+    )
+
+
+def _gpu_status() -> dict[str, str] | None:
+    command = [
+        "nvidia-smi",
+        "--query-gpu=utilization.gpu,memory.used,memory.total,"
+        "temperature.gpu,power.draw",
+        "--format=csv,noheader,nounits",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=1.5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    first = result.stdout.strip().splitlines()[0]
+    parts = [part.strip() for part in first.split(",")]
+    if len(parts) != 5:
+        return None
+    return {
+        "util": parts[0],
+        "memory_used": parts[1],
+        "memory_total": parts[2],
+        "temperature": parts[3],
+        "power": parts[4],
+    }
+
+
+def _box_line(text: str = "", width: int = 76) -> str:
+    visible = text[:width]
+    return f"│ {visible:<{width}} │"
+
+
+def _section(title: str, width: int = 76) -> str:
+    label = f" {title} "
+    return "├" + "─" + label + "─" * max(0, width - len(label)) + "┤"
+
+
 def print_active_monitor(summary: dict[str, Any]) -> None:
+    width = 76
     now = datetime.now().astimezone().strftime("%H:%M:%S")
     active_index = summary["active_candidate_index"]
 
+    title = f" SOLAR FORECAST · LIVE "
+    right = f" {now} "
+    middle = max(0, width - len(title) - len(right))
+    print("╭" + title + "─" * middle + right + "╮")
+
     if active_index is None:
-        print(f"태양광 학습 | {now} | {summary['overall_status']}")
-        print("현재 실행 중인 후보를 찾지 못했습니다.")
+        print(_box_line(f"상태  {summary['overall_status']}", width))
+        print("╰" + "─" * (width + 2) + "╯")
         return
 
     row = next(
@@ -591,65 +745,157 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         else row["model"]
     )
 
-    candidate_bar = _progress_bar(row["index"], row["total"])
-    latest_number = optuna.get("latest_number")
-    trial_current = latest_number + 1 if latest_number is not None else 0
-    trial_bar = _progress_bar(
-        min(
-            row["max_trials"],
-            sum(
-                int(optuna.get("counts", {}).get(state, 0))
-                for state in ("COMPLETE", "PRUNED", "FAIL")
-            ),
-        ),
-        row["max_trials"],
-        width=10,
+    completed_candidates = max(0, row["index"] - 1)
+    overall_bar = _progress_bar(
+        completed_candidates,
+        row["total"],
+        24,
+        active=True,
+    )
+    print(
+        _box_line(
+            f"전체  {overall_bar}  "
+            f"{completed_candidates}/{row['total']} 완료 · ACTIVE #{row['index']}",
+            width,
+        )
     )
 
+    horizon_rows = [
+        item for item in summary["candidates"]
+        if item["horizon_hours"] == row["horizon_hours"]
+    ]
+    horizon_pos = next(
+        index for index, item in enumerate(horizon_rows, 1)
+        if item["index"] == row["index"]
+    )
+    horizon_done = horizon_pos - 1
+    horizon_bar = _progress_bar(
+        horizon_done,
+        len(horizon_rows),
+        24,
+        active=True,
+    )
+    print(
+        _box_line(
+            f"{row['horizon_hours']}h    {horizon_bar}  "
+            f"{horizon_done}/{len(horizon_rows)} 완료",
+            width,
+        )
+    )
+
+    print(_section("CURRENT", width))
+    print(
+        _box_line(
+            f"{model_name} · {_compact_candidate_label(row['candidate_id'])}",
+            width,
+        )
+    )
+
+    latest_number = optuna.get("latest_number")
+    latest_state = optuna.get("latest_state") or "-"
+    trial_current = latest_number + 1 if latest_number is not None else 0
     step = optuna.get("latest_intermediate_step")
     current_step = step + 1 if step is not None else None
     step_total = row["progress_total"]
-    step_text = (
-        f"{row['progress_unit']} {current_step}/{step_total or '?'}"
-        if current_step is not None
-        else f"{row['progress_unit']} -"
+
+    print(
+        _box_line(
+            f"Trial  {trial_current}/{row['max_trials']}  {latest_state:<9}"
+            f" │ {row['progress_unit'].capitalize():<6} "
+            f"{current_step if current_step is not None else '-'}"
+            f"/{step_total or '?'}",
+            width,
+        )
     )
 
     current_value = optuna.get("latest_intermediate_value")
     best_value = optuna.get("best_value")
-    delta = (
-        current_value - best_value
-        if current_value is not None and best_value is not None
+    best_number = optuna.get("best_number")
+    relative_delta = (
+        ((current_value - best_value) / best_value) * 100
+        if current_value is not None
+        and best_value not in (None, 0)
         else None
     )
-    delta_text = "-" if delta is None else f"{delta:+.6f}"
+    delta_text = (
+        "-"
+        if relative_delta is None
+        else f"{relative_delta:+.2f}%"
+    )
+    print(
+        _box_line(
+            f"MAE    현재 {_fmt_value(current_value):<14}"
+            f" │ BEST {_fmt_value(best_value)}"
+            f" (#{best_number if best_number is not None else '-'})"
+            f" · Δ {delta_text}",
+            width,
+        )
+    )
 
-    counts = optuna.get("counts", {})
+    print(_section("GPU", width))
+    gpu = _gpu_status()
     lock = summary["lock"]
-    gpu = (
-        f"GPU PID {lock['pid']}"
+    pid = (
+        str(lock["pid"])
         if lock["exists"] and lock["process_running"] is True
-        else "GPU lock ?"
+        else "-"
     )
+    if gpu:
+        used_gb = float(gpu["memory_used"]) / 1024
+        total_gb = float(gpu["memory_total"]) / 1024
+        print(
+            _box_line(
+                f"Util {gpu['util']}% · VRAM {used_gb:.1f}/{total_gb:.1f} GB"
+                f" · {gpu['temperature']}°C · {gpu['power']}W · PID {pid}",
+                width,
+            )
+        )
+    else:
+        print(_box_line(f"GPU telemetry - · PID {pid}", width))
 
-    print(f"태양광 학습 | {now} | {gpu}")
+    print(_section("RECENT TRIALS", width))
     print(
-        f"{candidate_bar} 후보 {row['index']}/{row['total']}  "
-        f"{model_name} · H{row['horizon_hours']} · "
-        f"{_compact_candidate_label(row['candidate_id'])}"
+        _box_line(
+            "#    STATE       MAE          TIME       PROGRESS",
+            width,
+        )
     )
-    print(
-        f"{trial_bar} Trial {trial_current}/{row['max_trials']}  ·  "
-        f"{step_text}  ·  "
-        f"done {counts.get('COMPLETE', 0)} / "
-        f"pruned {counts.get('PRUNED', 0)} / "
-        f"fail {counts.get('FAIL', 0)}"
+    recent = optuna.get("recent_trials", [])
+    if not recent:
+        print(_box_line("-", width))
+    else:
+        for trial in recent[:4]:
+            number = int(trial["number"])
+            state = str(trial["state"])
+            value = trial.get("value")
+            value_text = "-" if value is None else f"{value:.6f}"
+            duration = _duration_text(
+                trial.get("started_at"),
+                trial.get("completed_at"),
+            )
+            last_step = trial.get("last_step")
+            progress = (
+                f"{row['progress_unit']} {last_step + 1}/{step_total or '?'}"
+                if last_step is not None
+                else "-"
+            )
+            marker = "★" if number == best_number else " "
+            print(
+                _box_line(
+                    f"{marker}{number:<3} {state:<11} {value_text:<12}"
+                    f" {duration:<10} {progress}",
+                    width,
+                )
+            )
+
+    run_elapsed = _duration_text(summary.get("benchmark_created_at"))
+    footer = (
+        f"elapsed {run_elapsed} · refresh 2s · Ctrl+C: monitor only"
     )
-    print(
-        f"MAE  현재 {_fmt_value(current_value)}  |  "
-        f"BEST {_fmt_value(best_value)}  |  "
-        f"Δ {delta_text}"
-    )
+    print("╰" + "─" * 2 + f" {footer} " + "─" * max(
+        0,
+        width - len(footer) - 2,
+    ) + "╯")
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
