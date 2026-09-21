@@ -52,6 +52,7 @@ class _EntitySeries:
     timestamps: np.ndarray
     origin_positions: np.ndarray | None = None
     horizon_hours: int | None = None
+    is_daylight: np.ndarray | None = None
 
 
 class LazyWindowSequenceDataset(Dataset):
@@ -110,6 +111,8 @@ class LazyWindowSequenceDataset(Dataset):
                     "horizon_hours": item.horizon_hours,
                     "persistence_pred": float(item.targets[origin_position]),
                 })
+            if item.is_daylight is not None:
+                records[-1]["is_daylight"] = bool(item.is_daylight[target_position])
         return pd.DataFrame.from_records(records)
 
 
@@ -329,6 +332,11 @@ def prepare_dataset_splits(
                 ),
                 origin_positions=origin_positions,
                 horizon_hours=cfg.forecast_horizon_hours if historical else None,
+                is_daylight=(
+                    group["is_daylight"].fillna(False).to_numpy(dtype=bool)
+                    if "is_daylight" in group.columns
+                    else None
+                ),
             )
         )
     if not series:
