@@ -43,6 +43,8 @@ class TrialStatus:
     latest_trial_best_step: int | None
     latest_trial_best_value: float | None
     latest_params: dict[str, Any]
+    latest_validation_metrics: dict[str, Any]
+    best_validation_metrics: dict[str, Any]
     best_number: int | None
     best_value: float | None
     recent_trials: list[dict[str, Any]]
@@ -416,6 +418,38 @@ def _external_trial_params(
     return params
 
 
+def _trial_user_attr(
+    connection: sqlite3.Connection,
+    trial_id: int,
+    key: str,
+) -> Any:
+    exists = connection.execute(
+        """
+        SELECT 1
+        FROM sqlite_master
+        WHERE type = 'table' AND name = 'trial_user_attributes'
+        """
+    ).fetchone()
+    if exists is None:
+        return None
+    row = connection.execute(
+        """
+        SELECT value_json
+        FROM trial_user_attributes
+        WHERE trial_id = ? AND key = ?
+        ORDER BY trial_user_attribute_id DESC
+        LIMIT 1
+        """,
+        (trial_id, key),
+    ).fetchone()
+    if row is None:
+        return None
+    try:
+        return json.loads(str(row["value_json"]))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
 def _trial_status_for_study(
     connection: sqlite3.Connection,
     study_id: int,
@@ -447,6 +481,8 @@ def _trial_status_for_study(
     latest_trial_best_step = latest_trial_best_value = None
     latest_heartbeat_at = None
     latest_params: dict[str, Any] = {}
+    latest_validation_metrics: dict[str, Any] = {}
+    best_validation_metrics: dict[str, Any] = {}
     if latest is not None:
         latest_heartbeat_at = _latest_heartbeat(
             connection,
@@ -455,6 +491,22 @@ def _trial_status_for_study(
         latest_params = _external_trial_params(
             connection,
             int(latest["trial_id"]),
+        )
+        latest_validation_metrics = (
+            _trial_user_attr(
+                connection,
+                int(latest["trial_id"]),
+                "validation_metrics",
+            )
+            or {}
+        )
+        best_validation_metrics = (
+            _trial_user_attr(
+                connection,
+                int(latest["trial_id"]),
+                "best_validation_metrics",
+            )
+            or latest_validation_metrics
         )
         intermediate = connection.execute(
             """
@@ -580,6 +632,8 @@ def _trial_status_for_study(
         latest_trial_best_step=latest_trial_best_step,
         latest_trial_best_value=latest_trial_best_value,
         latest_params=latest_params,
+        latest_validation_metrics=latest_validation_metrics,
+        best_validation_metrics=best_validation_metrics,
         best_number=int(best["number"]) if best is not None else None,
         best_value=float(best["value"]) if best is not None else None,
         recent_trials=recent_trials,
@@ -1007,6 +1061,21 @@ def _compact_params(params: dict[str, Any], model: str) -> str:
     return "  ·  ".join(parts) or "-"
 
 
+def _metric_value(metrics: dict[str, Any], key: str, suffix: str = "") -> str:
+    value = metrics.get(key)
+    if value is None:
+        return "-"
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return "-"
+    if key == "r2":
+        return f"{numeric:.4f}"
+    if key == "persistence_skill_pct":
+        return f"{numeric:+.1f}%"
+    return f"{numeric:.6f}{suffix}"
+
+
 def print_active_monitor(summary: dict[str, Any]) -> None:
     active_index = summary["active_candidate_index"]
     now = datetime.now().astimezone().strftime("%H:%M:%S")
@@ -1138,28 +1207,29 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
     trial_best_value = optuna.get("latest_trial_best_value")
     candidate_best_value = optuna.get("best_value")
     candidate_best_number = optuna.get("best_number")
+    metrics = optuna.get("latest_validation_metrics") or {}
 
     print("─" * 76)
+    print("검증 성능   ※ 후보 선택 기준은 Validation MAE")
     print(
-        "검증 MAE   "
-        f"현재 {current_value:.6f} MWh"
-        if current_value is not None
-        else "검증 MAE   현재 아직 검증 전"
+        f"  MAE      {_metric_value(metrics, 'mae_mwh', ' MWh'):<16}"
+        f" RMSE {_metric_value(metrics, 'rmse_mwh', ' MWh'):<16}"
+        f" R² {_metric_value(metrics, 'r2')}"
     )
     print(
-        "            "
+        f"  Bias     {_metric_value(metrics, 'bias_mwh', ' MWh'):<16}"
+        f" 주간 MAE {_metric_value(metrics, 'daylight_mae_mwh', ' MWh'):<16}"
+    )
+    print(
+        f"  기준모델 MAE {_metric_value(metrics, 'persistence_mae_mwh', ' MWh'):<14}"
+        f" 개선율 {_metric_value(metrics, 'persistence_skill_pct')}"
+    )
+    print(
+        "  후보 최저  "
         + (
-            f"이번 탐색 최저 {trial_best_value:.6f} MWh"
-            if trial_best_value is not None
-            else "이번 탐색 최저 -"
-        )
-        + "   │   "
-        + (
-            f"후보 전체 최저 {candidate_best_value:.6f} MWh "
-            f"(탐색 {candidate_best_number + 1})"
-            if candidate_best_value is not None
-            and candidate_best_number is not None
-            else "후보 전체 최저 -"
+            f"{candidate_best_value:.6f} MWh (탐색 {candidate_best_number + 1})"
+            if candidate_best_value is not None and candidate_best_number is not None
+            else "-"
         )
     )
 
@@ -1232,6 +1302,7 @@ def _monitor_signature(summary: dict[str, Any]) -> tuple[Any, ...]:
         optuna.get("latest_intermediate_value"),
         optuna.get("best_number"),
         optuna.get("best_value"),
+        json.dumps(optuna.get("latest_validation_metrics") or {}, sort_keys=True),
         tuple(sorted((optuna.get("counts") or {}).items())),
         progress.get("next_epoch"),
         progress.get("completed_rounds"),
