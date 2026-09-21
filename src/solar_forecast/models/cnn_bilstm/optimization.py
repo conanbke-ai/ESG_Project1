@@ -313,6 +313,22 @@ def optimize_cnn_bilstm(
                 trial.report(validation_mae, step=epoch)
                 trial.set_user_attr("validation_metrics", metrics["diagnostics"])
 
+                diagnostics = metrics["diagnostics"]
+                rmse = diagnostics.get("rmse_mwh")
+                r2 = diagnostics.get("r2")
+                skill = diagnostics.get("persistence_skill_pct")
+                print(
+                    "\r\033[2K"
+                    f"  탐색 {trial.number + 1}/{settings.max_trials if settings else n_trials}"
+                    f" · Epoch {epoch + 1}/{trial_epochs}"
+                    f" · MAE {validation_mae:.6f}"
+                    + (f" · RMSE {float(rmse):.4f}" if rmse is not None else "")
+                    + (f" · R² {float(r2):.3f}" if r2 is not None else "")
+                    + (f" · 기준대비 {float(skill):+.1f}%" if skill is not None else ""),
+                    end="",
+                    flush=True,
+                )
+
                 if validation_mae + 1e-6 < best_mae:
                     best_mae = validation_mae
                     trial.set_user_attr(
@@ -346,6 +362,7 @@ def optimize_cnn_bilstm(
                         completed=False,
                     )
                 if trial.should_prune():
+                    print("\r\033[2K", end="", flush=True)
                     raise optuna.TrialPruned()
                 if wait >= early_stopping_patience:
                     break
@@ -368,6 +385,7 @@ def optimize_cnn_bilstm(
                     },
                     completed=True,
                 )
+            print("\r\033[2K", end="", flush=True)
             trial.set_user_attr("checkpoint_resumed", resumed)
             trial.set_user_attr("tuning_train_sequences", len(train_loader.dataset))
             trial.set_user_attr(
