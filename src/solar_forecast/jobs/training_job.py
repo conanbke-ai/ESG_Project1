@@ -57,37 +57,48 @@ class TrainingService:
         lock_path = PROJECT_ROOT / "artifacts" / ".training.lock"
         run_context = {
             "execution_mode": "smoke" if smoke else "full",
-            "phase": phase,
-            "selection_only": selection_only,
             "energy_source": config.values.get("energy_source_filter"),
             "target": config.values.get("target_column"),
             "target_unit": "MWh",
             "horizon_hours": config.values.get("forecast_horizon_hours"),
             "evaluation_protocol": config.values.get("evaluation_protocol"),
         }
+        phase_context = (
+            {"phase": phase, "selection_only": True}
+            if selection_only
+            else {}
+        )
         write_manifest(
             manifest_path,
             status="running",
             model=config.model,
             run_id=run_id,
-            details={"run_context": run_context},
+            details={"run_context": run_context, **phase_context},
         )
         try:
             with exclusive_training_lock(lock_path, config.model):
                 module_name, function_name = self.trainers[config.model]
                 trainer: Callable = getattr(importlib.import_module(module_name), function_name)
-                result = trainer(
-                    config,
-                    run_dir=run_dir,
-                    smoke=smoke,
-                    selection_only=selection_only,
+                result = (
+                    trainer(
+                        config,
+                        run_dir=run_dir,
+                        smoke=smoke,
+                        selection_only=True,
+                    )
+                    if selection_only
+                    else trainer(
+                        config,
+                        run_dir=run_dir,
+                        smoke=smoke,
+                    )
                 )
             write_manifest(
                 manifest_path,
                 status="completed",
                 model=config.model,
                 run_id=run_id,
-                details={**result, "run_context": run_context},
+                details={**result, "run_context": run_context, **phase_context},
             )
             return run_dir
         except Exception as exc:
