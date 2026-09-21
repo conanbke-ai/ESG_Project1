@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import sqlite3
 import sys
+import time
 from typing import Any, Iterable
 
 
@@ -540,6 +541,98 @@ def print_human(summary: dict[str, Any]) -> None:
             )
 
 
+
+def _clear_screen() -> None:
+    if sys.stdout.isatty():
+        print("\033[2J\033[H", end="")
+
+
+def print_active_monitor(summary: dict[str, Any]) -> None:
+    now = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"태양광 benchmark live | {now}")
+    print("=" * 78)
+
+    active_index = summary["active_candidate_index"]
+    if active_index is None:
+        print(f"상태: {summary['overall_status']}")
+        print("현재 RUNNING 후보를 찾지 못했습니다.")
+        return
+
+    row = next(
+        item for item in summary["candidates"]
+        if item["index"] == active_index
+    )
+    optuna = row["optuna"] or {}
+    model_name = (
+        "CNN-BiLSTM"
+        if row["model"] == "cnn_bilstm"
+        else "XGBoost"
+        if row["model"] == "xgboost"
+        else row["model"]
+    )
+    print(
+        f"후보 {row['index']}/{row['total']} | "
+        f"{model_name} | horizon {row['horizon_hours']}h"
+    )
+    print(f"설정: {row['candidate_id']}")
+
+    latest_number = optuna.get("latest_number")
+    latest_state = optuna.get("latest_state")
+    if latest_number is not None:
+        trial_current = latest_number + 1
+        print(
+            f"Trial: {trial_current}/{row['max_trials']} "
+            f"({latest_state or '-'})"
+        )
+    else:
+        print(f"Trial: -/{row['max_trials']}")
+
+    step = optuna.get("latest_intermediate_step")
+    current_value = optuna.get("latest_intermediate_value")
+    if step is not None:
+        current_step = step + 1
+        total = row["progress_total"]
+        print(
+            f"{row['progress_unit']}: "
+            f"{current_step}/{total if total else '?'}"
+        )
+    else:
+        print(f"{row['progress_unit']}: -")
+
+    print(
+        f"현재 Validation MAE: {_fmt_value(current_value)}"
+    )
+    print(
+        f"최선 Validation MAE: "
+        f"{_fmt_value(optuna.get('best_value'))}"
+    )
+
+    counts = optuna.get("counts", {})
+    finished = sum(
+        int(counts.get(state, 0))
+        for state in ("COMPLETE", "PRUNED", "FAIL")
+    )
+    print(
+        "Trials: "
+        f"완료 {counts.get('COMPLETE', 0)} | "
+        f"pruned {counts.get('PRUNED', 0)} | "
+        f"fail {counts.get('FAIL', 0)} | "
+        f"finished {finished}/{row['max_trials']}"
+    )
+
+    lock = summary["lock"]
+    lock_text = (
+        f"PID {lock['pid']} / {lock['model']}"
+        if lock["exists"] and lock["process_running"] is True
+        else "확인 불가"
+    )
+    print(f"GPU 학습 프로세스 lock: {lock_text}")
+    print("-" * 78)
+    print(
+        "원래 학습 창은 그대로 두세요. "
+        "이 화면은 Optuna SQLite를 read-only로 조회합니다."
+    )
+
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -578,6 +671,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="기계 판독용 JSON 출력",
     )
+    parser.add_argument(
+        "--watch-seconds",
+        type=float,
+        default=None,
+        help="N초마다 active 후보를 갱신합니다. 학습/DB는 변경하지 않습니다.",
+    )
     return parser.parse_args(argv)
 
 
@@ -588,6 +687,39 @@ def main(argv: Iterable[str] | None = None) -> int:
     db = _resolve(root, args.db)
     benchmarks = _resolve(root, args.benchmarks)
     lock = _resolve(root, args.lock)
+    if args.watch_seconds is not None:
+        if args.json:
+            print("--json 과 --watch-seconds 는 함께 사용할 수 없습니다.", file=sys.stderr)
+            return 2
+        if args.watch_seconds <= 0:
+            print("--watch-seconds 는 0보다 커야 합니다.", file=sys.stderr)
+            return 2
+        try:
+            while True:
+                summary = summarize(
+                    root,
+                    config,
+                    db,
+                    benchmarks,
+                    lock,
+                )
+                _clear_screen()
+                print_active_monitor(summary)
+                time.sleep(args.watch_seconds)
+        except KeyboardInterrupt:
+            return 0
+        except (
+            OSError,
+            ValueError,
+            KeyError,
+            json.JSONDecodeError,
+        ) as exc:
+            print(
+                f"상태 조회 실패: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+
     try:
         summary = summarize(
             root,
