@@ -748,8 +748,8 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
     active_index = summary["active_candidate_index"]
 
     if active_index is None:
-        print(_paint("태양광 학습", ANSI_BOLD, ANSI_WHITE))
-        print(_paint(summary["overall_status"], ANSI_YELLOW))
+        print("태양광 발전량 예측 학습")
+        print(f"상태: {summary['overall_status']}")
         return
 
     row = next(
@@ -757,6 +757,7 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         if item["index"] == active_index
     )
     optuna = row["optuna"] or {}
+
     model_name = (
         "CNN-BiLSTM"
         if row["model"] == "cnn_bilstm"
@@ -765,127 +766,99 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         else row["model"]
     )
 
+    feature_name = _compact_candidate_label(row["candidate_id"])
+    feature_name = feature_name.replace("weather+history", "기상 + 발전이력")
+    feature_name = feature_name.replace("history+calendar", "발전이력 + 시간정보")
+    feature_name = feature_name.replace("lookback ", "과거 ")
+    feature_name = feature_name.replace("h", "시간")
+
     completed_candidates = max(0, row["index"] - 1)
     overall_bar = _progress_bar(
         completed_candidates,
         row["total"],
-        28,
+        26,
         active=True,
     )
 
     latest_number = optuna.get("latest_number")
-    latest_state = optuna.get("latest_state") or "-"
-    trial_current = latest_number + 1 if latest_number is not None else 0
+    search_current = latest_number + 1 if latest_number is not None else 0
     step = optuna.get("latest_intermediate_step")
-    current_step = step + 1 if step is not None else None
-    step_total = row["progress_total"]
+    epoch_current = step + 1 if step is not None else None
+    epoch_total = row["progress_total"]
 
     current_value = optuna.get("latest_intermediate_value")
     best_value = optuna.get("best_value")
     best_number = optuna.get("best_number")
-    delta = (
-        current_value - best_value
-        if current_value is not None and best_value is not None
-        else None
-    )
 
+    print("태양광 발전량 예측 학습")
+    print("═" * 66)
     print(
-        _paint(
-            f"[ {row['index']:02d}/{row['total']:02d} ]  "
-            f"{model_name}  ·  {row['horizon_hours']}h  ·  "
-            f"{_compact_candidate_label(row['candidate_id'])}",
-            ANSI_BOLD,
-            ANSI_CYAN,
-        )
-    )
-    print(
-        _paint(overall_bar, ANSI_CYAN)
-        + _paint(
-            f"  {completed_candidates}/{row['total']} complete",
-            ANSI_DIM,
-        )
+        f"전체 진행   {overall_bar}"
+        f"   {completed_candidates}개 완료 / 총 {row['total']}개"
     )
     print()
-
-    trial_label = _paint("TRIAL", ANSI_DIM)
-    epoch_label = _paint(row["progress_unit"].upper(), ANSI_DIM)
+    print("지금 학습 중")
     print(
-        f"{trial_label}  "
-        + _paint(
-            f"{trial_current}/{row['max_trials']}",
-            ANSI_BOLD,
-            ANSI_WHITE,
-        )
-        + f"  {_state_text(latest_state)}"
-        + "      "
-        + f"{epoch_label}  "
-        + _paint(
-            f"{current_step if current_step is not None else '-'}"
-            f"/{step_total or '?'}",
-            ANSI_BOLD,
-            ANSI_WHITE,
-        )
+        f"  {model_name} · {row['horizon_hours']}시간 뒤 예측"
     )
-
-    current_text = (
-        "-"
-        if current_value is None
-        else f"{current_value:.6f}"
-    )
-    best_text = (
-        "-"
-        if best_value is None
-        else f"{best_value:.6f}"
-    )
-    delta_text = "-" if delta is None else f"{delta:+.6f}"
-    delta_color = (
-        ANSI_GREEN
-        if delta is not None and delta <= 0
-        else ANSI_RED
-    )
-
+    print(f"  {feature_name}")
     print()
     print(
-        _paint("MAE", ANSI_DIM)
-        + "    "
-        + _paint(current_text, ANSI_YELLOW, ANSI_BOLD)
-        + _paint("   BEST ", ANSI_DIM)
-        + _paint(
-            f"{best_text}"
-            + (
-                f"  #{best_number}"
-                if best_number is not None
-                else ""
-            ),
-            ANSI_GREEN,
-            ANSI_BOLD,
+        f"진행 상황   하이퍼파라미터 탐색 {search_current}/{row['max_trials']}"
+        f"   |   Epoch "
+        f"{epoch_current if epoch_current is not None else '-'}"
+        f"/{epoch_total or '?'}"
+    )
+    print()
+    print("검증 성능   (MAE는 낮을수록 좋음)")
+    print(
+        f"  현재       "
+        f"{'-' if current_value is None else f'{current_value:.6f} MWh'}"
+    )
+    print(
+        f"  이 후보 최저 "
+        f"{'-' if best_value is None else f'{best_value:.6f} MWh'}"
+        + (
+            f"   ← 탐색 {best_number + 1}"
+            if best_number is not None
+            else ""
         )
-        + _paint("   Δ ", ANSI_DIM)
-        + _paint(delta_text, delta_color)
     )
 
     recent = optuna.get("recent_trials", [])
     if recent:
         print()
-        print(_paint("RECENT", ANSI_DIM))
-        for trial in recent[:3]:
-            number = int(trial["number"])
-            state = str(trial["state"])
+        print("최근 탐색 결과")
+        for trial in reversed(recent[:3]):
+            number = int(trial["number"]) + 1
+            state = str(trial["state"]).upper()
             value = trial.get("value")
-            value_text = (
-                "-"
-                if value is None
-                else f"{value:.6f}"
-            )
-            marker = (
-                _paint("★", ANSI_GREEN, ANSI_BOLD)
-                if number == best_number
-                else " "
+            value_text = "-" if value is None else f"{value:.6f} MWh"
+            if state == "RUNNING":
+                status_text = (
+                    f"학습 중"
+                    + (
+                        f" · Epoch {int(trial['last_step']) + 1}/{epoch_total or '?'}"
+                        if trial.get("last_step") is not None
+                        else ""
+                    )
+                )
+            elif state == "COMPLETE":
+                status_text = "완료"
+            elif state == "PRUNED":
+                status_text = "조기 종료"
+            elif state == "FAIL":
+                status_text = "실패"
+            else:
+                status_text = state
+
+            best_mark = (
+                "  ← 현재 최저"
+                if best_number is not None and int(trial["number"]) == best_number
+                else ""
             )
             print(
-                f" {marker} #{number:<2} "
-                f"{_state_text(state):<18} "
-                f"{value_text}"
+                f"  탐색 {number:<2}  {value_text:<14}  {status_text}{best_mark}"
             )
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
