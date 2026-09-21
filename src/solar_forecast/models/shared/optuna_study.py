@@ -237,12 +237,14 @@ class OptunaStudyService:
             pruner=pruner,
         )
         self._enqueue_failed_checkpoint_retries(study)
-        existing = self._finished_trials(study.trials)
+        existing = self._finished_logical_trials(study.trials)
         pending_retries = sum(
             trial.state == TrialState.WAITING
-            and bool(trial.user_attrs.get("checkpoint_stage"))
+            and self._retry_root(trial) is not None
             for trial in study.trials
         )
+        # max_trials is a logical hyperparameter-search budget. Retry attempt
+        # records do not create a sixth search slot; they resume their root slot.
         remaining = max(0, self.settings.max_trials - existing) + pending_retries
 
         if existing:
@@ -271,7 +273,7 @@ class OptunaStudyService:
                 f"  추가 탐색 없음 · 최저 MAE {mae:.6f} MWh{suffix}",
                 flush=True,
             )
-        executed = self._finished_trials(study.trials) - existing
+        executed = self._finished_logical_trials(study.trials) - existing
         completed = [
             trial for trial in study.trials if trial.state == TrialState.COMPLETE
         ]
@@ -301,7 +303,8 @@ class OptunaStudyService:
                 "max_failed_trial_retries": self.settings.max_failed_trial_retries,
                 "existing_finished_trials": existing,
                 "executed_trials": executed,
-                "finished_trials": self._finished_trials(study.trials),
+                "finished_trials": self._finished_logical_trials(study.trials),
+                "attempt_records": len(study.trials),
                 "completed_trials": len(completed),
                 "pruned_trials": sum(
                     trial.state == TrialState.PRUNED for trial in study.trials
@@ -320,27 +323,68 @@ class OptunaStudyService:
             executed_trials=executed,
         )
 
+    @staticmethod
+    def _retry_root(trial: FrozenTrial | Trial) -> int | None:
+        root = trial.system_attrs.get("checkpoint_retry_root")
+        if root is not None:
+            return int(root)
+        failed = trial.system_attrs.get("failed_trial")
+        if failed is not None:
+            return int(failed)
+        return None
+
+    def _logical_trial_position(
+        self,
+        study: Study,
+        trial: FrozenTrial | Trial,
+    ) -> tuple[int, bool]:
+        """Map Optuna attempt records to one bounded search slot.
+
+        Retry attempts get a new Optuna trial number internally, but they retain
+        the original search slot in user-facing progress. Therefore a five-slot
+        search can show "탐색 2/5 재시도" but never "6/5".
+        """
+
+        root_number = self._retry_root(trial)
+        target_number = root_number if root_number is not None else trial.number
+        roots: list[int] = []
+        for item in sorted(study.trials, key=lambda value: value.number):
+            if self._retry_root(item) is None:
+                roots.append(int(item.number))
+        if target_number not in roots:
+            roots.append(int(target_number))
+            roots.sort()
+        position = roots.index(int(target_number)) + 1
+        return min(position, self.settings.max_trials), root_number is not None
+
     def _print_trial_progress(
         self,
         study: Study,
         trial: FrozenTrial,
     ) -> None:
-        number = trial.number + 1
+        number, is_retry = self._logical_trial_position(study, trial)
         total = self.settings.max_trials
+        retry_text = " 재시도" if is_retry else ""
         state = trial.state
         if state == TrialState.COMPLETE:
             metrics = trial.user_attrs.get("validation_metrics") or {}
             mae = float(trial.value)
             marker = " ★ 최저" if study.best_trial.number == trial.number else ""
             print(
-                f"  탐색 {number}/{total} 완료 · MAE {mae:.6f} MWh"
+                f"  탐색 {number}/{total}{retry_text} 완료 · MAE {mae:.6f} MWh"
                 f"{self._metric_suffix(metrics)}{marker}",
                 flush=True,
             )
         elif state == TrialState.PRUNED:
-            print(f"  탐색 {number}/{total} 조기 종료", flush=True)
+            print(
+                f"  탐색 {number}/{total}{retry_text} 조기 종료",
+                flush=True,
+            )
         elif state == TrialState.FAIL:
-            print(f"  탐색 {number}/{total} 실패", flush=True)
+            print(
+                f"  탐색 {number}/{total}{retry_text} 실패",
+                flush=True,
+            )
 
     @staticmethod
     def _metric_suffix(metrics: Mapping[str, Any]) -> str:
@@ -363,6 +407,22 @@ class OptunaStudyService:
         if skill is not None:
             parts.append(f"기준대비 {float(skill):+.1f}%")
         return (" │ " + " · ".join(parts)) if parts else ""
+
+    def _finished_logical_trials(
+        self,
+        trials: list[FrozenTrial],
+    ) -> int:
+        roots: set[int] = set()
+        for trial in trials:
+            if trial.state not in {
+                TrialState.COMPLETE,
+                TrialState.PRUNED,
+                TrialState.FAIL,
+            }:
+                continue
+            root = self._retry_root(trial)
+            roots.add(int(root if root is not None else trial.number))
+        return len(roots)
 
     @staticmethod
     def _finished_trials(trials: list[FrozenTrial]) -> int:
