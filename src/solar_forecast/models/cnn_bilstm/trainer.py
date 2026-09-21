@@ -11,6 +11,7 @@ from solar_forecast.evaluation.forecast_samples import (
     forecast_evaluation_contract,
 )
 from solar_forecast.models.cnn_bilstm.training_workflow import train_cnn_bilstm
+from solar_forecast.models.cnn_bilstm.optimization import optimize_cnn_bilstm
 from solar_forecast.models.shared.checkpoint_store import TrainingCheckpointStore, dataset_signature
 from solar_forecast.models.shared.optuna_study import OptimizationSettings
 from solar_forecast.datasets.repository import DatasetLoadPolicy, DatasetRepository
@@ -24,7 +25,7 @@ from solar_forecast.config_loader import ModelJobConfig, PROJECT_ROOT
 class CnnBiLstmTrainer:
     """Concrete adapter from job configuration to the CNN-BiLSTM workflow."""
 
-    def train(self, config: ModelJobConfig, run_dir: Path, smoke: bool = False) -> dict[str, object]:
+    def train(self, config: ModelJobConfig, run_dir: Path, smoke: bool = False, selection_only: bool = False) -> dict[str, object]:
         source = Path(str(config.values["input_dataset"]))
         source = source if source.is_absolute() else PROJECT_ROOT / source
         target = str(config.values["target_column"])
@@ -106,6 +107,60 @@ class CnnBiLstmTrainer:
         optimization_settings = optimization_settings.scoped(
             checkpoint_store.fingerprint
         )
+        if selection_only:
+            if not use_optuna:
+                raise ValueError("selection_only requires enabled CNN-BiLSTM optimization")
+            study = optimize_cnn_bilstm(
+                frame,
+                target_column=target,
+                feature_columns=prepared.feature_columns,
+                sequence_config=sequence,
+                n_trials=optimization_settings.max_trials,
+                entity_column=entity_column,
+                timestamp_column=timestamp_column,
+                trial_epochs=int(optimizer_values.get("trial_epochs", 20)),
+                early_stopping_patience=int(
+                    optimizer_values.get(
+                        "early_stopping_patience",
+                        config.values.get("early_stopping_patience", 5),
+                    )
+                ),
+                maximum_train_sequences=optimizer_values.get(
+                    "tuning_train_max_sequences", 250_000
+                ),
+                maximum_validation_sequences=optimizer_values.get(
+                    "tuning_validation_max_sequences", 100_000
+                ),
+                settings=optimization_settings,
+                artifact_dir=run_dir,
+                checkpoint_store=checkpoint_store,
+                optimizer_parameter_space=optimizer_values.get("search_space"),
+            )
+            return {
+                "source": str(source),
+                "features": prepared.feature_columns,
+                "n_rows": len(frame),
+                "evaluation_contract": {
+                    "dataset_fingerprint": dataset_signature(source),
+                    "target": target,
+                    "target_unit": "MWh",
+                    **task_contract,
+                },
+                "optimizer": {
+                    "enabled": True,
+                    "selection_data": "validation_only",
+                    "objective_metric": "validation_mae",
+                    "best_validation_mae": float(study.best_value),
+                    "best_params": dict(study.best_params),
+                    "summary_path": str(run_dir / "optimization_summary.json"),
+                    "trials_path": str(run_dir / "optimization_trials.csv"),
+                    "test_usage": "none",
+                },
+                "memory_aware_loading": load_report.to_dict(),
+                "checkpoint": checkpoint_store.describe(),
+                "selection_only": True,
+            }
+
         artifacts = train_cnn_bilstm(
             frame,
             target_column=target,
@@ -166,5 +221,5 @@ class CnnBiLstmTrainer:
         }
 
 
-def train(config: ModelJobConfig, *, run_dir: Path, smoke: bool = False) -> dict[str, object]:
-    return CnnBiLstmTrainer().train(config, run_dir, smoke)
+def train(config: ModelJobConfig, *, run_dir: Path, smoke: bool = False, selection_only: bool = False) -> dict[str, object]:
+    return CnnBiLstmTrainer().train(config, run_dir, smoke, selection_only)
