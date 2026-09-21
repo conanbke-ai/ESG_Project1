@@ -77,14 +77,18 @@ def evaluate_cnn_bilstm_loader(
     y_true = np.concatenate(all_targets)
     y_pred = np.concatenate(all_preds)
     persistence = None
+    daylight = None
     if hasattr(loader.dataset, "context_frame"):
         context = loader.dataset.context_frame(0, len(loader.dataset))
         if "persistence_pred" in context:
             persistence = context["persistence_pred"].to_numpy()
+        if "is_daylight" in context:
+            daylight = context["is_daylight"].to_numpy()
     diagnostics = validation_diagnostics(
         y_true,
         y_pred,
         persistence_pred=persistence,
+        is_daylight=daylight,
     )
     return {
         "loss": running_loss / len(loader.dataset),
