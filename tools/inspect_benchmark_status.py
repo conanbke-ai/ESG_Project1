@@ -257,6 +257,85 @@ def candidate_manifest_status(
     return str(data.get("status", "unknown")), path, data
 
 
+def candidate_phase_statuses(
+    run_dir: Path | None,
+    spec: CandidateSpec,
+) -> dict[str, Any]:
+    result = {
+        "search_status": "absent",
+        "search_manifest": None,
+        "final_fit_status": "absent",
+        "final_fit_manifest": None,
+        "latest_phase": None,
+    }
+    if run_dir is None:
+        return result
+    root = (
+        run_dir
+        / "candidates"
+        / f"horizon_{spec.horizon_hours}h"
+        / spec.model
+        / spec.candidate_id
+    )
+    if not root.exists():
+        return result
+    manifests = sorted(
+        root.glob("*/manifest.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for path in manifests:
+        try:
+            data = _load_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+        details = data.get("details") or {}
+        phase = details.get("phase")
+        status = str(data.get("status", "unknown"))
+        if phase == "candidate_search":
+            if result["search_manifest"] is None:
+                result["search_status"] = status
+                result["search_manifest"] = str(path)
+        else:
+            if result["final_fit_manifest"] is None:
+                result["final_fit_status"] = status
+                result["final_fit_manifest"] = str(path)
+        if result["latest_phase"] is None:
+            result["latest_phase"] = (
+                "candidate_search"
+                if phase == "candidate_search"
+                else "final_fit"
+            )
+    return result
+
+
+def latest_final_fit_checkpoint(
+    root: Path,
+    model: str,
+) -> dict[str, Any] | None:
+    base = root / "artifacts" / "checkpoints" / model
+    if not base.exists():
+        return None
+    candidates = sorted(
+        base.rglob("final_fit_*.meta.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if not candidates:
+        return None
+    path = candidates[0]
+    try:
+        data = _load_json(path)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return {
+        "path": str(path),
+        "saved_at_utc": data.get("saved_at_utc"),
+        "completed": bool(data.get("completed", False)),
+        "progress": data.get("progress") or {},
+    }
+
+
 def _connect_readonly(db_path: Path) -> sqlite3.Connection:
     uri = db_path.resolve().as_uri() + "?mode=ro"
     connection = sqlite3.connect(uri, uri=True, timeout=2.0)
@@ -569,6 +648,7 @@ def summarize(
             db_error = f"{type(exc).__name__}: {exc}"
         else:
             db_error = None
+        phase_status = candidate_phase_statuses(run_dir, spec)
         row = {
             **asdict(spec),
             "candidate_manifest_status": manifest_status,
@@ -577,6 +657,7 @@ def summarize(
                 if manifest_path
                 else None
             ),
+            **phase_status,
             "optuna": asdict(optuna) if optuna else None,
             "db_error": db_error,
         }
@@ -617,6 +698,29 @@ def summarize(
         ),
         "lock": asdict(lock),
         "active_candidate_index": active_index,
+        "active_final_fit_checkpoint": (
+            latest_final_fit_checkpoint(
+                root,
+                next(
+                    (
+                        item["model"]
+                        for item in candidate_rows
+                        if item["index"] == active_index
+                    ),
+                    "",
+                ),
+            )
+            if active_index is not None
+            and next(
+                (
+                    item["latest_phase"]
+                    for item in candidate_rows
+                    if item["index"] == active_index
+                ),
+                None,
+            ) == "final_fit"
+            else None
+        ),
         "candidates": candidate_rows,
         "db_path": str(db_path),
         "config_path": str(config_path),
@@ -872,15 +976,46 @@ def _feature_description(candidate_id: str) -> tuple[str, str | None]:
     return feature, lookback
 
 
+def _compact_params(params: dict[str, Any], model: str) -> str:
+    if not params:
+        return "-"
+    if model == "cnn_bilstm":
+        keys = (
+            ("cnn_channels", "CNN"),
+            ("lstm_hidden", "LSTM"),
+            ("lstm_layers", "층"),
+            ("dropout", "drop"),
+            ("lr", "lr"),
+        )
+    else:
+        keys = (
+            ("max_depth", "depth"),
+            ("learning_rate", "lr"),
+            ("subsample", "sub"),
+            ("max_bin", "bin"),
+        )
+    parts = []
+    for key, label in keys:
+        if key not in params:
+            continue
+        value = params[key]
+        if isinstance(value, float):
+            rendered = f"{value:.4g}"
+        else:
+            rendered = str(value)
+        parts.append(f"{label} {rendered}")
+    return "  ·  ".join(parts) or "-"
+
+
 def print_active_monitor(summary: dict[str, Any]) -> None:
     active_index = summary["active_candidate_index"]
     now = datetime.now().astimezone().strftime("%H:%M:%S")
 
-    print(f"태양광 발전량 예측 학습                                      {now}")
-    print("═" * 74)
+    print(f"태양광 발전량 예측 학습                              현재 시각 {now}")
+    print("═" * 76)
 
     if active_index is None:
-        print(f"현재 상태  {summary['overall_status']}")
+        print(f"상태  {summary['overall_status']}")
         return
 
     row = next(
@@ -888,6 +1023,7 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         if item["index"] == active_index
     )
     optuna = row["optuna"] or {}
+    phase = row.get("latest_phase") or "candidate_search"
 
     model_name = (
         "CNN-BiLSTM"
@@ -898,8 +1034,8 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
     )
     feature_name, lookback = _feature_description(row["candidate_id"])
 
-    completed_total = sum(
-        item["candidate_manifest_status"] == "completed"
+    completed_search = sum(
+        item.get("search_status") == "completed"
         for item in summary["candidates"]
     )
     horizon_rows = [
@@ -907,30 +1043,66 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         for item in summary["candidates"]
         if item["horizon_hours"] == row["horizon_hours"]
     ]
-    completed_horizon = sum(
-        item["candidate_manifest_status"] == "completed"
+    horizon_search_done = sum(
+        item.get("search_status") == "completed"
         for item in horizon_rows
     )
 
     print(
-        f"전체 진행  [{_progress_bar(completed_total, row['total'], 24)}] "
-        f"{completed_total:>2}/{row['total']}  ({_pct(completed_total, row['total']):>3}%)"
+        f"후보 탐색  [{_progress_bar(completed_search, row['total'], 24)}] "
+        f"{completed_search}/{row['total']}"
+        f"   │   {row['horizon_hours']}시간 구간 "
+        f"{horizon_search_done}/{len(horizon_rows)}"
+    )
+    print("─" * 76)
+    print(
+        f"현재 단계  "
+        f"{'선정 모델 최종 학습' if phase == 'final_fit' else '후보 하이퍼파라미터 탐색'}"
     )
     print(
-        f"{row['horizon_hours']}시간 구간  "
-        f"[{_progress_bar(completed_horizon, len(horizon_rows), 24)}] "
-        f"{completed_horizon}/{len(horizon_rows)}"
-    )
-
-    print("─" * 74)
-    print(
-        f"현재 후보  {row['index']}/{row['total']}   "
-        f"{model_name}   ·   {row['horizon_hours']}시간 뒤 예측"
+        f"현재 후보  {row['index']}/{row['total']}   {model_name}"
+        f"   ·   {row['horizon_hours']}시간 뒤 예측"
     )
     input_text = f"입력 조건  {feature_name}"
     if lookback is not None:
-        input_text += f"   ·   과거 {lookback}시간 입력"
+        input_text += f"   ·   과거 {lookback}시간"
     print(input_text)
+
+    if phase == "final_fit":
+        checkpoint = summary.get("active_final_fit_checkpoint") or {}
+        progress = checkpoint.get("progress") or {}
+        print("─" * 76)
+        if row["model"] == "cnn_bilstm":
+            current = progress.get("next_epoch")
+            total = progress.get("total_epochs", 50)
+            best = progress.get("best_validation_mae")
+            print(
+                f"최종 학습  Epoch "
+                f"{current if current is not None else '준비 중'}/{total}"
+            )
+            print(
+                "검증 최저  "
+                + (
+                    f"{float(best):.6f} MWh"
+                    if best is not None
+                    else "아직 없음"
+                )
+            )
+        else:
+            rounds = progress.get("completed_rounds")
+            print(
+                f"최종 학습  Boosting round "
+                f"{rounds if rounds is not None else '준비 중'}"
+            )
+        print(
+            "선정 근거  후보 탐색 Validation MAE "
+            + (
+                f"{float(optuna['best_value']):.6f} MWh"
+                if optuna.get("best_value") is not None
+                else "-"
+            )
+        )
+        return
 
     latest_number = optuna.get("latest_number")
     trial_current = latest_number + 1 if latest_number is not None else 0
@@ -944,75 +1116,64 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
     step_total = row["progress_total"]
     progress_name = _progress_label(row["progress_unit"])
 
-    if step_current is None and optuna.get("latest_state") == "RUNNING":
-        progress_text = f"{progress_name}  첫 단계 학습 중"
-    else:
-        progress_text = (
-            f"{progress_name}  {step_current if step_current is not None else '-'}"
-            f"/{step_total or '?'}"
+    print("─" * 76)
+    print(
+        f"탐색 진행  {trial_current}/{row['max_trials']}"
+        f"   │   {progress_name} "
+        f"{step_current if step_current is not None else '첫 단계 계산 중'}"
+        + (
+            f"/{step_total}"
+            if step_current is not None and step_total is not None
+            else ""
         )
-
-    print("─" * 74)
-    print(
-        f"탐색 진행  {trial_current}/{row['max_trials']}   ·   {progress_text}"
     )
     print(
-        f"탐색 집계  완료 {complete_count}   ·   "
-        f"조기 종료 {pruned_count}   ·   실패 {failed_count}"
+        f"탐색 집계  완료 {complete_count}"
+        + (f"  ·  조기 종료 {pruned_count}" if pruned_count else "")
+        + (f"  ·  실패 {failed_count}" if failed_count else "")
     )
+    print(f"현재 설정  {_compact_params(optuna.get('latest_params') or {}, row['model'])}")
 
     current_value = optuna.get("latest_intermediate_value")
     trial_best_value = optuna.get("latest_trial_best_value")
-    trial_best_step = optuna.get("latest_trial_best_step")
     candidate_best_value = optuna.get("best_value")
     candidate_best_number = optuna.get("best_number")
 
-    print("─" * 74)
-    print("검증 MAE   낮을수록 좋음")
+    print("─" * 76)
     print(
-        "  현재 단계        "
-        + (
-            f"{current_value:.6f} MWh"
-            if current_value is not None
-            else "아직 검증 전"
-        )
+        "검증 MAE   "
+        f"현재 {current_value:.6f} MWh"
+        if current_value is not None
+        else "검증 MAE   현재 아직 검증 전"
     )
     print(
-        "  이번 탐색 최저   "
+        "            "
         + (
-            f"{trial_best_value:.6f} MWh"
-            f"   ({progress_name} {trial_best_step + 1})"
-            if trial_best_value is not None and trial_best_step is not None
-            else "아직 없음"
+            f"이번 탐색 최저 {trial_best_value:.6f} MWh"
+            if trial_best_value is not None
+            else "이번 탐색 최저 -"
         )
-    )
-    print(
-        "  이 후보 전체 최저 "
+        + "   │   "
         + (
-            f"{candidate_best_value:.6f} MWh"
-            f"   (탐색 {candidate_best_number + 1})"
+            f"후보 전체 최저 {candidate_best_value:.6f} MWh "
+            f"(탐색 {candidate_best_number + 1})"
             if candidate_best_value is not None
             and candidate_best_number is not None
-            else "아직 없음"
+            else "후보 전체 최저 -"
         )
     )
 
     recent = optuna.get("recent_trials", [])
     if recent:
-        print("─" * 74)
-        print("탐색 결과")
-        print("  번호   상태        MAE            진행")
+        print("─" * 76)
+        print("탐색 결과   번호   상태        MAE          종료 지점")
         for trial in sorted(recent, key=lambda item: int(item["number"])):
             number = int(trial["number"]) + 1
             state = _state_korean(str(trial["state"]))
             value = trial.get("value")
-            value_text = (
-                f"{value:.6f} MWh"
-                if value is not None
-                else "-"
-            )
+            value_text = f"{value:.6f}" if value is not None else "-"
             last_step = trial.get("last_step")
-            progress = (
+            end_text = (
                 f"{progress_name} {int(last_step) + 1}/{step_total or '?'}"
                 if last_step is not None
                 else "-"
@@ -1024,10 +1185,9 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
                 else ""
             )
             print(
-                f"  {number:<5} {state:<10} {value_text:<14} {progress}{mark}"
+                f"             {number:<5} {state:<10} "
+                f"{value_text:<12} {end_text}{mark}"
             )
-
-
 
 def _age_seconds(value: str | None) -> int | None:
     parsed = _parse_time(value)
@@ -1060,8 +1220,11 @@ def _monitor_signature(summary: dict[str, Any]) -> tuple[Any, ...]:
         if item["index"] == active
     )
     optuna = row.get("optuna") or {}
+    checkpoint = summary.get("active_final_fit_checkpoint") or {}
+    progress = checkpoint.get("progress") or {}
     return (
         active,
+        row.get("latest_phase"),
         optuna.get("latest_trial_id"),
         optuna.get("latest_number"),
         optuna.get("latest_state"),
@@ -1070,8 +1233,11 @@ def _monitor_signature(summary: dict[str, Any]) -> tuple[Any, ...]:
         optuna.get("best_number"),
         optuna.get("best_value"),
         tuple(sorted((optuna.get("counts") or {}).items())),
+        progress.get("next_epoch"),
+        progress.get("completed_rounds"),
+        progress.get("best_validation_mae"),
+        checkpoint.get("completed"),
     )
-
 
 def _same_trial_line(summary: dict[str, Any]) -> str:
     active = summary.get("active_candidate_index")
