@@ -130,21 +130,69 @@ def semantic_config(values: dict, *, experiment: bool = False) -> dict:
     return result
 
 
-def _candidates(run_dir: Path) -> dict:
+def _planned_candidates(run_dir: Path) -> set[tuple]:
     plan = read_json(run_dir / "plan.json")
-    expected = {(task["horizon_hours"], item["model"], item["candidate_id"])
-                for task in plan["tasks"] for item in task["candidates"]}
+    return {
+        (task["horizon_hours"], item["model"], item["candidate_id"])
+        for task in plan["tasks"]
+        for item in task["candidates"]
+    }
+
+
+def _candidates(run_dir: Path, manifest: dict | None = None) -> dict:
+    """Return legacy full candidates or v2 search-only candidate evidence."""
+
+    expected = _planned_candidates(run_dir)
+    manifest = manifest or read_json(run_dir / "manifest.json")
+    search_entries = {
+        task["horizon_hours"]: task.get("candidate_search", {})
+        for task in manifest.get("tasks", [])
+        if task.get("candidate_search")
+    }
+    if search_entries:
+        candidates = {}
+        for horizon, entries in search_entries.items():
+            for label, summary in entries.items():
+                model, candidate_id = label.split(":", 1)
+                run_path = artifact_path(summary["run_dir"], run_dir)
+                config = read_json(artifact_path(summary["resolved_config"], run_dir))
+                candidate_manifest = read_json(run_path / "manifest.json")
+                key = (horizon, model, candidate_id)
+                if key in candidates or candidate_manifest.get("status") != "completed":
+                    raise ValueError(f"Duplicate or incomplete candidate search: {key}")
+                details = candidate_manifest["details"]
+                if not details.get("selection_only"):
+                    raise ValueError(f"Expected search-only candidate evidence: {key}")
+                candidates[key] = (config, details)
+        if not expected or candidates.keys() != expected:
+            raise ValueError("Candidate search artifacts do not match the complete experiment plan")
+        return candidates
+
     candidates = {}
     for path in (run_dir / "candidates").glob("*/*/*/*/resolved_config.json"):
         config = read_json(path)
-        manifest = read_json(path.parent / "manifest.json")
-        key = (config["forecast_horizon_hours"], manifest["model"], config["benchmark_candidate_id"])
-        if key in candidates or manifest.get("status") != "completed":
+        candidate_manifest = read_json(path.parent / "manifest.json")
+        key = (
+            config["forecast_horizon_hours"],
+            candidate_manifest["model"],
+            config["benchmark_candidate_id"],
+        )
+        if key in candidates or candidate_manifest.get("status") != "completed":
             raise ValueError(f"Duplicate or incomplete candidate: {key}")
-        candidates[key] = (config, manifest["details"])
+        candidates[key] = (config, candidate_manifest["details"])
     if not expected or candidates.keys() != expected:
         raise ValueError("Candidate artifacts do not match the complete experiment plan")
     return candidates
+
+
+def _selected_run_details(run_dir: Path, task: dict, model: str) -> tuple[dict, dict]:
+    chosen = task["optimization"][model]
+    candidate_dir = artifact_path(chosen["run_dir"], run_dir)
+    config = read_json(artifact_path(chosen["resolved_config"], run_dir))
+    manifest = read_json(candidate_dir / "manifest.json")
+    if manifest.get("status") != "completed":
+        raise ValueError(f"Selected final fit is incomplete: {model}")
+    return config, manifest["details"]
 
 
 def _chosen_identity(chosen: dict) -> dict:
@@ -163,7 +211,10 @@ def compare_benchmarks(reference: Path, repeated: Path, *, prediction_atol: floa
     configs = [semantic_config(read_json(path / "experiment.json"), experiment=True) for path in (reference, repeated)]
     if configs[0] != configs[1]:
         raise ValueError("Experiment settings changed beyond isolated artifact paths")
-    candidate_sets = [_candidates(path) for path in (reference, repeated)]
+    candidate_sets = [
+        _candidates(path, manifest)
+        for path, manifest in zip((reference, repeated), manifests)
+    ]
     if candidate_sets[0].keys() != candidate_sets[1].keys():
         raise ValueError("Candidate sets differ between training runs")
     results = []
@@ -171,9 +222,10 @@ def compare_benchmarks(reference: Path, repeated: Path, *, prediction_atol: floa
         new_config, new_details = candidate_sets[1][key]
         if semantic_config(config) != semantic_config(new_config):
             raise ValueError(f"Resolved model configuration changed: {key}")
-        for field in ("evaluation_contract", "temporal_split"):
-            if details.get(field) != new_details.get(field):
-                raise ValueError(f"Candidate {field} changed: {key}")
+        if details.get("evaluation_contract") != new_details.get("evaluation_contract"):
+            raise ValueError(f"Candidate evaluation_contract changed: {key}")
+        if details.get("temporal_split") != new_details.get("temporal_split"):
+            raise ValueError(f"Candidate temporal_split changed: {key}")
         for item, run in ((details, reference), (new_details, repeated)):
             if item.get("checkpoint", {}).get("resumed") or item.get("checkpoint", {}).get("upstream_resumed"):
                 raise ValueError(f"Candidate reused a checkpoint: {key}")
@@ -181,13 +233,43 @@ def compare_benchmarks(reference: Path, repeated: Path, *, prediction_atol: floa
             summary = read_json(artifact_path(optimizer["summary_path"], run))
             if summary.get("existing_finished_trials") != 0 or summary.get("executed_trials", 0) < 1:
                 raise ValueError(f"Candidate did not execute fresh optimizer trials: {key}")
-        if details["optimizer"].get("best_params") != new_details["optimizer"].get("best_params"):
+        first_optimizer = details["optimizer"]
+        second_optimizer = new_details["optimizer"]
+        if first_optimizer.get("best_params") != second_optimizer.get("best_params"):
             raise ValueError(f"Selected hyperparameters changed: {key}")
-        comparisons = {split: compare_predictions(
-            artifact_path(details[f"{split}_predictions"], reference),
-            artifact_path(new_details[f"{split}_predictions"], repeated), prediction_atol=prediction_atol,
-        ) for split in SPLITS}
-        results.append({"horizon_hours": key[0], "model": key[1], "candidate_id": key[2], "splits": comparisons})
+        first_score = first_optimizer.get("best_validation_mae")
+        second_score = second_optimizer.get("best_validation_mae")
+        if first_score is not None or second_score is not None:
+            if (
+                first_score is None
+                or second_score is None
+                or abs(float(first_score) - float(second_score)) > prediction_atol
+            ):
+                raise ValueError(f"Validation search score drift exceeds {prediction_atol}: {key}")
+        if details.get("selection_only") or new_details.get("selection_only"):
+            results.append({
+                "horizon_hours": key[0],
+                "model": key[1],
+                "candidate_id": key[2],
+                "selection_only": True,
+                "validation_mae": first_score,
+                "best_params": first_optimizer.get("best_params"),
+            })
+        else:
+            comparisons = {
+                split: compare_predictions(
+                    artifact_path(details[f"{split}_predictions"], reference),
+                    artifact_path(new_details[f"{split}_predictions"], repeated),
+                    prediction_atol=prediction_atol,
+                )
+                for split in SPLITS
+            }
+            results.append({
+                "horizon_hours": key[0],
+                "model": key[1],
+                "candidate_id": key[2],
+                "splits": comparisons,
+            })
     tasks = [{task["horizon_hours"]: task for task in manifest["tasks"]} for manifest in manifests]
     if tasks[0].keys() != tasks[1].keys():
         raise ValueError("Selected horizon sets differ")
@@ -213,12 +295,37 @@ def compare_benchmarks(reference: Path, repeated: Path, *, prediction_atol: floa
                                "purge": selection.get("purge")})
         if identities[0] != identities[1]:
             raise ValueError(f"Frozen selected model/candidate/lookback changed at {horizon}h")
+        selected_base_predictions = {}
+        for model in ("xgboost", "cnn_bilstm"):
+            first_config, first_details = _selected_run_details(
+                reference, task, model
+            )
+            second_config, second_details = _selected_run_details(
+                repeated, other, model
+            )
+            if semantic_config(first_config) != semantic_config(second_config):
+                raise ValueError(
+                    f"Selected final-fit configuration changed at {horizon}h: {model}"
+                )
+            selected_base_predictions[model] = {
+                split: compare_predictions(
+                    artifact_path(first_details[f"{split}_predictions"], reference),
+                    artifact_path(second_details[f"{split}_predictions"], repeated),
+                    prediction_atol=prediction_atol,
+                )
+                for split in SPLITS
+            }
         predictions = compare_predictions(
             selection_files[0].parent / selections[0]["files"]["test_predictions"],
             selection_files[1].parent / selections[1]["files"]["test_predictions"],
             prediction_atol=prediction_atol, predictions=("xgb_pred", "cnn_pred", "hybrid_pred", "selected_pred"),
         )
-        decisions.append({"horizon_hours": horizon, **identities[0], "test_predictions": predictions})
+        decisions.append({
+            "horizon_hours": horizon,
+            **identities[0],
+            "base_model_predictions": selected_base_predictions,
+            "test_predictions": predictions,
+        })
     return {"status": "passed", "dataset_sha256": manifests[0]["provenance"]["dataset_fingerprint"],
             "source_sha256": manifests[0]["provenance"]["source_sha256"],
             "prediction_atol": prediction_atol, "candidates": results, "selections": decisions}
