@@ -38,6 +38,8 @@ class TrialStatus:
     latest_completed_at: str | None
     latest_intermediate_step: int | None
     latest_intermediate_value: float | None
+    latest_trial_best_step: int | None
+    latest_trial_best_value: float | None
     best_number: int | None
     best_value: float | None
     recent_trials: list[dict[str, Any]]
@@ -304,6 +306,7 @@ def _trial_status_for_study(
         (study_id,),
     ).fetchone()
     latest_step = latest_value = None
+    latest_trial_best_step = latest_trial_best_value = None
     if latest is not None:
         intermediate = connection.execute(
             """
@@ -318,6 +321,19 @@ def _trial_status_for_study(
         if intermediate is not None:
             latest_step = int(intermediate["step"])
             latest_value = float(intermediate["intermediate_value"])
+        trial_best = connection.execute(
+            """
+            SELECT step, intermediate_value
+            FROM trial_intermediate_values
+            WHERE trial_id = ?
+            ORDER BY intermediate_value ASC, step ASC
+            LIMIT 1
+            """,
+            (int(latest["trial_id"]),),
+        ).fetchone()
+        if trial_best is not None:
+            latest_trial_best_step = int(trial_best["step"])
+            latest_trial_best_value = float(trial_best["intermediate_value"])
     best = connection.execute(
         """
         SELECT t.number, tv.value
@@ -411,6 +427,8 @@ def _trial_status_for_study(
         ),
         latest_intermediate_step=latest_step,
         latest_intermediate_value=latest_value,
+        latest_trial_best_step=latest_trial_best_step,
+        latest_trial_best_value=latest_trial_best_value,
         best_number=int(best["number"]) if best is not None else None,
         best_value=float(best["value"]) if best is not None else None,
         recent_trials=recent_trials,
@@ -744,12 +762,53 @@ def _state_text(state: str) -> str:
     return state
 
 
+def _pct(current: int, total: int) -> int:
+    return round(current * 100 / total) if total else 0
+
+
+def _state_korean(state: str) -> str:
+    upper = state.upper()
+    return {
+        "RUNNING": "학습 중",
+        "COMPLETE": "완료",
+        "PRUNED": "조기 종료",
+        "FAIL": "실패",
+        "WAITING": "대기",
+    }.get(upper, state)
+
+
+def _progress_label(unit: str) -> str:
+    return {
+        "epoch": "Epoch",
+        "round": "Round",
+        "step": "Step",
+    }.get(unit, unit)
+
+
+def _feature_description(candidate_id: str) -> tuple[str, str | None]:
+    if candidate_id.startswith("observed_weather_history"):
+        feature = "기상 + 발전이력"
+    elif candidate_id.startswith("history_calendar"):
+        feature = "발전이력 + 시간정보"
+    else:
+        feature = candidate_id
+
+    lookback = None
+    if "_lookback_" in candidate_id:
+        raw = candidate_id.rsplit("_lookback_", 1)[1]
+        lookback = raw[:-1] if raw.endswith("h") else raw
+    return feature, lookback
+
+
 def print_active_monitor(summary: dict[str, Any]) -> None:
     active_index = summary["active_candidate_index"]
+    now = datetime.now().astimezone().strftime("%H:%M:%S")
+
+    print(f"태양광 발전량 예측 학습                                      {now}")
+    print("═" * 74)
 
     if active_index is None:
-        print("태양광 발전량 예측 학습")
-        print(f"상태: {summary['overall_status']}")
+        print(f"현재 상태  {summary['overall_status']}")
         return
 
     row = next(
@@ -765,100 +824,135 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         if row["model"] == "xgboost"
         else row["model"]
     )
+    feature_name, lookback = _feature_description(row["candidate_id"])
 
-    feature_name = _compact_candidate_label(row["candidate_id"])
-    feature_name = feature_name.replace("weather+history", "기상 + 발전이력")
-    feature_name = feature_name.replace("history+calendar", "발전이력 + 시간정보")
-    feature_name = feature_name.replace("lookback ", "과거 ")
-    feature_name = feature_name.replace("h", "시간")
-
-    completed_candidates = max(0, row["index"] - 1)
-    overall_bar = _progress_bar(
-        completed_candidates,
-        row["total"],
-        26,
-        active=True,
+    completed_total = sum(
+        item["candidate_manifest_status"] == "completed"
+        for item in summary["candidates"]
     )
+    horizon_rows = [
+        item
+        for item in summary["candidates"]
+        if item["horizon_hours"] == row["horizon_hours"]
+    ]
+    completed_horizon = sum(
+        item["candidate_manifest_status"] == "completed"
+        for item in horizon_rows
+    )
+
+    print(
+        f"전체 진행  [{_progress_bar(completed_total, row['total'], 24)}] "
+        f"{completed_total:>2}/{row['total']}  ({_pct(completed_total, row['total']):>3}%)"
+    )
+    print(
+        f"{row['horizon_hours']}시간 구간  "
+        f"[{_progress_bar(completed_horizon, len(horizon_rows), 24)}] "
+        f"{completed_horizon}/{len(horizon_rows)}"
+    )
+
+    print("─" * 74)
+    print(
+        f"현재 후보  {row['index']}/{row['total']}   "
+        f"{model_name}   ·   {row['horizon_hours']}시간 뒤 예측"
+    )
+    input_text = f"입력 조건  {feature_name}"
+    if lookback is not None:
+        input_text += f"   ·   과거 {lookback}시간 입력"
+    print(input_text)
 
     latest_number = optuna.get("latest_number")
-    search_current = latest_number + 1 if latest_number is not None else 0
+    trial_current = latest_number + 1 if latest_number is not None else 0
+    counts = optuna.get("counts", {})
+    complete_count = int(counts.get("COMPLETE", 0))
+    pruned_count = int(counts.get("PRUNED", 0))
+    failed_count = int(counts.get("FAIL", 0))
+
     step = optuna.get("latest_intermediate_step")
-    epoch_current = step + 1 if step is not None else None
-    epoch_total = row["progress_total"]
+    step_current = step + 1 if step is not None else None
+    step_total = row["progress_total"]
+    progress_name = _progress_label(row["progress_unit"])
+
+    if step_current is None and optuna.get("latest_state") == "RUNNING":
+        progress_text = f"{progress_name}  첫 단계 학습 중"
+    else:
+        progress_text = (
+            f"{progress_name}  {step_current if step_current is not None else '-'}"
+            f"/{step_total or '?'}"
+        )
+
+    print("─" * 74)
+    print(
+        f"탐색 진행  {trial_current}/{row['max_trials']}   ·   {progress_text}"
+    )
+    print(
+        f"탐색 집계  완료 {complete_count}   ·   "
+        f"조기 종료 {pruned_count}   ·   실패 {failed_count}"
+    )
 
     current_value = optuna.get("latest_intermediate_value")
-    best_value = optuna.get("best_value")
-    best_number = optuna.get("best_number")
+    trial_best_value = optuna.get("latest_trial_best_value")
+    trial_best_step = optuna.get("latest_trial_best_step")
+    candidate_best_value = optuna.get("best_value")
+    candidate_best_number = optuna.get("best_number")
 
-    print("태양광 발전량 예측 학습")
-    print("═" * 66)
+    print("─" * 74)
+    print("검증 MAE   낮을수록 좋음")
     print(
-        f"전체 진행   {overall_bar}"
-        f"   {completed_candidates}개 완료 / 총 {row['total']}개"
-    )
-    print()
-    print("지금 학습 중")
-    print(
-        f"  {model_name} · {row['horizon_hours']}시간 뒤 예측"
-    )
-    print(f"  {feature_name}")
-    print()
-    print(
-        f"진행 상황   하이퍼파라미터 탐색 {search_current}/{row['max_trials']}"
-        f"   |   Epoch "
-        f"{epoch_current if epoch_current is not None else '-'}"
-        f"/{epoch_total or '?'}"
-    )
-    print()
-    print("검증 성능   (MAE는 낮을수록 좋음)")
-    print(
-        f"  현재       "
-        f"{'-' if current_value is None else f'{current_value:.6f} MWh'}"
-    )
-    print(
-        f"  이 후보 최저 "
-        f"{'-' if best_value is None else f'{best_value:.6f} MWh'}"
+        "  현재 단계        "
         + (
-            f"   ← 탐색 {best_number + 1}"
-            if best_number is not None
-            else ""
+            f"{current_value:.6f} MWh"
+            if current_value is not None
+            else "아직 검증 전"
+        )
+    )
+    print(
+        "  이번 탐색 최저   "
+        + (
+            f"{trial_best_value:.6f} MWh"
+            f"   ({progress_name} {trial_best_step + 1})"
+            if trial_best_value is not None and trial_best_step is not None
+            else "아직 없음"
+        )
+    )
+    print(
+        "  이 후보 전체 최저 "
+        + (
+            f"{candidate_best_value:.6f} MWh"
+            f"   (탐색 {candidate_best_number + 1})"
+            if candidate_best_value is not None
+            and candidate_best_number is not None
+            else "아직 없음"
         )
     )
 
     recent = optuna.get("recent_trials", [])
     if recent:
-        print()
-        print("최근 탐색 결과")
-        for trial in reversed(recent[:3]):
+        print("─" * 74)
+        print("탐색 결과")
+        print("  번호   상태        MAE            진행")
+        for trial in sorted(recent, key=lambda item: int(item["number"])):
             number = int(trial["number"]) + 1
-            state = str(trial["state"]).upper()
+            state = _state_korean(str(trial["state"]))
             value = trial.get("value")
-            value_text = "-" if value is None else f"{value:.6f} MWh"
-            if state == "RUNNING":
-                status_text = (
-                    f"학습 중"
-                    + (
-                        f" · Epoch {int(trial['last_step']) + 1}/{epoch_total or '?'}"
-                        if trial.get("last_step") is not None
-                        else ""
-                    )
-                )
-            elif state == "COMPLETE":
-                status_text = "완료"
-            elif state == "PRUNED":
-                status_text = "조기 종료"
-            elif state == "FAIL":
-                status_text = "실패"
-            else:
-                status_text = state
-
-            best_mark = (
-                "  ← 현재 최저"
-                if best_number is not None and int(trial["number"]) == best_number
+            value_text = (
+                f"{value:.6f} MWh"
+                if value is not None
+                else "-"
+            )
+            last_step = trial.get("last_step")
+            progress = (
+                f"{progress_name} {int(last_step) + 1}/{step_total or '?'}"
+                if last_step is not None
+                else "-"
+            )
+            mark = (
+                "  ★ 최저"
+                if candidate_best_number is not None
+                and int(trial["number"]) == candidate_best_number
                 else ""
             )
             print(
-                f"  탐색 {number:<2}  {value_text:<14}  {status_text}{best_mark}"
+                f"  {number:<5} {state:<10} {value_text:<14} {progress}{mark}"
             )
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
