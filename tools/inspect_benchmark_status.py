@@ -543,19 +543,39 @@ def print_human(summary: dict[str, Any]) -> None:
 
 
 def _clear_screen() -> None:
-    if sys.stdout.isatty():
-        print("\033[2J\033[H", end="")
+    # Git Bash/MinTTY may report isatty=False for Windows Python even though
+    # ANSI cursor control is supported. Emit the clear sequence unconditionally.
+    print("\033[2J\033[H", end="", flush=True)
+
+
+def _progress_bar(current: int, total: int, width: int = 18) -> str:
+    if total <= 0:
+        return "[" + "-" * width + "]"
+    filled = max(0, min(width, round(width * current / total)))
+    return "[" + "#" * filled + "-" * (width - filled) + "]"
+
+
+def _compact_candidate_label(candidate_id: str) -> str:
+    label = candidate_id
+    replacements = (
+        ("observed_weather_history", "weather+history"),
+        ("history_calendar", "history+calendar"),
+        ("_lookback_", " · LB"),
+    )
+    for old, new in replacements:
+        label = label.replace(old, new)
+    if label.endswith("h") and "LB" in label:
+        label = label[:-1] + "h"
+    return label
 
 
 def print_active_monitor(summary: dict[str, Any]) -> None:
-    now = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"태양광 benchmark live | {now}")
-    print("=" * 78)
-
+    now = datetime.now().astimezone().strftime("%H:%M:%S")
     active_index = summary["active_candidate_index"]
+
     if active_index is None:
-        print(f"상태: {summary['overall_status']}")
-        print("현재 RUNNING 후보를 찾지 못했습니다.")
+        print(f"태양광 학습 | {now} | {summary['overall_status']}")
+        print("현재 실행 중인 후보를 찾지 못했습니다.")
         return
 
     row = next(
@@ -570,67 +590,65 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         if row["model"] == "xgboost"
         else row["model"]
     )
-    print(
-        f"후보 {row['index']}/{row['total']} | "
-        f"{model_name} | horizon {row['horizon_hours']}h"
-    )
-    print(f"설정: {row['candidate_id']}")
 
+    candidate_bar = _progress_bar(row["index"], row["total"])
     latest_number = optuna.get("latest_number")
-    latest_state = optuna.get("latest_state")
-    if latest_number is not None:
-        trial_current = latest_number + 1
-        print(
-            f"Trial: {trial_current}/{row['max_trials']} "
-            f"({latest_state or '-'})"
-        )
-    else:
-        print(f"Trial: -/{row['max_trials']}")
+    trial_current = latest_number + 1 if latest_number is not None else 0
+    trial_bar = _progress_bar(
+        min(
+            row["max_trials"],
+            sum(
+                int(optuna.get("counts", {}).get(state, 0))
+                for state in ("COMPLETE", "PRUNED", "FAIL")
+            ),
+        ),
+        row["max_trials"],
+        width=10,
+    )
 
     step = optuna.get("latest_intermediate_step")
-    current_value = optuna.get("latest_intermediate_value")
-    if step is not None:
-        current_step = step + 1
-        total = row["progress_total"]
-        print(
-            f"{row['progress_unit']}: "
-            f"{current_step}/{total if total else '?'}"
-        )
-    else:
-        print(f"{row['progress_unit']}: -")
+    current_step = step + 1 if step is not None else None
+    step_total = row["progress_total"]
+    step_text = (
+        f"{row['progress_unit']} {current_step}/{step_total or '?'}"
+        if current_step is not None
+        else f"{row['progress_unit']} -"
+    )
 
-    print(
-        f"현재 Validation MAE: {_fmt_value(current_value)}"
+    current_value = optuna.get("latest_intermediate_value")
+    best_value = optuna.get("best_value")
+    delta = (
+        current_value - best_value
+        if current_value is not None and best_value is not None
+        else None
     )
-    print(
-        f"최선 Validation MAE: "
-        f"{_fmt_value(optuna.get('best_value'))}"
-    )
+    delta_text = "-" if delta is None else f"{delta:+.6f}"
 
     counts = optuna.get("counts", {})
-    finished = sum(
-        int(counts.get(state, 0))
-        for state in ("COMPLETE", "PRUNED", "FAIL")
-    )
-    print(
-        "Trials: "
-        f"완료 {counts.get('COMPLETE', 0)} | "
-        f"pruned {counts.get('PRUNED', 0)} | "
-        f"fail {counts.get('FAIL', 0)} | "
-        f"finished {finished}/{row['max_trials']}"
+    lock = summary["lock"]
+    gpu = (
+        f"GPU PID {lock['pid']}"
+        if lock["exists"] and lock["process_running"] is True
+        else "GPU lock ?"
     )
 
-    lock = summary["lock"]
-    lock_text = (
-        f"PID {lock['pid']} / {lock['model']}"
-        if lock["exists"] and lock["process_running"] is True
-        else "확인 불가"
-    )
-    print(f"GPU 학습 프로세스 lock: {lock_text}")
-    print("-" * 78)
+    print(f"태양광 학습 | {now} | {gpu}")
     print(
-        "원래 학습 창은 그대로 두세요. "
-        "이 화면은 Optuna SQLite를 read-only로 조회합니다."
+        f"{candidate_bar} 후보 {row['index']}/{row['total']}  "
+        f"{model_name} · H{row['horizon_hours']} · "
+        f"{_compact_candidate_label(row['candidate_id'])}"
+    )
+    print(
+        f"{trial_bar} Trial {trial_current}/{row['max_trials']}  ·  "
+        f"{step_text}  ·  "
+        f"done {counts.get('COMPLETE', 0)} / "
+        f"pruned {counts.get('PRUNED', 0)} / "
+        f"fail {counts.get('FAIL', 0)}"
+    )
+    print(
+        f"MAE  현재 {_fmt_value(current_value)}  |  "
+        f"BEST {_fmt_value(best_value)}  |  "
+        f"Δ {delta_text}"
     )
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
