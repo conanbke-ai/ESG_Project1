@@ -38,7 +38,7 @@ from solar_forecast.models.xgboost.optimization import XGBoostHyperparameterOpti
 class XGBoostTrainer:
     """Concrete training strategy that owns XGBoost-specific persistence."""
 
-    def train(self, config: ModelJobConfig, run_dir: Path, smoke: bool = False) -> dict[str, object]:
+    def train(self, config: ModelJobConfig, run_dir: Path, smoke: bool = False, selection_only: bool = False) -> dict[str, object]:
         target = str(config.values["target_column"])
         energy_source = config.values.get("energy_source_filter")
         feature_columns = list(config.values.get("feature_columns") or [])
@@ -115,6 +115,30 @@ class XGBoostTrainer:
                 target_column=target,
                 artifact_dir=run_dir,
             )
+        if selection_only:
+            if optimization_result is None:
+                raise ValueError("selection_only requires enabled XGBoost optimization")
+            return {
+                "source": str(source),
+                "features": prepared.feature_columns,
+                "n_train": len(train_frame),
+                "n_validation": len(validation_frame),
+                "n_calibration": len(calibration_frame),
+                "n_test": len(test_frame),
+                "temporal_split": split_metadata,
+                "evaluation_contract": {
+                    "dataset_fingerprint": dataset_signature(source),
+                    "target": target,
+                    "target_unit": "MWh",
+                    "test_start": split_metadata["test_period"]["start"],
+                    "test_end": split_metadata["test_period"]["end"],
+                    **task_contract,
+                },
+                "optimizer": optimization_result.to_dict(),
+                "memory_aware_loading": load_report.to_dict(),
+                "checkpoint": checkpoint_store.describe(),
+                "selection_only": True,
+            }
         optimizer_values = config.values.get("optimizer", {})
         params = {
             "n_estimators": (
@@ -395,5 +419,5 @@ class XGBoostTrainer:
         return result
 
 
-def train(config: ModelJobConfig, *, run_dir: Path, smoke: bool = False) -> dict[str, object]:
-    return XGBoostTrainer().train(config, run_dir, smoke)
+def train(config: ModelJobConfig, *, run_dir: Path, smoke: bool = False, selection_only: bool = False) -> dict[str, object]:
+    return XGBoostTrainer().train(config, run_dir, smoke, selection_only)
