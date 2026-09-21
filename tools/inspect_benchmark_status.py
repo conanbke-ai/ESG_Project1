@@ -717,16 +717,39 @@ def _section(title: str, width: int = 76) -> str:
     return "├" + "─" + label + "─" * max(0, width - len(label)) + "┤"
 
 
+ANSI_RESET = "\033[0m"
+ANSI_BOLD = "\033[1m"
+ANSI_DIM = "\033[2m"
+ANSI_CYAN = "\033[96m"
+ANSI_GREEN = "\033[92m"
+ANSI_YELLOW = "\033[93m"
+ANSI_RED = "\033[91m"
+ANSI_WHITE = "\033[97m"
+
+
+def _paint(text: str, *codes: str) -> str:
+    return "".join(codes) + text + ANSI_RESET
+
+
+def _state_text(state: str) -> str:
+    upper = state.upper()
+    if upper == "RUNNING":
+        return _paint("RUNNING", ANSI_YELLOW, ANSI_BOLD)
+    if upper == "COMPLETE":
+        return _paint("DONE", ANSI_GREEN, ANSI_BOLD)
+    if upper == "PRUNED":
+        return _paint("PRUNED", ANSI_DIM)
+    if upper == "FAIL":
+        return _paint("FAIL", ANSI_RED, ANSI_BOLD)
+    return state
+
+
 def print_active_monitor(summary: dict[str, Any]) -> None:
-    width = 72
-    now = datetime.now().astimezone().strftime("%H:%M:%S")
     active_index = summary["active_candidate_index"]
 
-    print(f"태양광 학습  {now}")
-    print("─" * width)
-
     if active_index is None:
-        print(f"상태: {summary['overall_status']}")
+        print(_paint("태양광 학습", ANSI_BOLD, ANSI_WHITE))
+        print(_paint(summary["overall_status"], ANSI_YELLOW))
         return
 
     row = next(
@@ -746,17 +769,8 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
     overall_bar = _progress_bar(
         completed_candidates,
         row["total"],
-        24,
+        28,
         active=True,
-    )
-    print(
-        f"전체   {overall_bar}  "
-        f"{completed_candidates}/{row['total']} 완료  ·  현재 {row['index']}/{row['total']}"
-    )
-
-    print(
-        f"현재   {model_name}  ·  H{row['horizon_hours']}  ·  "
-        f"{_compact_candidate_label(row['candidate_id'])}"
     )
 
     latest_number = optuna.get("latest_number")
@@ -766,13 +780,6 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
     current_step = step + 1 if step is not None else None
     step_total = row["progress_total"]
 
-    print(
-        f"진행   Trial {trial_current}/{row['max_trials']} {latest_state}"
-        f"  ·  {row['progress_unit']} "
-        f"{current_step if current_step is not None else '-'}"
-        f"/{step_total or '?'}"
-    )
-
     current_value = optuna.get("latest_intermediate_value")
     best_value = optuna.get("best_value")
     best_number = optuna.get("best_number")
@@ -781,28 +788,105 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         if current_value is not None and best_value is not None
         else None
     )
-    delta_text = "-" if delta is None else f"{delta:+.6f}"
 
     print(
-        f"MAE    현재 {_fmt_value(current_value)}"
-        f"  ·  BEST {_fmt_value(best_value)}"
-        f" (#{best_number if best_number is not None else '-'})"
-        f"  ·  Δ {delta_text}"
+        _paint(
+            f"[ {row['index']:02d}/{row['total']:02d} ]  "
+            f"{model_name}  ·  {row['horizon_hours']}h  ·  "
+            f"{_compact_candidate_label(row['candidate_id'])}",
+            ANSI_BOLD,
+            ANSI_CYAN,
+        )
+    )
+    print(
+        _paint(overall_bar, ANSI_CYAN)
+        + _paint(
+            f"  {completed_candidates}/{row['total']} complete",
+            ANSI_DIM,
+        )
+    )
+    print()
+
+    trial_label = _paint("TRIAL", ANSI_DIM)
+    epoch_label = _paint(row["progress_unit"].upper(), ANSI_DIM)
+    print(
+        f"{trial_label}  "
+        + _paint(
+            f"{trial_current}/{row['max_trials']}",
+            ANSI_BOLD,
+            ANSI_WHITE,
+        )
+        + f"  {_state_text(latest_state)}"
+        + "      "
+        + f"{epoch_label}  "
+        + _paint(
+            f"{current_step if current_step is not None else '-'}"
+            f"/{step_total or '?'}",
+            ANSI_BOLD,
+            ANSI_WHITE,
+        )
+    )
+
+    current_text = (
+        "-"
+        if current_value is None
+        else f"{current_value:.6f}"
+    )
+    best_text = (
+        "-"
+        if best_value is None
+        else f"{best_value:.6f}"
+    )
+    delta_text = "-" if delta is None else f"{delta:+.6f}"
+    delta_color = (
+        ANSI_GREEN
+        if delta is not None and delta <= 0
+        else ANSI_RED
+    )
+
+    print()
+    print(
+        _paint("MAE", ANSI_DIM)
+        + "    "
+        + _paint(current_text, ANSI_YELLOW, ANSI_BOLD)
+        + _paint("   BEST ", ANSI_DIM)
+        + _paint(
+            f"{best_text}"
+            + (
+                f"  #{best_number}"
+                if best_number is not None
+                else ""
+            ),
+            ANSI_GREEN,
+            ANSI_BOLD,
+        )
+        + _paint("   Δ ", ANSI_DIM)
+        + _paint(delta_text, delta_color)
     )
 
     recent = optuna.get("recent_trials", [])
     if recent:
-        print("─" * width)
-        print("최근   " + "   ".join(
-            (
-                f"#{trial['number']} "
-                f"{str(trial['state']).replace('COMPLETE', 'done').replace('RUNNING', 'run').replace('PRUNED', 'pruned')} "
-                f"{trial['value']:.6f}"
-                if trial.get("value") is not None
-                else f"#{trial['number']} {trial['state']}"
+        print()
+        print(_paint("RECENT", ANSI_DIM))
+        for trial in recent[:3]:
+            number = int(trial["number"])
+            state = str(trial["state"])
+            value = trial.get("value")
+            value_text = (
+                "-"
+                if value is None
+                else f"{value:.6f}"
             )
-            for trial in recent[:3]
-        ))
+            marker = (
+                _paint("★", ANSI_GREEN, ANSI_BOLD)
+                if number == best_number
+                else " "
+            )
+            print(
+                f" {marker} #{number:<2} "
+                f"{_state_text(state):<18} "
+                f"{value_text}"
+            )
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
