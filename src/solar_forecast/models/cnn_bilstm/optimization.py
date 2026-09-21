@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 from optuna.trial import Trial
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from solar_forecast.evaluation.regression_metrics import validation_diagnostics
 from torch.utils.data import DataLoader, Subset
 
 from solar_forecast.models.shared.optuna_study import (
@@ -75,12 +76,26 @@ def evaluate_cnn_bilstm_loader(
             all_targets.append(y.cpu().numpy())
     y_true = np.concatenate(all_targets)
     y_pred = np.concatenate(all_preds)
-    mse = mean_squared_error(y_true, y_pred)
+    persistence = None
+    if hasattr(loader.dataset, "context_frame"):
+        context = loader.dataset.context_frame(0, len(loader.dataset))
+        if "persistence_pred" in context:
+            persistence = context["persistence_pred"].to_numpy()
+    diagnostics = validation_diagnostics(
+        y_true,
+        y_pred,
+        persistence_pred=persistence,
+    )
     return {
         "loss": running_loss / len(loader.dataset),
-        "mae": mean_absolute_error(y_true, y_pred),
-        "rmse": float(np.sqrt(mse)),
-        "r2": r2_score(y_true, y_pred),
+        "mae": diagnostics["mae_mwh"],
+        "rmse": diagnostics["rmse_mwh"],
+        "r2": diagnostics["r2"],
+        "bias": diagnostics["bias_mwh"],
+        "persistence_mae": diagnostics["persistence_mae_mwh"],
+        "persistence_skill_pct": diagnostics["persistence_skill_pct"],
+        "daylight_mae": diagnostics["daylight_mae_mwh"],
+        "diagnostics": diagnostics,
     }
 
 
@@ -292,9 +307,14 @@ def optimize_cnn_bilstm(
                 metrics = evaluate_cnn_bilstm_loader(model, val_loader, criterion, device)
                 validation_mae = float(metrics["mae"])
                 trial.report(validation_mae, step=epoch)
+                trial.set_user_attr("validation_metrics", metrics["diagnostics"])
 
                 if validation_mae + 1e-6 < best_mae:
                     best_mae = validation_mae
+                    trial.set_user_attr(
+                        "best_validation_metrics",
+                        metrics["diagnostics"],
+                    )
                     wait = 0
                 else:
                     wait += 1
