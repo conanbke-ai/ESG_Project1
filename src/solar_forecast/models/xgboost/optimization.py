@@ -10,6 +10,7 @@ import numpy as np
 import optuna
 import pandas as pd
 from sklearn.metrics import mean_absolute_error
+from solar_forecast.evaluation.regression_metrics import validation_diagnostics
 from xgboost.callback import TrainingCallback
 
 from solar_forecast.models.shared.checkpoint_store import TrainingCheckpointStore, stable_signature
@@ -223,9 +224,22 @@ class XGBoostHyperparameterOptimizer:
                 )
                 model = fit.model
                 prediction = model.predict(validation[list(feature_columns)])
-                score = float(
-                    mean_absolute_error(validation[target_column], prediction)
+                diagnostics = validation_diagnostics(
+                    validation[target_column].to_numpy(),
+                    prediction,
+                    persistence_pred=(
+                        validation["persistence_pred"].to_numpy()
+                        if "persistence_pred" in validation
+                        else None
+                    ),
+                    is_daylight=(
+                        validation["is_daylight"].to_numpy()
+                        if "is_daylight" in validation
+                        else None
+                    ),
                 )
+                score = float(diagnostics["mae_mwh"])
+                trial.set_user_attr("validation_metrics", diagnostics)
                 try:
                     best_iteration = int(model.best_iteration)
                 except (AttributeError, ValueError):
