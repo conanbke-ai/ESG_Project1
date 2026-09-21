@@ -24,6 +24,31 @@ class TrainingService:
         self.trainers = trainers or TRAINERS
 
     def run(self, config: ModelJobConfig, *, smoke: bool = False) -> Path:
+        """Run the complete selected-model fit and prediction workflow."""
+        return self._execute(
+            config,
+            smoke=smoke,
+            selection_only=False,
+            phase="final_fit",
+        )
+
+    def search(self, config: ModelJobConfig) -> Path:
+        """Run Validation-only optimizer search without full-data final fit."""
+        return self._execute(
+            config,
+            smoke=False,
+            selection_only=True,
+            phase="candidate_search",
+        )
+
+    def _execute(
+        self,
+        config: ModelJobConfig,
+        *,
+        smoke: bool,
+        selection_only: bool,
+        phase: str,
+    ) -> Path:
         if config.model not in self.trainers:
             raise ValueError("Hybrid does not train base models; use the hybrid command")
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -32,6 +57,8 @@ class TrainingService:
         lock_path = PROJECT_ROOT / "artifacts" / ".training.lock"
         run_context = {
             "execution_mode": "smoke" if smoke else "full",
+            "phase": phase,
+            "selection_only": selection_only,
             "energy_source": config.values.get("energy_source_filter"),
             "target": config.values.get("target_column"),
             "target_unit": "MWh",
@@ -49,7 +76,12 @@ class TrainingService:
             with exclusive_training_lock(lock_path, config.model):
                 module_name, function_name = self.trainers[config.model]
                 trainer: Callable = getattr(importlib.import_module(module_name), function_name)
-                result = trainer(config, run_dir=run_dir, smoke=smoke)
+                result = trainer(
+                    config,
+                    run_dir=run_dir,
+                    smoke=smoke,
+                    selection_only=selection_only,
+                )
             write_manifest(
                 manifest_path,
                 status="completed",
