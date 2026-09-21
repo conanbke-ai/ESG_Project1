@@ -10,7 +10,8 @@ from solar_forecast.config_loader import PROJECT_ROOT
 from solar_forecast.datasets.repository import DatasetLoadPolicy, DatasetRepository
 from solar_forecast.evaluation.experiment_config import load_experiment_config
 from solar_forecast.evaluation.temporal_split import TemporalSplitConfig, TemporalSplitter
-from solar_forecast.infrastructure.artifact_store import sha256_file, write_json_atomic\nfrom solar_forecast.preprocessing.contracts import TRAINING_ELIGIBILITY_CONTRACT
+from solar_forecast.infrastructure.artifact_store import sha256_file, write_json_atomic
+from solar_forecast.preprocessing.contracts import TRAINING_ELIGIBILITY_CONTRACT
 
 
 ELIGIBILITY_CONTRACT = TRAINING_ELIGIBILITY_CONTRACT
