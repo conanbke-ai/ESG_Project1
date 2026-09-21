@@ -718,18 +718,15 @@ def _section(title: str, width: int = 76) -> str:
 
 
 def print_active_monitor(summary: dict[str, Any]) -> None:
-    width = 76
+    width = 72
     now = datetime.now().astimezone().strftime("%H:%M:%S")
     active_index = summary["active_candidate_index"]
 
-    title = f" SOLAR FORECAST · LIVE "
-    right = f" {now} "
-    middle = max(0, width - len(title) - len(right))
-    print("╭" + title + "─" * middle + right + "╮")
+    print(f"태양광 학습  {now}")
+    print("─" * width)
 
     if active_index is None:
-        print(_box_line(f"상태  {summary['overall_status']}", width))
-        print("╰" + "─" * (width + 2) + "╯")
+        print(f"상태: {summary['overall_status']}")
         return
 
     row = next(
@@ -753,42 +750,13 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
         active=True,
     )
     print(
-        _box_line(
-            f"전체  {overall_bar}  "
-            f"{completed_candidates}/{row['total']} 완료 · ACTIVE #{row['index']}",
-            width,
-        )
+        f"전체   {overall_bar}  "
+        f"{completed_candidates}/{row['total']} 완료  ·  현재 {row['index']}/{row['total']}"
     )
 
-    horizon_rows = [
-        item for item in summary["candidates"]
-        if item["horizon_hours"] == row["horizon_hours"]
-    ]
-    horizon_pos = next(
-        index for index, item in enumerate(horizon_rows, 1)
-        if item["index"] == row["index"]
-    )
-    horizon_done = horizon_pos - 1
-    horizon_bar = _progress_bar(
-        horizon_done,
-        len(horizon_rows),
-        24,
-        active=True,
-    )
     print(
-        _box_line(
-            f"{row['horizon_hours']}h    {horizon_bar}  "
-            f"{horizon_done}/{len(horizon_rows)} 완료",
-            width,
-        )
-    )
-
-    print(_section("CURRENT", width))
-    print(
-        _box_line(
-            f"{model_name} · {_compact_candidate_label(row['candidate_id'])}",
-            width,
-        )
+        f"현재   {model_name}  ·  H{row['horizon_hours']}  ·  "
+        f"{_compact_candidate_label(row['candidate_id'])}"
     )
 
     latest_number = optuna.get("latest_number")
@@ -799,103 +767,42 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
     step_total = row["progress_total"]
 
     print(
-        _box_line(
-            f"Trial  {trial_current}/{row['max_trials']}  {latest_state:<9}"
-            f" │ {row['progress_unit'].capitalize():<6} "
-            f"{current_step if current_step is not None else '-'}"
-            f"/{step_total or '?'}",
-            width,
-        )
+        f"진행   Trial {trial_current}/{row['max_trials']} {latest_state}"
+        f"  ·  {row['progress_unit']} "
+        f"{current_step if current_step is not None else '-'}"
+        f"/{step_total or '?'}"
     )
 
     current_value = optuna.get("latest_intermediate_value")
     best_value = optuna.get("best_value")
     best_number = optuna.get("best_number")
-    relative_delta = (
-        ((current_value - best_value) / best_value) * 100
-        if current_value is not None
-        and best_value not in (None, 0)
+    delta = (
+        current_value - best_value
+        if current_value is not None and best_value is not None
         else None
     )
-    delta_text = (
-        "-"
-        if relative_delta is None
-        else f"{relative_delta:+.2f}%"
-    )
+    delta_text = "-" if delta is None else f"{delta:+.6f}"
+
     print(
-        _box_line(
-            f"MAE    현재 {_fmt_value(current_value):<14}"
-            f" │ BEST {_fmt_value(best_value)}"
-            f" (#{best_number if best_number is not None else '-'})"
-            f" · Δ {delta_text}",
-            width,
-        )
+        f"MAE    현재 {_fmt_value(current_value)}"
+        f"  ·  BEST {_fmt_value(best_value)}"
+        f" (#{best_number if best_number is not None else '-'})"
+        f"  ·  Δ {delta_text}"
     )
 
-    print(_section("GPU", width))
-    gpu = _gpu_status()
-    lock = summary["lock"]
-    pid = (
-        str(lock["pid"])
-        if lock["exists"] and lock["process_running"] is True
-        else "-"
-    )
-    if gpu:
-        used_gb = float(gpu["memory_used"]) / 1024
-        total_gb = float(gpu["memory_total"]) / 1024
-        print(
-            _box_line(
-                f"Util {gpu['util']}% · VRAM {used_gb:.1f}/{total_gb:.1f} GB"
-                f" · {gpu['temperature']}°C · {gpu['power']}W · PID {pid}",
-                width,
-            )
-        )
-    else:
-        print(_box_line(f"GPU telemetry - · PID {pid}", width))
-
-    print(_section("RECENT TRIALS", width))
-    print(
-        _box_line(
-            "#    STATE       MAE          TIME       PROGRESS",
-            width,
-        )
-    )
     recent = optuna.get("recent_trials", [])
-    if not recent:
-        print(_box_line("-", width))
-    else:
-        for trial in recent[:4]:
-            number = int(trial["number"])
-            state = str(trial["state"])
-            value = trial.get("value")
-            value_text = "-" if value is None else f"{value:.6f}"
-            duration = _duration_text(
-                trial.get("started_at"),
-                trial.get("completed_at"),
+    if recent:
+        print("─" * width)
+        print("최근   " + "   ".join(
+            (
+                f"#{trial['number']} "
+                f"{str(trial['state']).replace('COMPLETE', 'done').replace('RUNNING', 'run').replace('PRUNED', 'pruned')} "
+                f"{trial['value']:.6f}"
+                if trial.get("value") is not None
+                else f"#{trial['number']} {trial['state']}"
             )
-            last_step = trial.get("last_step")
-            progress = (
-                f"{row['progress_unit']} {last_step + 1}/{step_total or '?'}"
-                if last_step is not None
-                else "-"
-            )
-            marker = "★" if number == best_number else " "
-            print(
-                _box_line(
-                    f"{marker}{number:<3} {state:<11} {value_text:<12}"
-                    f" {duration:<10} {progress}",
-                    width,
-                )
-            )
-
-    run_elapsed = _duration_text(summary.get("benchmark_created_at"))
-    footer = (
-        f"elapsed {run_elapsed} · refresh 2s · Ctrl+C: monitor only"
-    )
-    print("╰" + "─" * 2 + f" {footer} " + "─" * max(
-        0,
-        width - len(footer) - 2,
-    ) + "╯")
+            for trial in recent[:3]
+        ))
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
