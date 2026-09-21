@@ -68,6 +68,22 @@ def align_prediction_frames(frames: dict[str, pd.DataFrame], *, minimum_coverage
                      "dropped_rows": {name: len(frame) - len(common) for name, frame in normalized.items()}}
 
 
+def _console_candidate_label(model: str, candidate_id: str, horizon: int) -> str:
+    model_name = "CNN-BiLSTM" if model == "cnn_bilstm" else "XGBoost"
+    if candidate_id.startswith("observed_weather_history"):
+        feature = "기상+발전이력"
+    elif candidate_id.startswith("history_calendar"):
+        feature = "발전이력+시간정보"
+    else:
+        feature = candidate_id
+    lookback = ""
+    if "_lookback_" in candidate_id:
+        raw = candidate_id.rsplit("_lookback_", 1)[1]
+        feature = feature.split("_lookback_", 1)[0]
+        lookback = f" · 과거 {raw[:-1] if raw.endswith('h') else raw}시간"
+    return f"{model_name} · {horizon}시간 뒤 · {feature}{lookback}"
+
+
 class BenchmarkService:
     """Execute independently tuned candidates and freeze selection before Test."""
 
@@ -114,7 +130,12 @@ class BenchmarkService:
                 ):
                     label = f"{config.model}:{candidate_id}"
                     phase = "search" if search_mode else "train"
-                    print(f"Benchmark {horizon}h [{phase}]: {label}", flush=True)
+                    print(
+                        f"\n[{len(candidates) + 1}] "
+                        f"{'후보 탐색' if phase == 'search' else '학습'} · "
+                        f"{_console_candidate_label(config.model, candidate_id, horizon)}",
+                        flush=True,
+                    )
                     candidate_run = (
                         self.training_service.search(config)
                         if search_mode
@@ -221,7 +242,8 @@ class BenchmarkService:
                     for model, search_entry in selected_search.items():
                         label, config, _, _ = search_entry
                         print(
-                            f"Benchmark {horizon}h [final-fit]: {label}",
+                            f"\n[최종 학습] "
+                            f"{_console_candidate_label(config.model, config.values['benchmark_candidate_id'], horizon)}",
                             flush=True,
                         )
                         final_run = self.training_service.run(config, smoke=False)
