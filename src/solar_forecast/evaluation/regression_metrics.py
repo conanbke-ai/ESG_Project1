@@ -1,7 +1,7 @@
 """예측 정합성 검증과 발전소·지역·전국 회귀 오차 집계."""
 from __future__ import annotations
 
-from typing import Iterable, Sequence
+from typing import Any, Iterable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -51,3 +51,69 @@ def aggregate_metrics(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
     national["plant_macro_mae"] = plant["mae"].mean()
     national["plant_macro_rmse"] = plant["rmse"].mean()
     return {"plant": plant, "region": region, "national": national}
+
+
+def validation_diagnostics(
+    y_true,
+    y_pred,
+    *,
+    persistence_pred=None,
+    is_daylight=None,
+) -> dict[str, Any]:
+    """Return JSON-safe Validation diagnostics while keeping MAE as selector.
+
+    The optimizer still minimizes MAE. These diagnostics make large errors,
+    systematic bias, daylight-only accuracy, and persistence-baseline skill
+    visible without turning model selection into an opaque composite score.
+    """
+
+    truth = np.asarray(y_true, dtype=float).reshape(-1)
+    prediction = np.asarray(y_pred, dtype=float).reshape(-1)
+    if truth.size == 0 or truth.shape != prediction.shape:
+        raise ValueError("Validation truth and prediction must be non-empty and aligned")
+    if not (np.isfinite(truth).all() and np.isfinite(prediction).all()):
+        raise ValueError("Validation truth and prediction must be finite")
+
+    error = prediction - truth
+    mae = float(np.mean(np.abs(error)))
+    rmse = float(np.sqrt(np.mean(np.square(error))))
+    r2 = float(r2_score(truth, prediction)) if truth.size > 1 else float("nan")
+    result: dict[str, Any] = {
+        "mae_mwh": mae,
+        "rmse_mwh": rmse,
+        "r2": r2 if np.isfinite(r2) else None,
+        "bias_mwh": float(np.mean(error)),
+        "rows": int(truth.size),
+        "selection_objective": "mae_mwh",
+        "daylight_mae_mwh": None,
+        "daylight_rows": 0,
+        "persistence_mae_mwh": None,
+        "persistence_skill_pct": None,
+    }
+
+    if is_daylight is not None:
+        daylight = np.asarray(is_daylight).reshape(-1)
+        if daylight.shape != truth.shape:
+            raise ValueError("Daylight mask must align with Validation rows")
+        daylight_mask = daylight.astype(bool)
+        result["daylight_rows"] = int(daylight_mask.sum())
+        if daylight_mask.any():
+            result["daylight_mae_mwh"] = float(
+                np.mean(np.abs(error[daylight_mask]))
+            )
+
+    if persistence_pred is not None:
+        persistence = np.asarray(persistence_pred, dtype=float).reshape(-1)
+        if persistence.shape != truth.shape:
+            raise ValueError("Persistence baseline must align with Validation rows")
+        finite = np.isfinite(persistence)
+        if finite.any():
+            persistence_error = persistence[finite] - truth[finite]
+            persistence_mae = float(np.mean(np.abs(persistence_error)))
+            model_mae = float(np.mean(np.abs(error[finite])))
+            result["persistence_mae_mwh"] = persistence_mae
+            if persistence_mae > 0:
+                result["persistence_skill_pct"] = float(
+                    (1.0 - model_mae / persistence_mae) * 100.0
+                )
+    return result
