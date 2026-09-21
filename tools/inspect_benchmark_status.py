@@ -32,14 +32,17 @@ class TrialStatus:
     study_name: str
     study_id: int
     counts: dict[str, int]
+    latest_trial_id: int | None
     latest_number: int | None
     latest_state: str | None
     latest_started_at: str | None
     latest_completed_at: str | None
+    latest_heartbeat_at: str | None
     latest_intermediate_step: int | None
     latest_intermediate_value: float | None
     latest_trial_best_step: int | None
     latest_trial_best_value: float | None
+    latest_params: dict[str, Any]
     best_number: int | None
     best_value: float | None
     recent_trials: list[dict[str, Any]]
@@ -278,6 +281,62 @@ def _study_rows(
     )
 
 
+def _latest_heartbeat(
+    connection: sqlite3.Connection,
+    trial_id: int,
+) -> str | None:
+    exists = connection.execute(
+        """
+        SELECT 1
+        FROM sqlite_master
+        WHERE type = 'table' AND name = 'trial_heartbeats'
+        """
+    ).fetchone()
+    if exists is None:
+        return None
+    row = connection.execute(
+        """
+        SELECT heartbeat
+        FROM trial_heartbeats
+        WHERE trial_id = ?
+        ORDER BY heartbeat DESC
+        LIMIT 1
+        """,
+        (trial_id,),
+    ).fetchone()
+    return str(row["heartbeat"]) if row is not None else None
+
+
+def _external_trial_params(
+    connection: sqlite3.Connection,
+    trial_id: int,
+) -> dict[str, Any]:
+    try:
+        from optuna.distributions import json_to_distribution
+    except ImportError:
+        return {}
+
+    params: dict[str, Any] = {}
+    rows = connection.execute(
+        """
+        SELECT param_name, param_value, distribution_json
+        FROM trial_params
+        WHERE trial_id = ?
+        ORDER BY param_id
+        """,
+        (trial_id,),
+    )
+    for row in rows:
+        try:
+            distribution = json_to_distribution(str(row["distribution_json"]))
+            params[str(row["param_name"])] = distribution.to_external_repr(
+                float(row["param_value"])
+            )
+        except Exception:
+            params[str(row["param_name"])] = row["param_value"]
+    return params
+
+
 def _trial_status_for_study(
     connection: sqlite3.Connection,
     study_id: int,
@@ -307,7 +366,17 @@ def _trial_status_for_study(
     ).fetchone()
     latest_step = latest_value = None
     latest_trial_best_step = latest_trial_best_value = None
+    latest_heartbeat_at = None
+    latest_params: dict[str, Any] = {}
     if latest is not None:
+        latest_heartbeat_at = _latest_heartbeat(
+            connection,
+            int(latest["trial_id"]),
+        )
+        latest_params = _external_trial_params(
+            connection,
+            int(latest["trial_id"]),
+        )
         intermediate = connection.execute(
             """
             SELECT step, intermediate_value
@@ -413,6 +482,7 @@ def _trial_status_for_study(
         study_name=study_name,
         study_id=study_id,
         counts=counts,
+        latest_trial_id=int(latest["trial_id"]) if latest is not None else None,
         latest_number=int(latest["number"]) if latest is not None else None,
         latest_state=str(latest["state"]) if latest is not None else None,
         latest_started_at=(
@@ -425,10 +495,12 @@ def _trial_status_for_study(
             if latest is not None and latest["datetime_complete"] is not None
             else None
         ),
+        latest_heartbeat_at=latest_heartbeat_at,
         latest_intermediate_step=latest_step,
         latest_intermediate_value=latest_value,
         latest_trial_best_step=latest_trial_best_step,
         latest_trial_best_value=latest_trial_best_value,
+        latest_params=latest_params,
         best_number=int(best["number"]) if best is not None else None,
         best_value=float(best["value"]) if best is not None else None,
         recent_trials=recent_trials,
@@ -955,6 +1027,87 @@ def print_active_monitor(summary: dict[str, Any]) -> None:
                 f"  {number:<5} {state:<10} {value_text:<14} {progress}{mark}"
             )
 
+
+
+def _age_seconds(value: str | None) -> int | None:
+    parsed = _parse_time(value)
+    if parsed is None:
+        return None
+    return max(
+        0,
+        int((datetime.now(timezone.utc) - parsed).total_seconds()),
+    )
+
+
+def _age_text(seconds: int | None) -> str:
+    if seconds is None:
+        return "확인 불가"
+    if seconds < 60:
+        return f"{seconds}초 전"
+    minutes, sec = divmod(seconds, 60)
+    if minutes < 60:
+        return f"{minutes}분 {sec}초 전"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}시간 {minutes}분 전"
+
+
+def _monitor_signature(summary: dict[str, Any]) -> tuple[Any, ...]:
+    active = summary.get("active_candidate_index")
+    if active is None:
+        return (summary.get("overall_status"), None)
+    row = next(
+        item for item in summary["candidates"]
+        if item["index"] == active
+    )
+    optuna = row.get("optuna") or {}
+    return (
+        active,
+        optuna.get("latest_trial_id"),
+        optuna.get("latest_number"),
+        optuna.get("latest_state"),
+        optuna.get("latest_intermediate_step"),
+        optuna.get("latest_intermediate_value"),
+        optuna.get("best_number"),
+        optuna.get("best_value"),
+        tuple(sorted((optuna.get("counts") or {}).items())),
+    )
+
+
+def _same_trial_line(summary: dict[str, Any]) -> str:
+    active = summary.get("active_candidate_index")
+    if active is None:
+        return f"상태 확인 중 · {summary.get('overall_status')}"
+    row = next(
+        item for item in summary["candidates"]
+        if item["index"] == active
+    )
+    optuna = row.get("optuna") or {}
+    number = optuna.get("latest_number")
+    trial = number + 1 if number is not None else "-"
+    step = optuna.get("latest_intermediate_step")
+    progress_name = _progress_label(row["progress_unit"])
+    if step is None:
+        progress = f"{progress_name} 첫 단계 계산 중"
+    else:
+        progress = f"{progress_name} {step + 1}/{row['progress_total'] or '?'}"
+    heartbeat_age = _age_seconds(optuna.get("latest_heartbeat_at"))
+    if heartbeat_age is not None and heartbeat_age > 180:
+        health = f"⚠ heartbeat {_age_text(heartbeat_age)} · 멈춤 여부 확인 필요"
+    elif heartbeat_age is not None:
+        health = f"heartbeat {_age_text(heartbeat_age)} · 정상"
+    else:
+        health = "heartbeat 확인 불가"
+    elapsed = _duration_text(optuna.get("latest_started_at"))
+    return (
+        f"탐색 {trial}/{row['max_trials']} 계속 계산 중 · {progress} · "
+        f"재시작 없음 · 경과 {elapsed} · {health}"
+    )
+
+
+def _clear_keepalive_line(width: int = 140) -> None:
+    print("\r" + " " * width + "\r", end="", flush=True)
+
+
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -1017,6 +1170,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             print("--watch-seconds 는 0보다 커야 합니다.", file=sys.stderr)
             return 2
         try:
+            previous_signature = None
             while True:
                 summary = summarize(
                     root,
@@ -1025,10 +1179,21 @@ def main(argv: Iterable[str] | None = None) -> int:
                     benchmarks,
                     lock,
                 )
-                _clear_screen()
-                print_active_monitor(summary)
+                signature = _monitor_signature(summary)
+                if signature != previous_signature:
+                    _clear_keepalive_line()
+                    _clear_screen()
+                    print_active_monitor(summary)
+                    previous_signature = signature
+                else:
+                    print(
+                        "\r" + _same_trial_line(summary)[:138].ljust(138),
+                        end="",
+                        flush=True,
+                    )
                 time.sleep(args.watch_seconds)
         except KeyboardInterrupt:
+            _clear_keepalive_line()
             return 0
         except (
             OSError,
