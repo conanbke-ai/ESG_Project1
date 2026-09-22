@@ -78,17 +78,34 @@ def evaluate_cnn_bilstm_loader(
     y_pred = np.concatenate(all_preds)
     persistence = None
     daylight = None
+    capacity = None
+    plant_id = plant = region = timestamp = None
     if hasattr(loader.dataset, "context_frame"):
         context = loader.dataset.context_frame(0, len(loader.dataset))
         if "persistence_pred" in context:
             persistence = context["persistence_pred"].to_numpy()
         if "is_daylight" in context:
             daylight = context["is_daylight"].to_numpy()
+        if "capacity_mw" in context:
+            capacity = context["capacity_mw"].to_numpy()
+        if "plant_id" in context:
+            plant_id = context["plant_id"].to_numpy()
+        if "plant" in context:
+            plant = context["plant"].to_numpy()
+        if "region" in context:
+            region = context["region"].to_numpy()
+        if "timestamp" in context:
+            timestamp = context["timestamp"].to_numpy()
     diagnostics = validation_diagnostics(
         y_true,
         y_pred,
         persistence_pred=persistence,
         is_daylight=daylight,
+        capacity_mw=capacity,
+        plant_id=plant_id,
+        plant=plant,
+        region=region,
+        timestamp=timestamp,
     )
     return {
         "loss": running_loss / len(loader.dataset),
