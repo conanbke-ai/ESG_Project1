@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from numbers import Integral
 from typing import Sequence
+import hashlib
 
 import numpy as np
 import pandas as pd
@@ -115,6 +116,61 @@ def forecast_window_positions(
     starts = origins - sequence_length + 1
     continuous = gaps[origins] == gaps[starts]
     return targets[continuous], origins[continuous]
+
+
+def forecast_cohort_contract(
+    frame: pd.DataFrame,
+    *,
+    key_columns: Sequence[str] = (
+        "plant_id",
+        "timestamp",
+        "forecast_origin",
+        "horizon_hours",
+    ),
+) -> dict[str, object]:
+    """Fingerprint the exact forecast-key population used for model selection."""
+
+    keys = list(key_columns)
+    missing = set(keys) - set(frame.columns)
+    if missing:
+        raise ValueError(
+            f"Forecast cohort columns are missing: {sorted(missing)}"
+        )
+    cohort = frame[keys].copy()
+    if cohort.empty or cohort.isna().any().any():
+        raise ValueError("Forecast cohort keys must be non-empty and non-null")
+    for column in ("timestamp", "forecast_origin"):
+        if column in cohort:
+            cohort[column] = pd.to_datetime(
+                cohort[column],
+                errors="raise",
+            ).dt.strftime("%Y-%m-%dT%H:%M:%S")
+    if "plant_id" in cohort:
+        cohort["plant_id"] = cohort["plant_id"].astype(str)
+    if "horizon_hours" in cohort:
+        horizon = pd.to_numeric(
+            cohort["horizon_hours"],
+            errors="raise",
+        )
+        if not np.equal(horizon, np.floor(horizon)).all():
+            raise ValueError("Forecast cohort horizon must use integer hours")
+        cohort["horizon_hours"] = horizon.astype("int64")
+    cohort = cohort.sort_values(keys, kind="stable").reset_index(drop=True)
+    if cohort.duplicated(keys).any():
+        raise ValueError("Forecast cohort contains duplicate forecast keys")
+    payload = cohort.to_csv(
+        index=False,
+        lineterminator="\n",
+    ).encode("utf-8")
+    timestamps = pd.to_datetime(cohort["timestamp"], errors="raise")
+    return {
+        "contract": "solar-validation-cohort.v1",
+        "key_columns": keys,
+        "rows": int(len(cohort)),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "target_start": timestamps.min().isoformat(),
+        "target_end": timestamps.max().isoformat(),
+    }
 
 
 def forecast_evaluation_contract(
