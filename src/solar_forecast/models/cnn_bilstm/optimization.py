@@ -14,6 +14,7 @@ import torch.nn as nn
 from optuna.trial import Trial
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from solar_forecast.evaluation.regression_metrics import validation_diagnostics
+from solar_forecast.evaluation.forecast_samples import forecast_cohort_contract
 from torch.utils.data import DataLoader, Subset
 
 from solar_forecast.models.shared.optuna_study import (
@@ -244,6 +245,18 @@ def optimize_cnn_bilstm(
         maximum_validation_sequences,
         shuffle=False,
     )
+
+    def validation_context(loader: DataLoader) -> pd.DataFrame:
+        dataset = loader.dataset
+        if hasattr(dataset, "context_frame"):
+            return dataset.context_frame(0, len(dataset))
+        if isinstance(dataset, Subset) and hasattr(dataset.dataset, "context_frame"):
+            base = dataset.dataset.context_frame(0, len(dataset.dataset))
+            return base.iloc[list(dataset.indices)].reset_index(drop=True)
+        raise TypeError("Validation loader does not expose forecast context")
+
+    validation_context_frame = validation_context(val_loader)
+    validation_cohort = forecast_cohort_contract(validation_context_frame)
     n_features = loaders.n_features
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
     search_space = optimizer_parameter_space or {}
@@ -260,6 +273,7 @@ def optimize_cnn_bilstm(
         raise ValueError("optimizer trial epochs and patience must be positive")
 
     def objective(trial: Trial) -> float:
+        trial.set_user_attr("validation_cohort", validation_cohort)
         seed = (settings.seed if settings else 42) + trial.number
         np.random.seed(seed)
         torch.manual_seed(seed)
