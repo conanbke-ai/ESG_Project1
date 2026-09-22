@@ -288,6 +288,30 @@ class OptunaStudyService:
         temporary = trials_path.with_name(trials_path.name + ".tmp")
         study.trials_dataframe().to_csv(temporary, index=False, encoding="utf-8-sig")
         replace_file_atomic(temporary, trials_path)
+        best_metrics = study.best_trial.user_attrs.get("validation_metrics") or {}
+        diagnostics_path = artifact_dir / "best_validation_diagnostics.json"
+        write_json_atomic(diagnostics_path, best_metrics)
+
+        plant_metrics_path = artifact_dir / "best_validation_plant_metrics.csv"
+        plant_metrics = best_metrics.get("plant_metrics") or []
+        if plant_metrics:
+            import pandas as pd
+            pd.DataFrame(plant_metrics).to_csv(
+                plant_metrics_path,
+                index=False,
+                encoding="utf-8-sig",
+            )
+
+        worst_errors_path = artifact_dir / "best_validation_worst_errors.csv"
+        worst_errors = best_metrics.get("top_absolute_errors") or []
+        if worst_errors:
+            import pandas as pd
+            pd.DataFrame(worst_errors).to_csv(
+                worst_errors_path,
+                index=False,
+                encoding="utf-8-sig",
+            )
+
         summary_path = artifact_dir / "optimization_summary.json"
         write_json_atomic(
             summary_path,
@@ -312,6 +336,14 @@ class OptunaStudyService:
                 "best_trial_number": study.best_trial.number,
                 "best_validation_mae": float(study.best_value),
                 "best_params": dict(study.best_params),
+                "best_validation_metrics": best_metrics,
+                "diagnostics_path": str(diagnostics_path),
+                "plant_metrics_path": (
+                    str(plant_metrics_path) if plant_metrics else None
+                ),
+                "worst_errors_path": (
+                    str(worst_errors_path) if worst_errors else None
+                ),
                 "test_usage": "none",
             },
         )
@@ -396,6 +428,9 @@ class OptunaStudyService:
         bias = metrics.get("bias_mwh")
         daylight = metrics.get("daylight_mae_mwh")
         skill = metrics.get("persistence_skill_pct")
+        p99 = metrics.get("abs_error_p99_mwh")
+        max_error = metrics.get("abs_error_max_mwh")
+        nmae = metrics.get("nmae_capacity_pct")
         if rmse is not None:
             parts.append(f"RMSE {float(rmse):.4f}")
         if r2 is not None:
@@ -405,7 +440,16 @@ class OptunaStudyService:
         if daylight is not None:
             parts.append(f"주간MAE {float(daylight):.4f}")
         if skill is not None:
-            parts.append(f"기준대비 {float(skill):+.1f}%")
+            skill_value = float(skill)
+            parts.append(
+                f"기준대비 {skill_value:+.1f}%"
+            )
+        if p99 is not None:
+            parts.append(f"P99 {float(p99):.3f}")
+        if max_error is not None:
+            parts.append(f"MAX {float(max_error):.3f}")
+        if nmae is not None:
+            parts.append(f"nMAE {float(nmae):.1f}%")
         return (" │ " + " · ".join(parts)) if parts else ""
 
     def _finished_logical_trials(
