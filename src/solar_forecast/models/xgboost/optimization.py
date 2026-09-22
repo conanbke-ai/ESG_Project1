@@ -11,6 +11,7 @@ import optuna
 import pandas as pd
 from sklearn.metrics import mean_absolute_error
 from solar_forecast.evaluation.regression_metrics import validation_diagnostics
+from solar_forecast.evaluation.forecast_samples import forecast_cohort_contract
 from xgboost.callback import TrainingCallback
 
 from solar_forecast.models.shared.checkpoint_store import TrainingCheckpointStore, stable_signature
@@ -48,6 +49,7 @@ class XGBoostOptimizationResult:
     best_iteration: int | None
     tuning_train_rows: int
     tuning_validation_rows: int
+    validation_cohort: dict[str, object]
     run: OptimizationRun
 
     def to_dict(self) -> dict[str, object]:
@@ -60,6 +62,7 @@ class XGBoostOptimizationResult:
             "best_iteration": self.best_iteration,
             "tuning_train_rows": self.tuning_train_rows,
             "tuning_validation_rows": self.tuning_validation_rows,
+            "validation_cohort": self.validation_cohort,
             "existing_trials": self.run.existing_trials,
             "executed_trials": self.run.executed_trials,
             "summary_path": str(self.run.summary_path),
@@ -103,6 +106,7 @@ class XGBoostHyperparameterOptimizer:
             validation_frame,
             int(self.raw.get("tuning_validation_max_rows", 250_000)),
         )
+        validation_cohort = forecast_cohort_contract(validation)
         max_estimators = int(self.raw.get("trial_max_estimators", 1_500))
         early_stopping_rounds = int(
             self.raw.get(
@@ -265,6 +269,7 @@ class XGBoostHyperparameterOptimizer:
                 )
                 score = float(diagnostics["mae_mwh"])
                 trial.set_user_attr("validation_metrics", diagnostics)
+                trial.set_user_attr("validation_cohort", validation_cohort)
                 try:
                     best_iteration = int(model.best_iteration)
                 except (AttributeError, ValueError):
@@ -300,6 +305,7 @@ class XGBoostHyperparameterOptimizer:
             best_iteration=int(best_iteration) if best_iteration is not None else None,
             tuning_train_rows=len(train),
             tuning_validation_rows=len(validation),
+            validation_cohort=validation_cohort,
             run=run,
         )
 
