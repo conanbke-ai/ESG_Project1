@@ -48,6 +48,21 @@ def load_experiment_config(path: Path, *, project_root: Path = PROJECT_ROOT) -> 
         for field in ("max_trials_per_candidate", "timeout_seconds_per_candidate"):
             if type(settings.get(field)) is not int or settings[field] < 1:
                 raise ValueError(f"{name}: {field} must be a positive integer")
+    protocol = values.get("selection_protocol")
+    if not isinstance(protocol, dict):
+        raise ValueError("selection_protocol must be an object")
+    if protocol.get("base_candidates") != "validation_only_common_rows":
+        raise ValueError(
+            "selection_protocol.base_candidates must be validation_only_common_rows"
+        )
+    if protocol.get("metric") != "pooled_plant_hour_mae":
+        raise ValueError(
+            "selection_protocol.metric must be pooled_plant_hour_mae"
+        )
+    if protocol.get("test") != "frozen_models_final_report_only":
+        raise ValueError(
+            "selection_protocol.test must reserve Test for final reporting"
+        )
     if not values.get("input_dataset"):
         raise ValueError("input_dataset is required")
     return values
