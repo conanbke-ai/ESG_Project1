@@ -14,7 +14,7 @@ from solar_forecast.config_loader import PROJECT_ROOT
 from solar_forecast.evaluation.experiment_config import load_experiment_config
 from solar_forecast.evaluation.forecast_samples import forecast_evaluation_contract
 from solar_forecast.infrastructure.artifact_store import write_json_atomic, write_manifest
-from solar_forecast.jobs.benchmark_job import BenchmarkService, align_prediction_frames
+from solar_forecast.jobs.benchmark_job import BenchmarkService, align_prediction_frames, _validate_search_cohorts
 from solar_forecast.models.shared.checkpoint_store import dataset_signature
 
 
@@ -87,6 +87,42 @@ class BenchmarkJobTests(unittest.TestCase):
         frames, coverage = align_prediction_frames({"a": first, "b": first.iloc[1:]}, minimum_coverage=0.95)
         self.assertEqual(coverage["dropped_rows"], {"a": 1, "b": 0})
         self.assertEqual(len(frames["a"]), 19)
+
+    def test_search_candidate_cohorts_must_be_identical(self):
+        cohort = {
+            "contract": "solar-validation-cohort.v1",
+            "key_columns": [
+                "plant_id",
+                "timestamp",
+                "forecast_origin",
+                "horizon_hours",
+            ],
+            "rows": 100,
+            "sha256": "same",
+            "target_start": "2024-07-01T00:00:00",
+            "target_end": "2024-09-30T23:00:00",
+        }
+        coverage = _validate_search_cohorts(
+            {"xgb": cohort, "cnn": dict(cohort)},
+            minimum_coverage=0.95,
+        )
+        self.assertEqual(coverage["common_rows"], 100)
+        self.assertEqual(coverage["common_fraction"], 1.0)
+        self.assertEqual(coverage["dropped_rows"], {"xgb": 0, "cnn": 0})
+
+        changed = dict(cohort, sha256="different")
+        with self.assertRaisesRegex(ValueError, "cohorts differ"):
+            _validate_search_cohorts(
+                {"xgb": cohort, "cnn": changed},
+                minimum_coverage=0.95,
+            )
+
+    def test_search_candidate_cohort_cannot_be_missing(self):
+        with self.assertRaisesRegex(ValueError, "omitted"):
+            _validate_search_cohorts(
+                {"xgb": {}, "cnn": {}},
+                minimum_coverage=0.95,
+            )
 
     def test_legacy_experiment_schema_is_not_silently_executed(self):
         with tempfile.TemporaryDirectory() as directory:
