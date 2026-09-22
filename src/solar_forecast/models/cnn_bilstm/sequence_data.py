@@ -53,6 +53,7 @@ class _EntitySeries:
     origin_positions: np.ndarray | None = None
     horizon_hours: int | None = None
     is_daylight: np.ndarray | None = None
+    capacity_mw: np.ndarray | None = None
 
 
 class LazyWindowSequenceDataset(Dataset):
@@ -113,6 +114,8 @@ class LazyWindowSequenceDataset(Dataset):
                 })
             if item.is_daylight is not None:
                 records[-1]["is_daylight"] = bool(item.is_daylight[target_position])
+            if item.capacity_mw is not None:
+                records[-1]["capacity_mw"] = float(item.capacity_mw[target_position])
         return pd.DataFrame.from_records(records)
 
 
@@ -335,6 +338,14 @@ def prepare_dataset_splits(
                 is_daylight=(
                     group["is_daylight"].fillna(False).to_numpy(dtype=bool)
                     if "is_daylight" in group.columns
+                    else None
+                ),
+                capacity_mw=(
+                    pd.to_numeric(
+                        group["capacity_mw"],
+                        errors="coerce",
+                    ).to_numpy(dtype=float)
+                    if "capacity_mw" in group.columns
                     else None
                 ),
             )
