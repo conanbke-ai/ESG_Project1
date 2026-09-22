@@ -237,6 +237,31 @@ class XGBoostHyperparameterOptimizer:
                         if "is_daylight" in validation
                         else None
                     ),
+                    capacity_mw=(
+                        validation["capacity_mw"].to_numpy()
+                        if "capacity_mw" in validation
+                        else None
+                    ),
+                    plant_id=(
+                        validation["plant_id"].to_numpy()
+                        if "plant_id" in validation
+                        else None
+                    ),
+                    plant=(
+                        validation["plant"].to_numpy()
+                        if "plant" in validation
+                        else None
+                    ),
+                    region=(
+                        validation["region"].to_numpy()
+                        if "region" in validation
+                        else None
+                    ),
+                    timestamp=(
+                        validation["timestamp"].to_numpy()
+                        if "timestamp" in validation
+                        else None
+                    ),
                 )
                 score = float(diagnostics["mae_mwh"])
                 trial.set_user_attr("validation_metrics", diagnostics)
