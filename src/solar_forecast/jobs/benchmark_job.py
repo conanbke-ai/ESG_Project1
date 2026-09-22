@@ -68,6 +68,71 @@ def align_prediction_frames(frames: dict[str, pd.DataFrame], *, minimum_coverage
                      "dropped_rows": {name: len(frame) - len(common) for name, frame in normalized.items()}}
 
 
+def _validate_search_cohorts(
+    cohorts: dict[str, dict],
+    *,
+    minimum_coverage: float,
+) -> dict:
+    if not cohorts:
+        raise ValueError("Candidate search omitted Validation cohort contracts")
+    missing = [name for name, value in cohorts.items() if not value]
+    if missing:
+        raise ValueError(
+            f"Candidate search omitted Validation cohort contract: {missing}"
+        )
+    reference_name, reference = next(iter(cohorts.items()))
+    required = {
+        "contract",
+        "key_columns",
+        "rows",
+        "sha256",
+        "target_start",
+        "target_end",
+    }
+    if missing_fields := required - set(reference):
+        raise ValueError(
+            f"{reference_name}: Validation cohort contract missing "
+            f"{sorted(missing_fields)}"
+        )
+    mismatched = {
+        name: value
+        for name, value in cohorts.items()
+        if any(value.get(key) != reference.get(key) for key in required)
+    }
+    if mismatched:
+        details = {
+            name: {
+                "rows": value.get("rows"),
+                "sha256": value.get("sha256"),
+                "target_start": value.get("target_start"),
+                "target_end": value.get("target_end"),
+            }
+            for name, value in cohorts.items()
+        }
+        raise ValueError(
+            "Validation candidate cohorts differ; common-row selection contract "
+            f"cannot be satisfied: {details}"
+        )
+    rows = int(reference["rows"])
+    if rows < 1:
+        raise ValueError("Validation common cohort is empty")
+    # Exact fingerprint equality means coverage is 100%; keep the configured
+    # threshold in the evidence so contract changes remain auditable.
+    return {
+        "mode": "identical_forecast_key_fingerprint",
+        "common_rows": rows,
+        "union_rows": rows,
+        "common_fraction": 1.0,
+        "minimum_required_fraction": float(minimum_coverage),
+        "candidate_rows": {name: rows for name in cohorts},
+        "dropped_rows": {name: 0 for name in cohorts},
+        "cohort_sha256": reference["sha256"],
+        "target_start": reference["target_start"],
+        "target_end": reference["target_end"],
+        "key_columns": reference["key_columns"],
+    }
+
+
 def _console_candidate_label(model: str, candidate_id: str, horizon: int) -> str:
     model_name = "CNN-BiLSTM" if model == "cnn_bilstm" else "XGBoost"
     if candidate_id.startswith("observed_weather_history"):
@@ -118,6 +183,7 @@ class BenchmarkService:
                 candidates = []
                 validation_frames = {}
                 search_scores = {}
+                search_cohorts = {}
                 search_mode = (
                     not smoke
                     and callable(getattr(self.training_service, "search", None))
@@ -165,6 +231,9 @@ class BenchmarkService:
                                 f"Candidate search omitted finite Validation MAE: {label}"
                             )
                         search_scores[label] = float(score)
+                        search_cohorts[label] = dict(
+                            optimizer.get("validation_cohort") or {}
+                        )
                     else:
                         validation_frames[label] = pd.read_csv(
                             details["validation_predictions"],
@@ -172,14 +241,13 @@ class BenchmarkService:
                         )
 
                 if search_mode:
+                    validation_coverage = _validate_search_cohorts(
+                        search_cohorts,
+                        minimum_coverage=float(
+                            values.get("minimum_common_coverage", 0.95)
+                        ),
+                    )
                     scores = search_scores
-                    validation_coverage = {
-                        "mode": "optimizer_validation_objective",
-                        "candidate_rows": None,
-                        "common_rows": None,
-                        "union_rows": None,
-                        "common_fraction": None,
-                    }
                 else:
                     aligned, validation_coverage = align_prediction_frames(
                         validation_frames,
@@ -225,7 +293,7 @@ class BenchmarkService:
                 base_decision = {
                     "selection_data": "validation_only",
                     "selection_score_source": (
-                        "optimizer_best_validation_mae"
+                        "optimizer_validation_mae_on_identical_forecast_cohort"
                         if search_mode
                         else "aligned_final_validation_predictions"
                     ),
