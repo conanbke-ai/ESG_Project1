@@ -443,11 +443,16 @@ def optimize_cnn_bilstm(
     if settings:
         if artifact_dir is None:
             raise ValueError("artifact_dir is required for a persistent Optuna study")
-        return OptunaStudyService(settings).run(
+        study = OptunaStudyService(settings).run(
             objective,
             artifact_dir,
             callbacks=[cleanup_checkpoint],
         ).study
+        study.set_user_attr(
+            "current_validation_cohort",
+            validation_cohort,
+        )
+        return study
     study = optuna.create_study(
         direction="minimize",
         sampler=optuna.samplers.TPESampler(seed=42),
@@ -459,6 +464,10 @@ def optimize_cnn_bilstm(
         timeout=timeout,
         gc_after_trial=True,
         callbacks=[cleanup_checkpoint],
+    )
+    study.set_user_attr(
+        "current_validation_cohort",
+        validation_cohort,
     )
     return study
 
