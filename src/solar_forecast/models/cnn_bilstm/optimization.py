@@ -9,6 +9,7 @@ from typing import Dict, Optional
 
 import numpy as np
 import optuna
+import pandas as pd
 import torch
 import torch.nn as nn
 from optuna.trial import Trial
