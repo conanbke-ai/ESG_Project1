@@ -153,9 +153,12 @@ class CnnBiLstmTrainer:
                     "best_validation_mae": float(study.best_value),
                     "best_params": dict(study.best_params),
                     "validation_cohort": dict(
-                        study.best_trial.user_attrs.get(
-                            "validation_cohort",
-                            {},
+                        study.user_attrs.get(
+                            "current_validation_cohort",
+                            study.best_trial.user_attrs.get(
+                                "validation_cohort",
+                                {},
+                            ),
                         )
                     ),
                     "summary_path": str(run_dir / "optimization_summary.json"),
