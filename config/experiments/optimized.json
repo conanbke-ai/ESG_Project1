@@ -74,7 +74,7 @@
     "metric": "pooled_plant_hour_mae",
     "hybrid_rule": "pooled_mae_improvement_at_least_2pct_and_plant_win_fraction_at_least_55pct",
     "baseline": "generation_observed_at_forecast_origin",
-    "future_weather": "archived_fixed_lead_previous_runs_only_for_24h_72h",
+    "future_weather": "archived_fixed_lead_aligned_core_for_24h_72h",
     "cnn_target": "capacity_factor_training_restored_to_mwh_for_selection_and_test"
   },
   "provenance": {
@@ -102,6 +102,7 @@
     ],
     "source_template": "file/forecast_weather/open_meteo_jma_msm_{horizon}h.csv.gz",
     "minimum_coverage": 0.98,
-    "source_contract": "solar-future-weather-forecast.v1"
+    "source_contract": "solar-future-weather-forecast.v2",
+    "feature_profile": "aligned_core"
   }
 }
