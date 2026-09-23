@@ -28,6 +28,9 @@ class SequenceConfig:
     num_workers: int = 0
     prediction_task: str | None = None
     forecast_horizon_hours: int = 1
+    target_transform: str = "identity"
+    capacity_column: str = "capacity_mw"
+    future_feature_columns: tuple[str, ...] = ()
     train_end: str | None = None
     validation_end: str | None = None
     calibration_end: str | None = None
@@ -59,3 +62,9 @@ class SequenceConfig:
             raise ValueError(f"Unsupported prediction_task: {self.prediction_task}")
         if self.prediction_task == HISTORICAL_FORECAST_TASK:
             validate_forecast_horizon(self.forecast_horizon_hours)
+        if self.target_transform not in {"identity", "capacity_factor"}:
+            raise ValueError("target_transform must be identity or capacity_factor")
+        if self.target_transform == "capacity_factor" and not self.capacity_column:
+            raise ValueError("capacity_factor target requires a capacity_column")
+        if len(set(self.future_feature_columns)) != len(self.future_feature_columns):
+            raise ValueError("future_feature_columns must be unique")
