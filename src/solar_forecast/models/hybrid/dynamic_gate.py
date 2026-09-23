@@ -18,9 +18,14 @@ COLUMN_ALIASES = {
 
 @dataclass(frozen=True)
 class DynamicGateConfig:
-    min_group_samples: int = 8
-    min_weight: float = 0.05
-    max_weight: float = 0.95
+    # A plant-hour context contributes roughly one observation per day. Requiring
+    # 48 samples prevents a few weeks of Calibration from creating brittle
+    # plant-hour weights that are then frozen for a full Test year.
+    min_group_samples: int = 48
+    # Do not force a weak base model into the blend. A convex optimum may
+    # legitimately collapse to one base model for a context.
+    min_weight: float = 0.0
+    max_weight: float = 1.0
 
     def __post_init__(self) -> None:
         if self.min_group_samples < 1:
@@ -73,11 +78,31 @@ def validate_aligned_predictions(frame: pd.DataFrame) -> None:
 
 
 def _optimal_convex_weight(y_true: np.ndarray, xgb_pred: np.ndarray, cnn_pred: np.ndarray) -> float:
-    delta = xgb_pred - cnn_pred
-    denominator = float(np.dot(delta, delta))
-    if denominator <= 1e-12:
+    """Return the convex XGBoost weight that minimizes absolute error.
+
+    For prediction cnn + alpha * (xgb - cnn), the MAE objective is a weighted
+    median problem in alpha. This keeps the gate objective aligned with the
+    benchmark selector, which also selects by MAE. The previous least-squares
+    closed form optimized MSE while the benchmark judged MAE.
+    """
+
+    truth = np.asarray(y_true, dtype=float)
+    xgb = np.asarray(xgb_pred, dtype=float)
+    cnn = np.asarray(cnn_pred, dtype=float)
+    delta = xgb - cnn
+    informative = np.abs(delta) > 1e-12
+    if not informative.any():
         return 0.5
-    return float(np.clip(np.dot(y_true - cnn_pred, delta) / denominator, 0.0, 1.0))
+
+    ratios = (truth[informative] - cnn[informative]) / delta[informative]
+    weights = np.abs(delta[informative])
+    order = np.argsort(ratios, kind="stable")
+    ratios = ratios[order]
+    weights = weights[order]
+    cutoff = float(weights.sum()) / 2.0
+    index = int(np.searchsorted(np.cumsum(weights), cutoff, side="left"))
+    alpha = float(ratios[min(index, len(ratios) - 1)])
+    return float(np.clip(alpha, 0.0, 1.0))
 
 
 def fit_region_blend(validation: pd.DataFrame) -> pd.DataFrame:
@@ -131,6 +156,7 @@ def _build_profiles(validation: pd.DataFrame, min_group_samples: int) -> pd.Data
             "xgb_mae": group.xgb_abs_error.mean(),
             "cnn_mae": group.cnn_abs_error.mean(),
             "xgb_weight": alpha,
+            "weight_objective": "mae",
             "n_validation": len(group),
             **context,
         }
@@ -234,7 +260,7 @@ def _apply_profiles(test: pd.DataFrame, gate: pd.DataFrame, config: DynamicGateC
             f"{r.gate_scope} validation evidence (n={int(r.gate_validation_samples)}, "
             f"regime={r.time_regime}, disagreement={r.disagreement_band}): "
             f"XGB MAE={r.xgb_expected_mae:.6g}, CNN MAE={r.cnn_expected_mae:.6g}, "
-            f"validation-optimal XGB weight={r.xgb_weight:.3f}"
+            f"MAE-optimal XGB weight={r.xgb_weight:.3f}"
         ),
         axis=1,
     )
