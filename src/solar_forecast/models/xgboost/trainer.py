@@ -104,6 +104,18 @@ class XGBoostTrainer:
                     ),
                 )
                 model_features.extend(FUTURE_WEATHER_FEATURES)
+        if future_weather_evidence is not None:
+            task_contract = {
+                **task_contract,
+                "information_set": (
+                    "observed_measurements_through_forecast_origin_plus_"
+                    "archived_fixed_lead_weather_forecast"
+                ),
+                "future_weather_contract": future_weather_evidence["contract"],
+                "future_weather_spatial_contract": future_weather_evidence[
+                    "spatial_contract"
+                ],
+            }
         requested_gap = 0 if smoke else int(config.values.get("purge_gap_hours", 168))
         calendar_split, smoke_override = calendar_split_for_execution(config.values, smoke=smoke)
         train_frame, validation_frame, calibration_frame, test_frame, split_metadata = (
