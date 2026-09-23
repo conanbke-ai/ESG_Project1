@@ -388,6 +388,12 @@ class BenchmarkService:
                         int(values.get("selection_gap_hours", 0)),
                         horizon,
                     ),
+                    minimum_plant_win_fraction=float(
+                        values.get("minimum_plant_win_fraction", 0)
+                    ),
+                    gate_min_group_samples=int(
+                        values.get("gate_min_group_samples", 48)
+                    ),
                 )
                 result = selector.run(
                     calibration,
