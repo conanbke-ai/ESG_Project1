@@ -213,6 +213,10 @@
       "purpose": "ASOS 관측값 이름·타입 표준화와 관측소 좌표 결합",
       "kind": "implementation"
     },
+    "features/future_weather.py": {
+      "purpose": "발전소 좌표 기반 고정 lead 미래기상 아카이브 검증·결합과 누수 차단",
+      "kind": "implementation"
+    },
     "features/history_features.py": {
       "purpose": "미래 누수를 차단하는 발전량 lag·rolling·태양 위치 특징 생성",
       "kind": "implementation"
