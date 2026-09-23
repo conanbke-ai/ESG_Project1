@@ -1,6 +1,6 @@
 # Development rules for AI/code agents
 
-This repository uses the common TORI development-orchestration baseline from `conanbke-ai/Tori_Common_Project@da9611bc53e08105ce9d865917903736bec61b64`.
+This repository uses the common TORI development-orchestration baseline from `conanbke-ai/Tori_Common_Project@943b567e7740d72727c45ba4c03d267e99dc4596`.
 
 ## Common entrypoint
 - Read latest `main`, this file, relevant model/data docs, open PRs/branches, and actual code/config before changing behavior.
@@ -33,3 +33,6 @@ This repository uses the common TORI development-orchestration baseline from `co
 - Runtime recovery/retry/reconnect/checkpoint changes use Runtime Reliability review; prompt/model/provider/context changes affecting generative output use AI Output Evaluation review.
 - Common routing regression result: `ORCHESTRATION_REGRESSION_PASS` (15/15 representative scenarios; first-pass routing gaps fixed in common policy).
 - Mandatory user-facing gate: Product Flow QA. Any change to steps/forms/defaults/navigation/consent/validation/feedback/recovery/task-completion must be reviewed before implementation and before completion; it may require reordering/removing/defering steps for user convenience and error prevention.
+- Professional QA baseline: common `policies/TORI_PROFESSIONAL_QA_STANDARD.md`.
+- Every non-trivial feature/cross-module change starts with QA Lead/Test Architect PRECHECK: risk, acceptance traceability, mandatory QA roles, test cases/states, regression scope, and exit evidence.
+- Behavior/state/validation changes require Functional & Regression QA; user-facing flows require Product Flow QA before implementation and before completion; Accessibility/Compatibility/Visual QA are selected by risk, not skipped because code builds.
