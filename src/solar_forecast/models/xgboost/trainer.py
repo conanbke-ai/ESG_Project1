@@ -34,7 +34,7 @@ from solar_forecast.models.shared.optuna_study import OptimizationSettings
 from solar_forecast.models.xgboost.checkpoint import fit_xgboost_resumable
 from solar_forecast.models.xgboost.optimization import XGBoostHyperparameterOptimizer
 from solar_forecast.features.future_weather import (
-    FUTURE_WEATHER_FEATURES,
+    future_weather_feature_columns,
     merge_future_weather,
     read_future_weather,
 )
@@ -91,10 +91,17 @@ class XGBoostTrainer:
             if not isinstance(future_weather_config, dict):
                 raise ValueError("future_weather configuration must be an object")
             if bool(future_weather_config.get("enabled", False)) and not smoke:
+                future_profile = str(
+                    future_weather_config.get("feature_profile", "aligned_core")
+                )
+                selected_future_features = future_weather_feature_columns(
+                    future_profile
+                )
                 archive = read_future_weather(
                     str(future_weather_config["source"]),
                     horizon_hours=int(task_contract["horizon_hours"]),
                     plant_ids=frame["plant_id"].astype(str).unique().tolist(),
+                    feature_profile=future_profile,
                 )
                 frame, future_weather_evidence = merge_future_weather(
                     frame,
@@ -102,8 +109,9 @@ class XGBoostTrainer:
                     minimum_coverage=float(
                         future_weather_config.get("minimum_coverage", 0.98)
                     ),
+                    feature_columns=selected_future_features,
                 )
-                model_features.extend(FUTURE_WEATHER_FEATURES)
+                model_features.extend(selected_future_features)
         if future_weather_evidence is not None:
             task_contract = {
                 **task_contract,
