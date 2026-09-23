@@ -70,6 +70,11 @@ class PlantMetadataCatalog:
         ("koen", "구미태양광"): "구미정수장",
         ("koen", "탑선태양광"): "탑선옥상형",
         ("koen", "고흥만 수상태양광"): "해창만 수상(98MW)",
+        # EWP generation feeds use operational labels that differ from the
+        # official renewable-project metadata names. Keep one physical asset
+        # identity so official capacity/address metadata follows the series.
+        ("ewp", "울산태양광#1"): "울산화력태양광",
+        ("ewp", "당진화력수상태양광"): "당진수상태양광",
         ("kospo", "하동본부"): "하동화력",
         ("kospo", "부산본부"): "부산발전본부1400kw",
         ("kospo", "부산수처리장"): "부산수처리건물",
