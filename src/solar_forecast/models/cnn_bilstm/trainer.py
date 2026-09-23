@@ -4,6 +4,8 @@ from __future__ import annotations
 import gc
 from pathlib import Path
 
+import pandas as pd
+
 from solar_forecast.models.cnn_bilstm.sequence_config import SequenceConfig
 from solar_forecast.evaluation.temporal_split import calendar_split_for_execution
 from solar_forecast.evaluation.forecast_samples import (
@@ -100,6 +102,19 @@ class CnnBiLstmTrainer:
                 feature_columns=selected_future_features,
             )
             future_feature_columns = tuple(selected_future_features)
+            usable_from = future_weather_config.get("usable_from")
+            if usable_from:
+                usable_timestamp = pd.Timestamp(str(usable_from))
+                before_usable = pd.to_datetime(
+                    frame[str(timestamp_column)],
+                    errors="coerce",
+                ).lt(usable_timestamp)
+                frame.loc[
+                    before_usable,
+                    list(future_feature_columns),
+                ] = pd.NA
+                if future_weather_evidence is not None:
+                    future_weather_evidence["usable_from"] = usable_from
         task_contract = forecast_evaluation_contract(
             config.values.get("prediction_task"),
             config.values.get("forecast_horizon_hours"),
