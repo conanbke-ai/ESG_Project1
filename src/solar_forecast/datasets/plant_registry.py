@@ -218,14 +218,6 @@ class KmaStationCatalog:
                     "station_valid_to": values["종료일"],
                     "admin_province": area.province,
                     "admin_city": area.city,
-                    "admin_region_source": (
-                        admin_region_source
-                        if area.province or area.city
-                        else "unresolved"
-                    ),
-                    "admin_region_status": (
-                        "resolved" if area.province or area.city else "unknown"
-                    ),
                     "admin_locality": area.locality,
                 }
             )
@@ -636,6 +628,14 @@ class NationwidePlantRegistryBuilder:
                     "address": address,
                     "admin_province": area.province,
                     "admin_city": area.city,
+                    "admin_region_source": (
+                        admin_region_source
+                        if area.province or area.city
+                        else "unresolved"
+                    ),
+                    "admin_region_status": (
+                        "resolved" if area.province or area.city else "unknown"
+                    ),
                     "latitude": latitude,
                     "longitude": longitude,
                     "plant_coordinate_source": plant_coordinate_source,
