@@ -7,7 +7,9 @@ import pandas as pd
 import pytest
 
 from solar_forecast.features.future_weather import (
-    FUTURE_WEATHER_FEATURES,
+    FUTURE_WEATHER_ARCHIVE_FEATURES,
+    FUTURE_WEATHER_CORE_FEATURES,
+    future_weather_feature_columns,
     merge_future_weather,
     read_future_weather,
 )
@@ -31,8 +33,8 @@ def _archive(path: Path, *, coordinate_source: str = "plant_registry_coordinates
             **{
                 name: [value]
                 for name, value in zip(
-                    FUTURE_WEATHER_FEATURES,
-                    (26.0, 62.0, 0.0, 35.0, 2.1, 620.0, 510.0, 110.0),
+                    FUTURE_WEATHER_ARCHIVE_FEATURES,
+                    (26.0, 62.0, 0.0, 3.5, 2.1, 2.232, 0.75, 1.836, 0.396),
                     strict=True,
                 )
             },
@@ -40,6 +42,16 @@ def _archive(path: Path, *, coordinate_source: str = "plant_registry_coordinates
     )
     frame.to_csv(path, index=False)
     return path
+
+
+def test_future_weather_profiles_keep_components_out_of_default():
+    assert future_weather_feature_columns("aligned_core") == tuple(
+        FUTURE_WEATHER_CORE_FEATURES
+    )
+    assert "future_dni_mj_m2" not in future_weather_feature_columns("aligned_core")
+    assert "future_dni_mj_m2" in future_weather_feature_columns(
+        "aligned_core_plus_components"
+    )
 
 
 def test_future_weather_accepts_only_fixed_lead_plant_coordinates(tmp_path: Path):
