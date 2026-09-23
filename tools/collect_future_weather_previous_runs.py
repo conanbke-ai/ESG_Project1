@@ -62,6 +62,11 @@ def _parser() -> argparse.ArgumentParser:
             "query proxy when an eligible plant has no source coordinates."
         ),
     )
+    parser.add_argument(
+        "--energy-source",
+        default="solar",
+        help="Registry energy_source to collect; defaults to solar.",
+    )
     parser.add_argument("--start-year", type=int, default=2022)
     parser.add_argument("--end-year", type=int, default=2025)
     parser.add_argument(
@@ -77,7 +82,12 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _registry(path: Path, station_metadata_path: Path) -> pd.DataFrame:
+def _registry(
+    path: Path,
+    station_metadata_path: Path,
+    *,
+    energy_source: str = "solar",
+) -> pd.DataFrame:
     """Resolve an auditable weather-query coordinate for every eligible plant."""
 
     from solar_forecast.datasets.plant_registry import KmaStationCatalog
@@ -95,6 +105,8 @@ def _registry(path: Path, station_metadata_path: Path) -> pd.DataFrame:
         if "model_ready_status" in frame
         else pd.Series(True, index=frame.index)
     )
+    if "energy_source" in frame:
+        eligible &= frame["energy_source"].astype(str).eq(str(energy_source))
     frame = frame.loc[eligible].copy()
     if frame.empty:
         raise ValueError("Plant registry has no eligible plants")
@@ -273,6 +285,7 @@ def collect(args: argparse.Namespace) -> None:
     plants = _registry(
         registry_path,
         Path(args.station_metadata),
+        energy_source=str(args.energy_source),
     )
     session = requests.Session()
 
@@ -335,6 +348,7 @@ def collect(args: argparse.Namespace) -> None:
             "lead_field_suffix": LEAD_SUFFIX[horizon],
             "rows": int(len(combined)),
             "plants": int(combined["plant_id"].nunique()),
+            "energy_source": str(args.energy_source),
             "start": combined["timestamp"].min().isoformat(),
             "end": combined["timestamp"].max().isoformat(),
             "features": list(FUTURE_WEATHER_FEATURES),
