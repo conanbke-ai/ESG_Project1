@@ -581,6 +581,11 @@ class NationwidePlantRegistryBuilder:
                     "address": address,
                     "latitude": latitude,
                     "longitude": longitude,
+                    "plant_coordinate_source": (
+                        "source_partition_coordinates"
+                        if pd.notna(latitude) and pd.notna(longitude)
+                        else "unresolved"
+                    ),
                     "area": area,
                     "admin_region_source": admin_region_source,
                 }
@@ -596,6 +601,7 @@ class NationwidePlantRegistryBuilder:
             address = profile["address"]
             latitude = profile["latitude"]
             longitude = profile["longitude"]
+            plant_coordinate_source = profile["plant_coordinate_source"]
             area = profile["area"]
             admin_region_source = profile["admin_region_source"]
             reviewed = self.reviewed_mappings.get(company, plant)
@@ -632,6 +638,7 @@ class NationwidePlantRegistryBuilder:
                     "admin_city": area.city,
                     "latitude": latitude,
                     "longitude": longitude,
+                    "plant_coordinate_source": plant_coordinate_source,
                     "weather_station_id": match.station_id,
                     "weather_station_name": match.station_name,
                     "weather_station_distance_km": match.distance_km,
