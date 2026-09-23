@@ -91,6 +91,16 @@ class XGBoostTrainer:
             if not isinstance(future_weather_config, dict):
                 raise ValueError("future_weather configuration must be an object")
             if bool(future_weather_config.get("enabled", False)) and not smoke:
+                usable_from = future_weather_config.get("usable_from")
+                if usable_from:
+                    usable_timestamp = pd.Timestamp(str(usable_from))
+                    frame = frame.loc[
+                        frame["timestamp"].ge(usable_timestamp)
+                    ].copy()
+                    if frame.empty:
+                        raise ValueError(
+                            "Future-weather usable_from removed every forecast sample"
+                        )
                 future_profile = str(
                     future_weather_config.get("feature_profile", "aligned_core")
                 )
@@ -112,6 +122,8 @@ class XGBoostTrainer:
                     feature_columns=selected_future_features,
                 )
                 model_features.extend(selected_future_features)
+                if future_weather_evidence is not None:
+                    future_weather_evidence["usable_from"] = usable_from
         if future_weather_evidence is not None:
             task_contract = {
                 **task_contract,
