@@ -20,6 +20,11 @@ from solar_forecast.datasets.numeric_preprocessor import (
     require_model_quality_filter,
 )
 from solar_forecast.config_loader import ModelJobConfig, PROJECT_ROOT
+from solar_forecast.features.future_weather import (
+    FUTURE_WEATHER_FEATURES,
+    attach_future_weather_to_observations,
+    read_future_weather,
+)
 
 
 class CnnBiLstmTrainer:
@@ -69,6 +74,31 @@ class CnnBiLstmTrainer:
             frame = prepared.frame[prepared.frame[entity_column] == first_entity].head(512)
         else:
             frame = prepared.frame.head(512) if smoke else prepared.frame
+
+        future_weather_config = config.values.get("future_weather") or {}
+        if not isinstance(future_weather_config, dict):
+            raise ValueError("future_weather configuration must be an object")
+        use_future_weather = bool(future_weather_config.get("enabled", False)) and not smoke
+        future_weather_evidence = None
+        future_feature_columns: tuple[str, ...] = ()
+        if use_future_weather:
+            if not entity_column or not timestamp_column:
+                raise ValueError("Future weather requires plant and timestamp columns")
+            archive = read_future_weather(
+                str(future_weather_config["source"]),
+                horizon_hours=int(config.values["forecast_horizon_hours"]),
+                plant_ids=frame[entity_column].astype(str).unique().tolist(),
+            )
+            frame, future_weather_evidence = attach_future_weather_to_observations(
+                frame,
+                archive,
+                entity_column=str(entity_column),
+                timestamp_column=str(timestamp_column),
+                minimum_coverage=float(
+                    future_weather_config.get("minimum_coverage", 0.98)
+                ),
+            )
+            future_feature_columns = tuple(FUTURE_WEATHER_FEATURES)
         task_contract = forecast_evaluation_contract(
             config.values.get("prediction_task"),
             config.values.get("forecast_horizon_hours"),
@@ -93,6 +123,13 @@ class CnnBiLstmTrainer:
             ),
             prediction_task=config.values.get("prediction_task"),
             forecast_horizon_hours=task_contract["horizon_hours"] if historical else 1,
+            target_transform=str(
+                config.values.get("target_transform", "identity")
+            ),
+            capacity_column=str(
+                config.values.get("capacity_column", "capacity_mw")
+            ),
+            future_feature_columns=future_feature_columns,
             **calendar_split,
         )
         optimization_settings = OptimizationSettings.from_values(
@@ -166,6 +203,8 @@ class CnnBiLstmTrainer:
                     "test_usage": "none",
                 },
                 "memory_aware_loading": load_report.to_dict(),
+                "future_weather": future_weather_evidence,
+                "target_transform": sequence.target_transform,
                 "checkpoint": checkpoint_store.describe(),
                 "selection_only": True,
             }
@@ -226,6 +265,8 @@ class CnnBiLstmTrainer:
             },
             "optimizer": optimizer_artifact,
             "memory_aware_loading": load_report.to_dict(),
+            "future_weather": future_weather_evidence,
+            "target_transform": sequence.target_transform,
             "checkpoint": artifacts.get("checkpoint", checkpoint_store.describe()),
         }
 
