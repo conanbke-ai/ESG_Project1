@@ -210,13 +210,47 @@ def experiment_plan(values: dict, *, project_root: Path = PROJECT_ROOT) -> dict:
     tasks = []
     for horizon in values["horizons_hours"]:
         candidates = build_candidate_configs(values, horizon, Path(values.get("output_root", "artifacts/benchmarks")), project_root=project_root)
-        tasks.append({"horizon_hours": horizon, "candidates": [
-            {"model": cfg.model, "candidate_id": name, "features": cfg.values["feature_columns"],
-             "sequence_length": cfg.values.get("sequence_length"),
-             "max_trials": cfg.values["optimizer"]["max_trials"],
-             "timeout_seconds": cfg.values["optimizer"]["timeout_seconds"]}
-            for name, cfg in candidates
-        ]})
+        planned_candidates = []
+        for name, cfg in candidates:
+            future = cfg.values.get("future_weather") or {}
+            future_enabled = bool(future.get("enabled", False))
+            future_profile = (
+                str(future.get("feature_profile", "aligned_core"))
+                if future_enabled
+                else None
+            )
+            if future_enabled:
+                from solar_forecast.features.future_weather import (
+                    future_weather_feature_columns,
+                )
+
+                future_features = list(
+                    future_weather_feature_columns(str(future_profile))
+                )
+            else:
+                future_features = []
+            planned_candidates.append(
+                {
+                    "model": cfg.model,
+                    "candidate_id": name,
+                    "historical_features": cfg.values["feature_columns"],
+                    "future_weather_enabled": future_enabled,
+                    "future_weather_profile": future_profile,
+                    "future_weather_features": future_features,
+                    "sequence_length": cfg.values.get("sequence_length"),
+                    "target_transform": cfg.values.get(
+                        "target_transform", "identity"
+                    ),
+                    "max_trials": cfg.values["optimizer"]["max_trials"],
+                    "timeout_seconds": cfg.values["optimizer"]["timeout_seconds"],
+                }
+            )
+        tasks.append(
+            {
+                "horizon_hours": horizon,
+                "candidates": planned_candidates,
+            }
+        )
     split = _shared_split(values)
     return {"contract": EXPERIMENT_CONTRACT, "input_dataset": str(_resolve_path(values["input_dataset"], project_root)),
             "split": {"mode": split.split_mode, **asdict(split)},
