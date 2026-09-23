@@ -168,10 +168,20 @@ def read_future_weather(
 
     for column in selected_features:
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
-    if frame[list(selected_features)].isna().all(axis=1).any():
-        raise ValueError("Future-weather archive contains rows with no forecast variables")
+
+    all_missing_rows = frame[list(selected_features)].isna().all(axis=1)
+    entirely_missing_features = [
+        column
+        for column in selected_features
+        if frame[column].isna().all()
+    ]
 
     frame.attrs["future_weather_contract"] = FUTURE_WEATHER_CONTRACT
+    frame.attrs["all_missing_rows"] = int(all_missing_rows.sum())
+    frame.attrs["all_missing_fraction"] = (
+        float(all_missing_rows.mean()) if len(frame) else 0.0
+    )
+    frame.attrs["entirely_missing_features"] = entirely_missing_features
     frame.attrs["feature_profile"] = feature_profile
     frame.attrs["feature_columns"] = list(selected_features)
     return frame.sort_values(
