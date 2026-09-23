@@ -78,10 +78,31 @@ def _registry(path: Path) -> pd.DataFrame:
         frame["latitude"].between(32.0, 39.5)
         & frame["longitude"].between(124.0, 132.5)
     ]
-    frame = frame.drop_duplicates("plant_id", keep="last")
-    if frame.empty:
+    eligible_ids = set(
+        frame.loc[
+            frame.get(
+                "model_ready_status",
+                pd.Series("eligible", index=frame.index),
+            ).eq("eligible"),
+            "plant_id",
+        ].astype(str)
+    )
+    usable = frame.dropna(subset=["plant_id", "latitude", "longitude"]).copy()
+    usable = usable.loc[
+        usable["latitude"].between(32.0, 39.5)
+        & usable["longitude"].between(124.0, 132.5)
+    ]
+    usable = usable.drop_duplicates("plant_id", keep="last")
+    missing_ids = sorted(eligible_ids - set(usable["plant_id"].astype(str)))
+    if missing_ids:
+        raise ValueError(
+            "Eligible plants are missing plant coordinates; future weather "
+            f"will not fall back to region or ASOS station: {missing_ids}"
+        )
+    if usable.empty:
         raise ValueError("No eligible plants have usable coordinates")
-    return frame.sort_values("plant_id", kind="stable").reset_index(drop=True)
+    usable["coordinate_source"] = "plant_registry_coordinates"
+    return usable.sort_values("plant_id", kind="stable").reset_index(drop=True)
 
 
 def _request_json(
@@ -107,6 +128,7 @@ def _request_json(
         "timezone": "Asia/Seoul",
         "wind_speed_unit": "ms",
         "temporal_resolution": "hourly",
+        "cell_selection": "nearest",
     }
     last_error: Exception | None = None
     for attempt in range(retries):
@@ -135,7 +157,14 @@ def _request_json(
     ) from last_error
 
 
-def _normalize(payload: dict, *, plant_id: str, horizon: int) -> pd.DataFrame:
+def _normalize(
+    payload: dict,
+    *,
+    plant_id: str,
+    plant_latitude: float,
+    plant_longitude: float,
+    horizon: int,
+) -> pd.DataFrame:
     hourly = payload.get("hourly")
     if not isinstance(hourly, dict) or "time" not in hourly:
         raise ValueError("Previous Runs response omitted hourly data")
@@ -159,6 +188,12 @@ def _normalize(payload: dict, *, plant_id: str, horizon: int) -> pd.DataFrame:
     result["forecast_origin"] = (
         result["timestamp"] - pd.Timedelta(hours=horizon)
     )
+    result["plant_latitude"] = float(plant_latitude)
+    result["plant_longitude"] = float(plant_longitude)
+    result["grid_latitude"] = float(payload.get("latitude", plant_latitude))
+    result["grid_longitude"] = float(payload.get("longitude", plant_longitude))
+    result["coordinate_source"] = "plant_registry_coordinates"
+    result["cell_selection"] = "nearest"
     result["horizon_hours"] = int(horizon)
     result["forecast_model"] = MODEL
     result["forecast_source"] = "open_meteo_previous_runs"
@@ -204,6 +239,8 @@ def collect(args: argparse.Namespace) -> None:
                     part = _normalize(
                         payload,
                         plant_id=str(row.plant_id),
+                        plant_latitude=float(row.latitude),
+                        plant_longitude=float(row.longitude),
                         horizon=horizon,
                     )
                     part.to_csv(
@@ -238,6 +275,11 @@ def collect(args: argparse.Namespace) -> None:
             "end": combined["timestamp"].max().isoformat(),
             "features": list(FUTURE_WEATHER_FEATURES),
             "forecast_origin_rule": "target_timestamp_minus_fixed_lead",
+            "spatial_contract": "plant_registry_coordinates_only",
+            "coordinate_source": "plant_registry_coordinates",
+            "cell_selection": "nearest",
+            "region_used_for_weather_lookup": False,
+            "asos_station_used_for_weather_lookup": False,
             "output": str(output),
         }
         (output_root / f"open_meteo_jma_msm_{horizon}h.manifest.json").write_text(
