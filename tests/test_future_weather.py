@@ -20,8 +20,8 @@ def _archive(path: Path, *, coordinate_source: str = "plant_registry_coordinates
             "timestamp": ["2024-07-02T12:00:00"],
             "forecast_origin": ["2024-07-01T12:00:00"],
             "horizon_hours": [24],
-            "plant_latitude": [35.47765],
-            "plant_longitude": [129.3808],
+            "weather_query_latitude": [35.47765],
+            "weather_query_longitude": [129.3808],
             "grid_latitude": [35.5],
             "grid_longitude": [129.4],
             "coordinate_source": [coordinate_source],
@@ -46,8 +46,8 @@ def test_future_weather_accepts_only_fixed_lead_plant_coordinates(tmp_path: Path
     path = _archive(tmp_path / "weather.csv")
     frame = read_future_weather(path, horizon_hours=24)
     assert frame.iloc[0]["coordinate_source"] == "plant_registry_coordinates"
-    assert frame.iloc[0]["plant_latitude"] == pytest.approx(35.47765)
-    assert frame.iloc[0]["plant_longitude"] == pytest.approx(129.3808)
+    assert frame.iloc[0]["weather_query_latitude"] == pytest.approx(35.47765)
+    assert frame.iloc[0]["weather_query_longitude"] == pytest.approx(129.3808)
 
 
 def test_future_weather_rejects_region_or_station_coordinate_fallback(tmp_path: Path):
@@ -55,7 +55,7 @@ def test_future_weather_rejects_region_or_station_coordinate_fallback(tmp_path: 
         tmp_path / "weather.csv",
         coordinate_source="asos_station_coordinates",
     )
-    with pytest.raises(ValueError, match="plant_registry_coordinates"):
+    with pytest.raises(ValueError, match="unapproved spatial proxy"):
         read_future_weather(path, horizon_hours=24)
 
 
@@ -76,5 +76,7 @@ def test_future_weather_merge_preserves_spatial_provenance(tmp_path: Path):
         minimum_coverage=1.0,
     )
     assert len(merged) == 1
-    assert evidence["spatial_contract"] == "plant_registry_coordinates_only"
+    assert evidence["spatial_contract"] == (
+        "plant_coordinates_else_reviewed_asos_proxy; region_centroids_forbidden"
+    )
     assert evidence["coordinate_sources"] == ["plant_registry_coordinates"]
