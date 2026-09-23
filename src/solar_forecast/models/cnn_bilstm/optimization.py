@@ -42,6 +42,18 @@ from solar_forecast.models.cnn_bilstm.network import (
 _DEFAULT_READOUT_SEARCH = {"type": "categorical", "choices": ["final_hidden"]}
 
 
+def _move_inputs(inputs, device: torch.device):
+    if isinstance(inputs, (tuple, list)):
+        return tuple(value.to(device) for value in inputs)
+    return inputs.to(device)
+
+
+def _forward(model: CNNBiLSTM, inputs):
+    if isinstance(inputs, (tuple, list)):
+        return model(*inputs)
+    return model(inputs)
+
+
 def train_cnn_bilstm_epoch(
     model: CNNBiLSTM,
     loader: DataLoader,
@@ -52,9 +64,9 @@ def train_cnn_bilstm_epoch(
     model.train()
     running_loss = 0.0
     for X, y in loader:
-        X, y = X.to(device), y.to(device)
+        X, y = _move_inputs(X, device), y.to(device)
         optimizer.zero_grad()
-        preds = model(X)
+        preds = _forward(model, X)
         loss = criterion(preds, y)
         loss.backward()
         optimizer.step()
@@ -70,14 +82,16 @@ def evaluate_cnn_bilstm_loader(
     running_loss = 0.0
     with torch.no_grad():
         for X, y in loader:
-            X, y = X.to(device), y.to(device)
-            preds = model(X)
+            X, y = _move_inputs(X, device), y.to(device)
+            preds = _forward(model, X)
             loss = criterion(preds, y)
             running_loss += loss.item() * len(X)
             all_preds.append(preds.cpu().numpy())
             all_targets.append(y.cpu().numpy())
-    y_true = np.concatenate(all_targets)
-    y_pred = np.concatenate(all_preds)
+    model_y_true = np.concatenate(all_targets)
+    model_y_pred = np.concatenate(all_preds)
+    y_true = model_y_true
+    y_pred = model_y_pred
     persistence = None
     daylight = None
     capacity = None
@@ -98,6 +112,12 @@ def evaluate_cnn_bilstm_loader(
             region = context["region"].to_numpy()
         if "timestamp" in context:
             timestamp = context["timestamp"].to_numpy()
+        if "y_true_mwh" in context and "target_scale" in context:
+            y_true = context["y_true_mwh"].to_numpy(dtype=float)
+            y_pred = (
+                model_y_pred
+                * context["target_scale"].to_numpy(dtype=float)
+            )
     diagnostics = validation_diagnostics(
         y_true,
         y_pred,
@@ -126,6 +146,8 @@ def suggest_cnn_bilstm_config(
     trial: Trial,
     n_features: int,
     search_space: dict[str, object] | None = None,
+    *,
+    n_future_features: int = 0,
 ) -> CnnBiLstmNetworkConfig:
     search_space = search_space or {}
     return CnnBiLstmNetworkConfig(
@@ -181,6 +203,8 @@ def suggest_cnn_bilstm_config(
         readout=str(
             suggest_parameter(trial, "readout", search_space, _DEFAULT_READOUT_SEARCH)
         ),
+        n_future_features=n_future_features,
+        future_units=32,
     )
 
 
@@ -278,7 +302,12 @@ def optimize_cnn_bilstm(
         seed = (settings.seed if settings else 42) + trial.number
         np.random.seed(seed)
         torch.manual_seed(seed)
-        model_cfg = suggest_cnn_bilstm_config(trial, n_features, search_space)
+        model_cfg = suggest_cnn_bilstm_config(
+            trial,
+            n_features,
+            search_space,
+            n_future_features=loaders.n_future_features,
+        )
         model = build_cnn_bilstm_network(model_cfg, device=device)
         lr = float(
             suggest_parameter(
@@ -535,6 +564,8 @@ def train_with_best_trial(
         dense_units=best_params["dense_units"],
         dropout=best_params["dropout"],
         readout=best_params["readout"],
+        n_future_features=loaders.n_future_features,
+        future_units=32,
     )
 
     train_loader = loaders.train
