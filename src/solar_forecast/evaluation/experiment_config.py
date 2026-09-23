@@ -140,7 +140,13 @@ def build_candidate_configs(values: dict, horizon: int, run_dir: Path, *, projec
                         "source_contract": str(
                             future_weather.get(
                                 "source_contract",
-                                "solar-future-weather-forecast.v1",
+                                "solar-future-weather-forecast.v2",
+                            )
+                        ),
+                        "feature_profile": str(
+                            future_weather.get(
+                                "feature_profile",
+                                "aligned_core",
                             )
                         ),
                     }
