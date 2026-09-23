@@ -1,39 +1,125 @@
 {
-  "name": "optimized_solar_model_comparison",
-  "description": "동일 태양광 Gold·피처·시간분할에서 모델별 Validation-only Optuna를 허용하는 실전 비교",
+  "contract": "solar-optimized-experiment.v1",
+  "name": "historical_observed_solar_global_calendar_benchmark",
+  "description": "발전소마다 다른 비율 경계를 만들지 않고 모든 모델·발전소에 동일한 calendar cutoff를 적용합니다. 발전소별 실제 split 비율은 가용 이력 차이로 달라질 수 있으며, eligibility를 통과한 동일 시간 cohort에서 모델을 비교합니다.",
   "seed": 42,
-  "scope": {
-    "energy_source": "solar",
-    "feature_contract": "selected_v3_physics_aware_day_ahead",
-    "split": "global_train_validation_calibration_test_with_168h_purge",
-    "forecast_horizon_hours": 24
+  "input_dataset": "file/standardized/model_ready_parts",
+  "output_root": "artifacts/benchmarks",
+  "horizons_hours": [
+    1,
+    24,
+    72
+  ],
+  "optimization_scope": "configured_search_budget",
+  "minimum_common_coverage": 0.95,
+  "minimum_relative_improvement": 0.02,
+  "selection_gap_hours": 168,
+  "split": {
+    "train_end": "2024-06-30T23:00:00",
+    "validation_end": "2024-09-30T23:00:00",
+    "calibration_end": "2024-12-31T23:00:00",
+    "test_end": "2025-12-31T23:00:00",
+    "purge_gap_hours": 168
   },
-  "optimizer": {
-    "framework": "optuna_tpe_median_pruner",
-    "objective": "validation_mae",
-    "persistent_resume": true,
-    "calibration_usage": "none_during_model_selection",
-    "test_usage": "final_report_only"
+  "feature_sets": {
+    "observed_weather_history": {
+      "exclude": []
+    },
+    "history_calendar": {
+      "exclude": [
+        "temperature_c",
+        "precipitation_mm",
+        "sunshine_hours",
+        "solar_irradiance_mj_m2",
+        "wind_speed_mps",
+        "humidity_pct",
+        "total_cloud_cover_tenths",
+        "low_mid_cloud_cover_tenths"
+      ]
+    }
   },
-  "xgboost": {
-    "enabled": true,
-    "tree_method": "hist",
-    "early_stopping": true,
-    "max_total_trials": 30,
-    "timeout_seconds": 7200
+  "models": {
+    "xgboost": {
+      "config": "config/models/xgboost.json",
+      "feature_sets": [
+        "observed_weather_history",
+        "history_calendar"
+      ],
+      "max_trials_per_candidate": 15,
+      "timeout_seconds_per_candidate": 3600
+    },
+    "cnn_bilstm": {
+      "config": "config/models/cnn_bilstm.json",
+      "feature_sets": [
+        "observed_weather_history",
+        "history_calendar"
+      ],
+      "sequence_lengths": [
+        24,
+        168
+      ],
+      "max_trials_per_candidate": 5,
+      "timeout_seconds_per_candidate": 3600,
+      "training_overrides": {
+        "target_transform": "capacity_factor",
+        "capacity_column": "capacity_mw"
+      }
+    }
   },
-  "cnn_bilstm": {
-    "enabled": true,
-    "sequence_length": 168,
-    "lazy_windows": true,
-    "early_stopping": true,
-    "max_total_trials": 20,
-    "timeout_seconds": 14400
+  "selection_protocol": {
+    "base_candidates": "validation_only_common_rows",
+    "gate_fit": "calibration_early_half",
+    "champion_selection": "calibration_late_half_after_purge",
+    "test": "frozen_models_final_report_only",
+    "metric": "pooled_plant_hour_mae",
+    "hybrid_rule": "pooled_mae_improvement_at_least_2pct_and_plant_win_fraction_at_least_55pct",
+    "baseline": "generation_observed_at_forecast_origin",
+    "future_weather": "horizon_specific_archived_forecasts:24h_jma_msm_core_vs_components;72h_jma_gsm_meteorology_core",
+    "cnn_target": "capacity_factor_training_restored_to_mwh_for_selection_and_test"
   },
-  "evaluation": {
-    "levels": ["plant", "region", "national"],
-    "metrics": ["mae", "rmse", "r2", "capacity_normalized_mae"],
-    "weights": ["samples", "equal_plant"],
-    "hybrid_order": "compare_and_freeze_base_models_before_dynamic_gate_training"
+  "provenance": {
+    "data_origin": "quality_gated_official_generation_and_asos_observations",
+    "purpose": "employment_portfolio_historical_model_comparison",
+    "historical_checkpoint_baseline": "not_reproduced_by_this_experiment",
+    "split_status": "global_calendar_canonical_reaudit_required_on_current_local_gold",
+    "evaluation_status": "historical_development_evaluation_not_unseen_confirmation"
+  },
+  "split_policy": {
+    "mode": "global_calendar",
+    "same_boundaries_for_all_plants": true,
+    "per_plant_fraction_split_allowed": false,
+    "plant_specific_actual_ratios_may_differ": true,
+    "short_history_policy": "exclude_from_main_cohort_or_report_separately; never move that plant's Test window",
+    "boundary_change_policy": "if coverage is insufficient, revise one global versioned boundary set before training; never choose per-plant cutoffs or move boundaries after viewing Test performance",
+    "current_boundary_basis": "2026-09-17 coverage-audited calendar candidate promoted to canonical development-evaluation split; current local Gold must be re-audited before training"
+  },
+  "minimum_plant_win_fraction": 0.55,
+  "gate_min_group_samples": 48,
+  "future_weather": {
+    "enabled_horizons": [
+      24,
+      72
+    ],
+    "minimum_coverage": 0.98,
+    "source_contract": "solar-future-weather-forecast.v2",
+    "by_horizon": {
+      "24": {
+        "source": "file/forecast_weather/open_meteo_jma_msm_24h.csv.gz",
+        "feature_profiles": [
+          "aligned_core",
+          "aligned_core_plus_components"
+        ],
+        "source_model": "jma_msm",
+        "usable_from": "2022-07-03T00:00:00"
+      },
+      "72": {
+        "source": "file/forecast_weather/open_meteo_jma_gsm_72h.csv.gz",
+        "feature_profiles": [
+          "aligned_meteorology_core"
+        ],
+        "source_model": "jma_gsm",
+        "usable_from": "2018-01-01T00:00:00"
+      }
+    }
   }
 }

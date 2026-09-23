@@ -1,3 +1,4 @@
+"""남동발전 홈페이지 화면 조작과 공식 첨부파일 다운로드."""
 from __future__ import annotations
 
 import calendar
@@ -6,7 +7,7 @@ import os
 from pathlib import Path
 import time
 
-from .naming import build_solar_download_filename
+from solar_forecast.collectors.download_naming import build_solar_download_filename
 
 
 class KoenBrowserDownloader:

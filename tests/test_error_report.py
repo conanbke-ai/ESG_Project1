@@ -1,6 +1,6 @@
 import json
 
-from solar_forecast.infrastructure.error_report import write_error_report
+from solar_forecast.infrastructure.error_reporting import write_error_report
 
 
 def test_error_report_contains_stage_context_and_traceback(tmp_path):

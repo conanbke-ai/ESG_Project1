@@ -1,0 +1,117 @@
+"""PyTorch implementation of a CNN-BiLSTM regressor.
+
+The module isolates the model definition so it can be reused across
+training, evaluation, Optuna studies, and reinforcement-learning loops.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
+
+import torch
+import torch.nn as nn
+
+
+@dataclass
+class CnnBiLstmNetworkConfig:
+    """Configuration for the CNN-BiLSTM architecture."""
+
+    n_features: int
+    cnn_channels: int = 32
+    kernel_size: int = 3
+    lstm_hidden: int = 64
+    lstm_layers: int = 1
+    dense_units: int = 64
+    dropout: float = 0.1
+    # Missing fields in historical checkpoints retain their original forward
+    # semantics. New training explicitly selects final_hidden.
+    readout: str = "last_output"
+    n_future_features: int = 0
+    future_units: int = 32
+
+    def __post_init__(self) -> None:
+        if self.readout not in {"last_output", "final_hidden"}:
+            raise ValueError("readout must be last_output or final_hidden")
+        if self.n_future_features < 0:
+            raise ValueError("n_future_features cannot be negative")
+        if self.future_units < 1:
+            raise ValueError("future_units must be positive")
+
+
+class CNNBiLSTM(nn.Module):
+    """1D CNN followed by a bidirectional LSTM for sequence regression."""
+
+    def __init__(self, config: CnnBiLstmNetworkConfig):
+        super().__init__()
+        self.readout = config.readout
+        padding = config.kernel_size // 2
+        self.conv = nn.Sequential(
+            nn.Conv1d(
+                in_channels=config.n_features,
+                out_channels=config.cnn_channels,
+                kernel_size=config.kernel_size,
+                padding=padding,
+            ),
+            nn.ReLU(),
+            nn.BatchNorm1d(config.cnn_channels),
+            nn.Dropout(config.dropout),
+        )
+
+        self.lstm = nn.LSTM(
+            input_size=config.cnn_channels,
+            hidden_size=config.lstm_hidden,
+            num_layers=config.lstm_layers,
+            dropout=config.dropout if config.lstm_layers > 1 else 0.0,
+            bidirectional=True,
+            batch_first=True,
+        )
+
+        self.future_encoder = None
+        future_width = 0
+        if config.n_future_features:
+            self.future_encoder = nn.Sequential(
+                nn.Linear(config.n_future_features, config.future_units),
+                nn.ReLU(),
+                nn.Dropout(config.dropout),
+            )
+            future_width = config.future_units
+
+        self.head = nn.Sequential(
+            nn.Linear(config.lstm_hidden * 2 + future_width, config.dense_units),
+            nn.ReLU(),
+            nn.Dropout(config.dropout),
+            nn.Linear(config.dense_units, 1),
+        )
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        future: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        # x: (batch, seq_len, features)
+        x = x.transpose(1, 2)  # (batch, features, seq_len)
+        x = self.conv(x)
+        x = x.transpose(1, 2)  # (batch, seq_len, channels)
+        output, (hidden, _) = self.lstm(x)
+        if self.readout == "final_hidden":
+            # The top layer's final states summarize the entire input in both
+            # directions. output[:, -1] has only the reverse initial step.
+            summary = torch.cat((hidden[-2], hidden[-1]), dim=1)
+        else:
+            summary = output[:, -1]
+        if self.future_encoder is not None:
+            if future is None:
+                raise ValueError("Future covariates are required by this model")
+            summary = torch.cat((summary, self.future_encoder(future)), dim=1)
+        elif future is not None:
+            raise ValueError("Unexpected future covariates for this model")
+        return self.head(summary).squeeze(-1)
+
+
+def build_cnn_bilstm_network(config: CnnBiLstmNetworkConfig, device: Optional[torch.device] = None) -> CNNBiLSTM:
+    """Helper to build and place the model on a device."""
+
+    model = CNNBiLSTM(config)
+    if device is not None:
+        model = model.to(device)
+    return model
