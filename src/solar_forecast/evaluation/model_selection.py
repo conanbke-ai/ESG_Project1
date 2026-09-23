@@ -137,15 +137,26 @@ def _write_csv_atomic(frame: pd.DataFrame, path: Path, *, compression: str | Non
 class BenchmarkModelSelector:
     """Fit the blend before selection, freeze the champion before reading Test errors."""
 
-    def __init__(self, output_dir: Path, minimum_relative_improvement: float = 0.0,
-                 selection_gap_hours: int = 0):
+    def __init__(
+        self,
+        output_dir: Path,
+        minimum_relative_improvement: float = 0.0,
+        selection_gap_hours: int = 0,
+        minimum_plant_win_fraction: float = 0.0,
+    ):
         if not np.isfinite(minimum_relative_improvement) or not 0 <= minimum_relative_improvement < 1:
             raise ValueError("minimum_relative_improvement must be finite and in [0, 1)")
         if isinstance(selection_gap_hours, bool) or int(selection_gap_hours) != selection_gap_hours or selection_gap_hours < 0:
             raise ValueError("selection_gap_hours must be a nonnegative integer")
+        if (
+            not np.isfinite(minimum_plant_win_fraction)
+            or not 0 <= minimum_plant_win_fraction <= 1
+        ):
+            raise ValueError("minimum_plant_win_fraction must be finite and in [0, 1]")
         self.output_dir = Path(output_dir)
         self.minimum_relative_improvement = float(minimum_relative_improvement)
         self.selection_gap_hours = int(selection_gap_hours)
+        self.minimum_plant_win_fraction = float(minimum_plant_win_fraction)
 
     def run(self, calibration: pd.DataFrame, test: pd.DataFrame, *,
             evaluation_contract: dict[str, Any], provenance: dict[str, Any]) -> dict[str, Any]:
@@ -191,12 +202,42 @@ class BenchmarkModelSelector:
         hybrid_mae = selection_metrics["hybrid"]["pooled"]["mae"]
         improvement = (base_mae - hybrid_mae) / base_mae if base_mae > 0 else None
         threshold_mae = base_mae * (1 - self.minimum_relative_improvement)
-        selected_model = "hybrid" if hybrid_mae < threshold_mae else best_base
-        reason = (
-            "Hybrid strictly improves held-out selection MAE beyond the required margin."
-            if selected_model == "hybrid" else
-            "The best base model is retained because Hybrid does not strictly improve selection MAE beyond the required margin."
+
+        base_by_plant = {
+            row["plant_id"]: float(row["mae"])
+            for row in selection_metrics[best_base]["plant"]
+        }
+        hybrid_by_plant = {
+            row["plant_id"]: float(row["mae"])
+            for row in selection_metrics["hybrid"]["plant"]
+        }
+        common_plants = sorted(set(base_by_plant) & set(hybrid_by_plant))
+        if not common_plants:
+            raise ValueError("Hybrid selection has no common plant-level metrics")
+        plant_wins = sum(
+            hybrid_by_plant[plant_id] < base_by_plant[plant_id]
+            for plant_id in common_plants
         )
+        plant_win_fraction = plant_wins / len(common_plants)
+
+        pooled_pass = hybrid_mae < threshold_mae
+        plant_pass = plant_win_fraction >= self.minimum_plant_win_fraction
+        selected_model = "hybrid" if pooled_pass and plant_pass else best_base
+        if selected_model == "hybrid":
+            reason = (
+                "Hybrid improves held-out pooled MAE beyond the required margin "
+                "and passes the plant-level breadth guardrail."
+            )
+        elif not pooled_pass:
+            reason = (
+                "The best base model is retained because Hybrid does not improve "
+                "held-out pooled MAE beyond the required margin."
+            )
+        else:
+            reason = (
+                "The best base model is retained because Hybrid improvement is "
+                "too concentrated and fails the plant-level breadth guardrail."
+            )
         # Test is consulted only after gate weights and the decision are frozen.
         test_predictions = _predict_gate(gate, test)
         test_predictions["selected_model"] = selected_model
@@ -225,7 +266,14 @@ class BenchmarkModelSelector:
             "selection_rule": {
                 "metric": "pooled_mae", "best_base_model": best_base,
                 "minimum_relative_improvement": self.minimum_relative_improvement,
-                "hybrid_relative_improvement": improvement, "ties_favor_base": True,
+                "hybrid_relative_improvement": improvement,
+                "minimum_plant_win_fraction": self.minimum_plant_win_fraction,
+                "hybrid_plant_wins": plant_wins,
+                "hybrid_plant_total": len(common_plants),
+                "hybrid_plant_win_fraction": plant_win_fraction,
+                "pooled_improvement_pass": pooled_pass,
+                "plant_breadth_pass": plant_pass,
+                "ties_favor_base": True,
                 "test_used_for_selection": False,
             },
             "metric_scope": {"pooled": "aligned_plant_hour_rows",
