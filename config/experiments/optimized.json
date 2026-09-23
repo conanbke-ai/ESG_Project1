@@ -59,7 +59,11 @@
         168
       ],
       "max_trials_per_candidate": 5,
-      "timeout_seconds_per_candidate": 3600
+      "timeout_seconds_per_candidate": 3600,
+      "training_overrides": {
+        "target_transform": "capacity_factor",
+        "capacity_column": "capacity_mw"
+      }
     }
   },
   "selection_protocol": {
@@ -69,7 +73,9 @@
     "test": "frozen_models_final_report_only",
     "metric": "pooled_plant_hour_mae",
     "hybrid_rule": "pooled_mae_improvement_at_least_2pct_and_plant_win_fraction_at_least_55pct",
-    "baseline": "generation_observed_at_forecast_origin"
+    "baseline": "generation_observed_at_forecast_origin",
+    "future_weather": "archived_fixed_lead_previous_runs_only_for_24h_72h",
+    "cnn_target": "capacity_factor_training_restored_to_mwh_for_selection_and_test"
   },
   "provenance": {
     "data_origin": "quality_gated_official_generation_and_asos_observations",
@@ -88,5 +94,14 @@
     "current_boundary_basis": "2026-09-17 coverage-audited calendar candidate promoted to canonical development-evaluation split; current local Gold must be re-audited before training"
   },
   "minimum_plant_win_fraction": 0.55,
-  "gate_min_group_samples": 48
+  "gate_min_group_samples": 48,
+  "future_weather": {
+    "enabled_horizons": [
+      24,
+      72
+    ],
+    "source_template": "file/forecast_weather/open_meteo_jma_msm_{horizon}h.csv.gz",
+    "minimum_coverage": 0.98,
+    "source_contract": "solar-future-weather-forecast.v1"
+  }
 }
