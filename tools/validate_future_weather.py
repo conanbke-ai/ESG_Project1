@@ -36,8 +36,14 @@ RANGES = {
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--config",
+        default="config/experiments/optimized.json",
+        help="Experiment config containing horizon-specific future-weather sources.",
+    )
+    parser.add_argument(
         "--root",
         default="file/forecast_weather",
+        help="Fallback root for relative archive paths.",
     )
     parser.add_argument(
         "--output",
@@ -117,22 +123,57 @@ def _all_missing_breakdown(
     }
 
 
-def validate(root: Path, *, minimum_coverage: float = 0.98) -> dict:
+def validate(
+    config_path: Path,
+    *,
+    root: Path,
+    minimum_coverage: float = 0.98,
+) -> dict:
+    values = json.loads(config_path.read_text(encoding="utf-8"))
+    future_config = values.get("future_weather") or {}
+    enabled_horizons = list(future_config.get("enabled_horizons", []))
+    by_horizon = future_config.get("by_horizon") or {}
+    if not enabled_horizons:
+        raise ValueError("Experiment config has no future-weather horizons")
+
     reports = {}
     key_sets = {}
-    for horizon in (24, 72):
-        path = root / f"open_meteo_jma_msm_{horizon}h.csv.gz"
-        manifest = _manifest(path)
-        frame = read_future_weather(
-            path,
-            horizon_hours=horizon,
-            feature_profile="aligned_core_plus_components",
-        )
-        core = future_weather_feature_columns("aligned_core")
-        extended = future_weather_feature_columns(
+    for horizon in enabled_horizons:
+        spec = by_horizon.get(str(horizon), by_horizon.get(horizon))
+        if not isinstance(spec, dict):
+            raise ValueError(
+                f"Missing future-weather configuration for {horizon}h"
+            )
+        source = Path(str(spec["source"]))
+        if not source.is_absolute():
+            source = PROJECT_ROOT / source
+        manifest = _manifest(source)
+        profiles = tuple(map(str, spec.get("feature_profiles", [])))
+        if not profiles:
+            raise ValueError(f"{horizon}h has no feature profiles")
+
+        broadest_profile = (
             "aligned_core_plus_components"
+            if "aligned_core_plus_components" in profiles
+            else profiles[-1]
         )
-        feature_stats = _feature_stats(frame, extended)
+        frame = read_future_weather(
+            source,
+            horizon_hours=int(horizon),
+            feature_profile=broadest_profile,
+        )
+        usable_from = spec.get("usable_from")
+        if usable_from:
+            usable_timestamp = pd.Timestamp(str(usable_from))
+            cohort = frame.loc[frame["timestamp"].ge(usable_timestamp)].copy()
+        else:
+            cohort = frame.copy()
+        if cohort.empty:
+            raise ValueError(f"{horizon}h usable cohort is empty")
+
+        profile_reports = {}
+        all_selected = future_weather_feature_columns(broadest_profile)
+        feature_stats = _feature_stats(cohort, all_selected)
         invalid_features = [
             name
             for name, stats in feature_stats.items()
@@ -143,40 +184,43 @@ def validate(root: Path, *, minimum_coverage: float = 0.98) -> dict:
             for name, stats in feature_stats.items()
             if stats["observed_rows"] == 0
         ]
-        core_missing = _all_missing_breakdown(frame, core)
-        extended_missing = _all_missing_breakdown(frame, extended)
-        core_coverage = 1.0 - float(core_missing["fraction"])
-        extended_coverage = 1.0 - float(extended_missing["fraction"])
-        keys = pd.MultiIndex.from_frame(frame[["plant_id", "timestamp"]])
-        key_sets[horizon] = keys
+        for profile in profiles:
+            features = future_weather_feature_columns(profile)
+            missing = _all_missing_breakdown(cohort, features)
+            coverage = 1.0 - float(missing["fraction"])
+            profile_reports[profile] = {
+                "features": list(features),
+                "all_missing": missing,
+                "coverage": coverage,
+                "minimum_required_coverage": float(minimum_coverage),
+                "coverage_passed": coverage >= minimum_coverage,
+            }
+
+        keys = pd.MultiIndex.from_frame(cohort[["plant_id", "timestamp"]])
+        key_sets[int(horizon)] = keys
         reports[str(horizon)] = {
+            "source": str(source),
+            "source_model": spec.get("source_model"),
             "manifest_contract": manifest["contract"],
             "normalization_contract": manifest.get("normalization_contract"),
-            "rows": int(len(frame)),
-            "plants": int(frame["plant_id"].nunique()),
-            "start": frame["timestamp"].min().isoformat(),
-            "end": frame["timestamp"].max().isoformat(),
+            "rows_total": int(len(frame)),
+            "rows_usable": int(len(cohort)),
+            "plants": int(cohort["plant_id"].nunique()),
+            "start_total": frame["timestamp"].min().isoformat(),
+            "end_total": frame["timestamp"].max().isoformat(),
+            "usable_from": usable_from,
+            "start_usable": cohort["timestamp"].min().isoformat(),
+            "end_usable": cohort["timestamp"].max().isoformat(),
             "coordinate_sources": (
-                frame["coordinate_source"].value_counts().sort_index().to_dict()
+                cohort["coordinate_source"].value_counts().sort_index().to_dict()
             ),
-            "aligned_core_features": list(core),
-            "extended_features": list(extended),
+            "profiles": profile_reports,
             "feature_stats": feature_stats,
             "invalid_features": invalid_features,
             "entirely_missing_features": entirely_missing_features,
-            "aligned_core_all_missing": core_missing,
-            "extended_all_missing": extended_missing,
-            "aligned_core_coverage": core_coverage,
-            "extended_coverage": extended_coverage,
-            "minimum_required_coverage": float(minimum_coverage),
-            "coverage_passed": (
-                core_coverage >= minimum_coverage
-                and extended_coverage >= minimum_coverage
-            ),
             "fixed_lead_verified": True,
         }
 
-    same_keys = key_sets[24].equals(key_sets[72])
     invalid = {
         horizon: report["invalid_features"]
         for horizon, report in reports.items()
@@ -189,37 +233,49 @@ def validate(root: Path, *, minimum_coverage: float = 0.98) -> dict:
     }
     coverage_failures = {
         horizon: {
-            "aligned_core_coverage": report["aligned_core_coverage"],
-            "extended_coverage": report["extended_coverage"],
+            profile: details["coverage"]
+            for profile, details in report["profiles"].items()
+            if not details["coverage_passed"]
         }
         for horizon, report in reports.items()
-        if not report["coverage_passed"]
+        if any(
+            not details["coverage_passed"]
+            for details in report["profiles"].values()
+        )
     }
-    passed = (
-        same_keys
-        and not invalid
-        and not entirely_missing
-        and not coverage_failures
-    )
+    coverage_failures = {
+        horizon: value
+        for horizon, value in coverage_failures.items()
+        if value
+    }
+    passed = not invalid and not entirely_missing and not coverage_failures
     report = {
-        "contract": "solar-future-weather-preflight.v1",
+        "contract": "solar-future-weather-preflight.v2",
         "status": "PASS" if passed else "FAIL",
         "future_weather_contract": FUTURE_WEATHER_CONTRACT,
+        "experiment_config": str(config_path),
         "horizons": reports,
-        "same_plant_timestamp_keys_24h_72h": same_keys,
         "invalid_features": invalid,
         "entirely_missing_features": entirely_missing,
         "coverage_failures": coverage_failures,
         "minimum_required_coverage": float(minimum_coverage),
+        "cross_horizon_key_equivalence_required": False,
+        "cross_horizon_note": (
+            "Different forecast horizons may use different source models and "
+            "usable periods; equality is required within each model comparison, "
+            "not between 24h and 72h."
+        ),
         "historical_alignment": {
             "temperature": "Celsius_to_Celsius",
             "humidity": "percent_to_percent",
             "precipitation": "mm_to_mm",
             "total_cloud_cover": "forecast_percent_divided_by_10_to_ASOS_tenths",
             "wind_speed": "mps_to_mps",
-            "solar_irradiance": "forecast_hourly_mean_W_m2_times_0.0036_to_MJ_m2",
-            "sunshine": "forecast_seconds_divided_by_3600_to_hours",
-            "dni_dhi": "ablation_only_no_direct_current_ASOS_counterpart",
+            "solar_irradiance": (
+                "MSM-only forecast hourly mean W_m2 times 0.0036 to MJ_m2"
+            ),
+            "sunshine": "MSM-only forecast seconds divided by 3600 to hours",
+            "dni_dhi": "MSM ablation only; no direct current ASOS counterpart",
         },
     }
     return report
@@ -227,12 +283,16 @@ def validate(root: Path, *, minimum_coverage: float = 0.98) -> dict:
 
 def main() -> None:
     args = _parser().parse_args()
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = PROJECT_ROOT / config_path
     root = Path(args.root)
     output = Path(args.output)
     if not 0 < args.minimum_coverage <= 1:
         raise ValueError("--minimum-coverage must be in (0, 1]")
     report = validate(
-        root,
+        config_path,
+        root=root,
         minimum_coverage=float(args.minimum_coverage),
     )
     output.parent.mkdir(parents=True, exist_ok=True)
