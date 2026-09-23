@@ -105,6 +105,18 @@ class CnnBiLstmTrainer:
             legacy_task="previous_row_sequence_estimation",
         )
         historical = task_contract["task"] == HISTORICAL_FORECAST_TASK
+        if future_weather_evidence is not None:
+            task_contract = {
+                **task_contract,
+                "information_set": (
+                    "observed_measurements_through_forecast_origin_plus_"
+                    "archived_fixed_lead_weather_forecast"
+                ),
+                "future_weather_contract": future_weather_evidence["contract"],
+                "future_weather_spatial_contract": future_weather_evidence[
+                    "spatial_contract"
+                ],
+            }
         requested_length = int(config.values.get("sequence_length", 168))
         calendar_split, smoke_override = calendar_split_for_execution(config.values, smoke=smoke)
         sequence = SequenceConfig(
