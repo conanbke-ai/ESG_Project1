@@ -21,7 +21,7 @@ from solar_forecast.datasets.numeric_preprocessor import (
 )
 from solar_forecast.config_loader import ModelJobConfig, PROJECT_ROOT
 from solar_forecast.features.future_weather import (
-    FUTURE_WEATHER_FEATURES,
+    future_weather_feature_columns,
     attach_future_weather_to_observations,
     read_future_weather,
 )
@@ -97,8 +97,9 @@ class CnnBiLstmTrainer:
                 minimum_coverage=float(
                     future_weather_config.get("minimum_coverage", 0.98)
                 ),
+                feature_columns=selected_future_features,
             )
-            future_feature_columns = tuple(FUTURE_WEATHER_FEATURES)
+            future_feature_columns = tuple(selected_future_features)
         task_contract = forecast_evaluation_contract(
             config.values.get("prediction_task"),
             config.values.get("forecast_horizon_hours"),
