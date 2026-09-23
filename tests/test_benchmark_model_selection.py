@@ -40,8 +40,22 @@ class BenchmarkModelSelectionTests(unittest.TestCase):
         self.contract = {"horizon_hours": 3, "target": "generation_mwh", "information_set": "observed_until_origin"}
         self.provenance = {"dataset_fingerprint": "fixture-only-not-a-performance-result"}
 
-    def run_selector(self, calibration=None, test=None, *, name="run", margin=0.0):
-        return BenchmarkModelSelector(self.root / name, margin, selection_gap_hours=3).run(
+    def run_selector(
+        self,
+        calibration=None,
+        test=None,
+        *,
+        name="run",
+        margin=0.0,
+        plant_win_fraction=0.0,
+    ):
+        return BenchmarkModelSelector(
+            self.root / name,
+            margin,
+            selection_gap_hours=3,
+            minimum_plant_win_fraction=plant_win_fraction,
+            gate_min_group_samples=8,
+        ).run(
             self.calibration if calibration is None else calibration,
             self.test if test is None else test,
             evaluation_contract=self.contract, provenance=self.provenance,
@@ -100,6 +114,51 @@ class BenchmarkModelSelectionTests(unittest.TestCase):
         result = self.run_selector(calibration=frame, margin=0.9)
         self.assertEqual(result["selected_model"], "cnn_bilstm")
         self.assertLess(result["selection_rule"]["hybrid_relative_improvement"], 0.9)
+
+    def test_hybrid_must_improve_across_enough_plants(self):
+        calibration = []
+        test = []
+        # One high-volume plant makes Hybrid look good in pooled MAE, while
+        # three smaller plants prefer XGBoost. The breadth guardrail must keep
+        # the base model without consulting Test.
+        for index, scale in enumerate((100.0, 1.0, 1.0, 1.0)):
+            plant_id = f"operator:p{index}"
+            cal = predictions("2025-01-01").assign(
+                plant_id=plant_id,
+                plant=f"발전소{index}",
+            )
+            tst = predictions("2025-01-05", periods=12).assign(
+                plant_id=plant_id,
+                plant=f"발전소{index}",
+            )
+            if index == 0:
+                cal["y_true"] *= scale
+                cal["xgb_pred"] = cal.y_true + 10.0
+                cal["cnn_pred"] = cal.y_true - 10.0
+                tst["y_true"] *= scale
+                tst["xgb_pred"] = tst.y_true + 10.0
+                tst["cnn_pred"] = tst.y_true - 10.0
+            else:
+                cal["xgb_pred"] = cal.y_true + 0.05
+                cal["cnn_pred"] = cal.y_true + 1.0
+                tst["xgb_pred"] = tst.y_true + 0.05
+                tst["cnn_pred"] = tst.y_true + 1.0
+            calibration.append(cal)
+            test.append(tst)
+
+        result = self.run_selector(
+            calibration=pd.concat(calibration, ignore_index=True),
+            test=pd.concat(test, ignore_index=True),
+            name="breadth-guardrail",
+            plant_win_fraction=0.55,
+        )
+        self.assertEqual(result["selected_model"], "xgboost")
+        self.assertFalse(result["selection_rule"]["plant_breadth_pass"])
+        self.assertLess(
+            result["selection_rule"]["hybrid_plant_win_fraction"],
+            0.55,
+        )
+        self.assertFalse(result["selection_rule"]["test_used_for_selection"])
 
     def test_group_metrics_sum_generation_and_do_not_clip_negative_r2(self):
         calibration2 = self.calibration.assign(plant_id="operator:p2", plant="발전소2")
