@@ -1,0 +1,83 @@
+{
+  "contract": "solar-optimized-experiment.v1",
+  "name": "observed_calendar_reference_20260917",
+  "description": "2026-09-17 coverage audit에 사용한 날짜 고정 reference. 현재 canonical 실행 설정은 config/experiments/optimized.json이며, 이 파일은 과거 감사 근거 보존용으로만 유지합니다.",
+  "seed": 42,
+  "input_dataset": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+  "output_root": "artifacts/benchmarks",
+  "horizons_hours": [
+    1,
+    24,
+    72
+  ],
+  "optimization_scope": "configured_search_budget",
+  "minimum_common_coverage": 0.95,
+  "minimum_relative_improvement": 0,
+  "selection_gap_hours": 168,
+  "split": {
+    "train_end": "2024-06-30T23:00:00",
+    "validation_end": "2024-09-30T23:00:00",
+    "calibration_end": "2024-12-31T23:00:00",
+    "test_end": "2025-12-31T23:00:00",
+    "purge_gap_hours": 168
+  },
+  "feature_sets": {
+    "observed_weather_history": {
+      "exclude": []
+    },
+    "history_calendar": {
+      "exclude": [
+        "temperature_c",
+        "precipitation_mm",
+        "sunshine_hours",
+        "solar_irradiance_mj_m2",
+        "wind_speed_mps",
+        "humidity_pct",
+        "total_cloud_cover_tenths",
+        "low_mid_cloud_cover_tenths"
+      ]
+    }
+  },
+  "models": {
+    "xgboost": {
+      "config": "config/models/xgboost.json",
+      "feature_sets": [
+        "observed_weather_history",
+        "history_calendar"
+      ],
+      "max_trials_per_candidate": 15,
+      "timeout_seconds_per_candidate": 3600
+    },
+    "cnn_bilstm": {
+      "config": "config/models/cnn_bilstm.json",
+      "feature_sets": [
+        "observed_weather_history",
+        "history_calendar"
+      ],
+      "sequence_lengths": [
+        24,
+        168
+      ],
+      "max_trials_per_candidate": 5,
+      "timeout_seconds_per_candidate": 3600
+    }
+  },
+  "selection_protocol": {
+    "base_candidates": "validation_only_common_rows",
+    "gate_fit": "calibration_early_half",
+    "champion_selection": "calibration_late_half_after_purge",
+    "test": "frozen_models_final_report_only",
+    "metric": "pooled_plant_hour_mae",
+    "hybrid_rule": "strict_improvement_over_best_base",
+    "baseline": "generation_observed_at_forecast_origin"
+  },
+  "provenance": {
+    "data_origin": "quality_gated_official_generation_and_asos_observations",
+    "purpose": "employment_portfolio_historical_model_comparison",
+    "historical_checkpoint_baseline": "not_reproduced_by_this_experiment",
+    "split_status": "coverage_audited_candidate_not_accuracy_selected",
+    "evaluation_status": "historical_development_evaluation_not_unseen_confirmation",
+    "reference_only": true,
+    "superseded_by": "config/experiments/optimized.json"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "mae_mwh": 0.26473666773260146,
+  "rmse_mwh": 1.6071925423720648,
+  "r2": 0.8568682628855839,
+  "bias_mwh": 0.00019917377296122636,
+  "rows": 38760,
+  "selection_objective": "mae_mwh",
+  "daylight_mae_mwh": 0.4759681952029493,
+  "daylight_rows": 21275,
+  "persistence_mae_mwh": 0.254651148138341,
+  "persistence_skill_pct": -3.9605239041692553
+}

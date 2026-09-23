@@ -1,0 +1,30 @@
+{
+  "study_name": "historical_cnn_bilstm_1h_observed_weather_history_lookback_168h_29008b8077ee_4997282ef729",
+  "storage_path": "C:\\ESG_Project1\\artifacts\\optimization\\solar_models.db",
+  "direction": "minimize",
+  "selection_data": "validation_only",
+  "objective_metric": "validation_mae",
+  "max_total_trials": 5,
+  "heartbeat_interval_seconds": 60,
+  "grace_period_seconds": 180,
+  "max_failed_trial_retries": 1,
+  "existing_finished_trials": 5,
+  "executed_trials": 0,
+  "finished_trials": 5,
+  "completed_trials": 5,
+  "pruned_trials": 0,
+  "best_trial_number": 4,
+  "best_validation_mae": 0.19362202286720276,
+  "best_params": {
+    "cnn_channels": 49,
+    "kernel_size": 5,
+    "lstm_hidden": 226,
+    "lstm_layers": 2,
+    "dense_units": 110,
+    "dropout": 0.32656227050693504,
+    "readout": "last_output",
+    "lr": 0.00011662890273931399,
+    "weight_decay": 2.0013420622879973e-06
+  },
+  "test_usage": "none"
+}

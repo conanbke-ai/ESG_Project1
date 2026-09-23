@@ -1,0 +1,19 @@
+{
+  "contract": "solar-training-run-manifest.v1",
+  "schema_version": 1,
+  "status": "failed",
+  "model": "xgboost",
+  "run_id": "20260921_165943_049216",
+  "updated_at_utc": "2026-09-21T07:59:43.052942+00:00",
+  "details": {
+    "error": "Another training job is active: {\"pid\": 30044, \"model\": \"cnn_bilstm\"}",
+    "run_context": {
+      "execution_mode": "full",
+      "energy_source": "solar",
+      "target": "generation_mwh",
+      "target_unit": "MWh",
+      "horizon_hours": 1,
+      "evaluation_protocol": "historical_observation_rolling_origin"
+    }
+  }
+}

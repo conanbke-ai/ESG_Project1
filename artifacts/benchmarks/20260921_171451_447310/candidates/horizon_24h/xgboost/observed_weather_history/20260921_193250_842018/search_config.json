@@ -1,0 +1,145 @@
+{
+  "model": "xgboost",
+  "profile": "optimized",
+  "seed": 42,
+  "input_dataset": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+  "target_column": "generation_mwh",
+  "energy_source_filter": "solar",
+  "feature_columns": [
+    "temperature_c",
+    "precipitation_mm",
+    "sunshine_hours",
+    "solar_irradiance_mj_m2",
+    "wind_speed_mps",
+    "humidity_pct",
+    "total_cloud_cover_tenths",
+    "low_mid_cloud_cover_tenths",
+    "hour",
+    "dayofweek",
+    "month",
+    "hour_sin",
+    "hour_cos",
+    "dayofyear_sin",
+    "dayofyear_cos",
+    "generation_lag_24h_mwh",
+    "generation_lag_168h_mwh",
+    "generation_rolling_7d_mean_mwh",
+    "capacity_mw",
+    "tilt_deg",
+    "station_latitude",
+    "station_longitude",
+    "station_elevation_m",
+    "solar_elevation_sin",
+    "clear_sky_irradiance_proxy",
+    "is_daylight"
+  ],
+  "output_root": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_171451_447310\\candidates\\horizon_24h\\xgboost\\observed_weather_history",
+  "prediction_root": "artifacts/predictions/xgboost",
+  "forecast_horizon_hours": 24,
+  "feature_contract": "historical_origin_v1:observed_weather_history",
+  "quality_filter_column": "quality_train_eligible",
+  "validation_fraction": 0.15,
+  "calibration_fraction": 0.1,
+  "test_fraction": 0.15,
+  "purge_gap_hours": 168,
+  "evaluation_protocol": "historical_observation_rolling_origin",
+  "missing_value_policy": "xgboost_native_nan_learned_default_direction",
+  "csv_chunk_rows": 100000,
+  "memory_limit_mb": 1536,
+  "numeric_dtype": "float32",
+  "optimizer": {
+    "enabled": true,
+    "study_name": "historical_xgboost_24h_observed_weather_history",
+    "storage_path": "artifacts/optimization/solar_models.db",
+    "objective_metric": "validation_mae",
+    "max_trials": 15,
+    "timeout_seconds": 3600,
+    "startup_trials": 5,
+    "pruner_startup_trials": 5,
+    "pruner_warmup_steps": 30,
+    "heartbeat_interval_seconds": 60,
+    "grace_period_seconds": 180,
+    "max_failed_trial_retries": 1,
+    "trial_max_estimators": 1500,
+    "early_stopping_rounds": 50,
+    "tuning_train_max_rows": 750000,
+    "tuning_validation_max_rows": 250000,
+    "search_space": {
+      "max_depth": {
+        "type": "int",
+        "low": 3,
+        "high": 12
+      },
+      "learning_rate": {
+        "type": "float",
+        "low": 0.01,
+        "high": 0.2,
+        "log": true
+      },
+      "min_child_weight": {
+        "type": "float",
+        "low": 1.0,
+        "high": 32.0,
+        "log": true
+      },
+      "subsample": {
+        "type": "float",
+        "low": 0.6,
+        "high": 1.0
+      },
+      "colsample_bytree": {
+        "type": "float",
+        "low": 0.6,
+        "high": 1.0
+      },
+      "reg_alpha": {
+        "type": "float",
+        "low": 1e-08,
+        "high": 10.0,
+        "log": true
+      },
+      "reg_lambda": {
+        "type": "float",
+        "low": 0.001,
+        "high": 100.0,
+        "log": true
+      },
+      "gamma": {
+        "type": "float",
+        "low": 1e-08,
+        "high": 5.0,
+        "log": true
+      },
+      "max_bin": {
+        "type": "categorical",
+        "choices": [
+          128,
+          256,
+          512
+        ]
+      }
+    }
+  },
+  "n_jobs": 4,
+  "max_bin": 256,
+  "early_stopping_rounds": 10,
+  "n_estimators": 500,
+  "max_depth": 8,
+  "learning_rate": 0.05,
+  "subsample": 0.9,
+  "colsample_bytree": 0.9,
+  "checkpoint": {
+    "enabled": true,
+    "resume": true,
+    "root": "artifacts/checkpoints",
+    "xgboost_every_rounds": 50,
+    "cnn_every_epochs": 1
+  },
+  "prediction_task": "historical_forecast",
+  "train_end": "2024-06-30T23:00:00",
+  "validation_end": "2024-09-30T23:00:00",
+  "calibration_end": "2024-12-31T23:00:00",
+  "test_end": "2025-12-31T23:00:00",
+  "benchmark_candidate_id": "observed_weather_history",
+  "checkpoint_identity_contract": "solar-benchmark-training-identity.v1"
+}

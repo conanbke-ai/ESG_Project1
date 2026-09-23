@@ -1,0 +1,22 @@
+{
+  "loss": 4.123897645489834,
+  "mae": 0.36462177964999976,
+  "rmse": 2.030738213497706,
+  "r2": 0.8143511164548759,
+  "bias": 0.02253137664401531,
+  "persistence_mae": 0.34742144101378186,
+  "persistence_skill_pct": -4.950856972450235,
+  "daylight_mae": 0.6731520445098089,
+  "diagnostics": {
+    "mae_mwh": 0.36462177964999976,
+    "rmse_mwh": 2.030738213497706,
+    "r2": 0.8143511164548759,
+    "bias_mwh": 0.02253137664401531,
+    "rows": 105336,
+    "selection_objective": "mae_mwh",
+    "daylight_mae_mwh": 0.6731520445098089,
+    "daylight_rows": 50977,
+    "persistence_mae_mwh": 0.34742144101378186,
+    "persistence_skill_pct": -4.950856972450235
+  }
+}

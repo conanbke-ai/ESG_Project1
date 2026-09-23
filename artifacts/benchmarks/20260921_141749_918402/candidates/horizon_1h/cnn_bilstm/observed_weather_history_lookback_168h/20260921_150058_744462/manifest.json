@@ -1,0 +1,18 @@
+{
+  "contract": "solar-training-run-manifest.v1",
+  "schema_version": 1,
+  "status": "running",
+  "model": "cnn_bilstm",
+  "run_id": "20260921_150058_744462",
+  "updated_at_utc": "2026-09-21T06:00:58.744509+00:00",
+  "details": {
+    "run_context": {
+      "execution_mode": "full",
+      "energy_source": "solar",
+      "target": "generation_mwh",
+      "target_unit": "MWh",
+      "horizon_hours": 1,
+      "evaluation_protocol": "historical_observation_rolling_origin"
+    }
+  }
+}

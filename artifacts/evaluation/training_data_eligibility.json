@@ -1,0 +1,5196 @@
+{
+  "contract": "solar-training-data-eligibility.v1",
+  "selection_stage": "evidence_first_before_final_thresholds",
+  "fixed_start_year_used": false,
+  "weather_columns": [
+    "temperature_c",
+    "precipitation_mm",
+    "sunshine_hours",
+    "solar_irradiance_mj_m2",
+    "wind_speed_mps",
+    "humidity_pct",
+    "total_cloud_cover_tenths",
+    "low_mid_cloud_cover_tenths"
+  ],
+  "boundaries": {
+    "train_end": "2022-05-27T03:00:00",
+    "validation_end": "2023-10-02T05:00:00",
+    "calibration_end": "2024-08-25T21:00:00",
+    "gap_hours": 168
+  },
+  "split_mode": "fraction",
+  "population": {
+    "input_rows": 701011,
+    "quality_eligible_target_rows": 671731,
+    "plants": 21,
+    "candidate_plants": 15,
+    "structurally_rejected_plants": 6
+  },
+  "plants": [
+    {
+      "plant_id": "ewp:광양항광양냉장태양광",
+      "status": "STRUCTURAL_REJECT",
+      "hard_reject_reasons": [
+        "empty_overlap_splits:train"
+      ],
+      "target_continuity": {
+        "start": "2022-06-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 27024,
+        "expected_hourly_rows": 27024,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 27024,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-06-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 27024,
+        "expected_hourly_rows": 27024,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 27024,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 27014,
+          "coverage": 0.9996299585553582
+        },
+        "precipitation_mm": {
+          "observed_rows": 27019,
+          "coverage": 0.9998149792776792
+        },
+        "sunshine_hours": {
+          "observed_rows": 27019,
+          "coverage": 0.9998149792776792
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 27019,
+          "coverage": 0.9998149792776792
+        },
+        "wind_speed_mps": {
+          "observed_rows": 27011,
+          "coverage": 0.9995189461219657
+        },
+        "humidity_pct": {
+          "observed_rows": 27019,
+          "coverage": 0.9998149792776792
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 27015,
+          "coverage": 0.9996669626998224
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 26977,
+          "coverage": 0.9982608052101836
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "ewp:당진자재창고태양광",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28488,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 28488,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28488,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 28488,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 28488,
+          "coverage": 1.0
+        },
+        "precipitation_mm": {
+          "observed_rows": 28488,
+          "coverage": 1.0
+        },
+        "sunshine_hours": {
+          "observed_rows": 28487,
+          "coverage": 0.999964897500702
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 28487,
+          "coverage": 0.999964897500702
+        },
+        "wind_speed_mps": {
+          "observed_rows": 28488,
+          "coverage": 1.0
+        },
+        "humidity_pct": {
+          "observed_rows": 28471,
+          "coverage": 0.9994032575119348
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 28469,
+          "coverage": 0.9993330525133389
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 23303,
+          "coverage": 0.8179935411401292
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 1348,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 1348,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "ewp:당진태양광",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28368,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 0.995787700084246,
+        "longest_strict_run_hours": 22968,
+        "gap_count_gt_1h": 2,
+        "max_gap_hours": 97.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28368,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 0.995787700084246,
+        "longest_strict_run_hours": 22968,
+        "gap_count_gt_1h": 2,
+        "max_gap_hours": 97.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 28368,
+          "coverage": 1.0
+        },
+        "precipitation_mm": {
+          "observed_rows": 28368,
+          "coverage": 1.0
+        },
+        "sunshine_hours": {
+          "observed_rows": 28367,
+          "coverage": 0.9999647490129724
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 28367,
+          "coverage": 0.9999647490129724
+        },
+        "wind_speed_mps": {
+          "observed_rows": 28368,
+          "coverage": 1.0
+        },
+        "humidity_pct": {
+          "observed_rows": 28351,
+          "coverage": 0.9994007332205301
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 28349,
+          "coverage": 0.9993302312464749
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 23279,
+          "coverage": 0.8206077270163564
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 1252,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 1252,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11642,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11642,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "ewp:당진화력수상태양광",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28488,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 28488,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28488,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 28488,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 28488,
+          "coverage": 1.0
+        },
+        "precipitation_mm": {
+          "observed_rows": 28488,
+          "coverage": 1.0
+        },
+        "sunshine_hours": {
+          "observed_rows": 28487,
+          "coverage": 0.999964897500702
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 28487,
+          "coverage": 0.999964897500702
+        },
+        "wind_speed_mps": {
+          "observed_rows": 28488,
+          "coverage": 1.0
+        },
+        "humidity_pct": {
+          "observed_rows": 28471,
+          "coverage": 0.9994032575119348
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 28469,
+          "coverage": 0.9993330525133389
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 23303,
+          "coverage": 0.8179935411401292
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 1348,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 1348,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "ewp:동해 바이오 연료저장고 지붕태양광",
+      "status": "STRUCTURAL_REJECT",
+      "hard_reject_reasons": [
+        "empty_overlap_splits:train,validation"
+      ],
+      "target_continuity": {
+        "start": "2024-01-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 13128,
+        "expected_hourly_rows": 13128,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 13128,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2024-01-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 13128,
+        "expected_hourly_rows": 13128,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 13128,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 13104,
+          "coverage": 0.9981718464351006
+        },
+        "precipitation_mm": {
+          "observed_rows": 13105,
+          "coverage": 0.9982480195003047
+        },
+        "sunshine_hours": {
+          "observed_rows": 12988,
+          "coverage": 0.9893357708714199
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 11842,
+          "coverage": 0.9020414381474711
+        },
+        "wind_speed_mps": {
+          "observed_rows": 13103,
+          "coverage": 0.9980956733698964
+        },
+        "humidity_pct": {
+          "observed_rows": 13105,
+          "coverage": 0.9982480195003047
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 13127,
+          "coverage": 0.9999238269347959
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 13098,
+          "coverage": 0.9977148080438757
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 5710,
+            "months": [
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 5710,
+            "months": [
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "ewp:동해바이오화력본부 태양광",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28488,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 28488,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28488,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 28488,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 28457,
+          "coverage": 0.9989118225217636
+        },
+        "precipitation_mm": {
+          "observed_rows": 28458,
+          "coverage": 0.9989469250210615
+        },
+        "sunshine_hours": {
+          "observed_rows": 28347,
+          "coverage": 0.995050547598989
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 19372,
+          "coverage": 0.6800056163998877
+        },
+        "wind_speed_mps": {
+          "observed_rows": 28455,
+          "coverage": 0.9988416175231677
+        },
+        "humidity_pct": {
+          "observed_rows": 28458,
+          "coverage": 0.9989469250210615
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 28469,
+          "coverage": 0.9993330525133389
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 28427,
+          "coverage": 0.997858747542825
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 1348,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 1348,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7250,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "ewp:울산태양광#1",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28416,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 0.9974726200505476,
+        "longest_strict_run_hours": 23136,
+        "gap_count_gt_1h": 1,
+        "max_gap_hours": 73.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-04-01T00:00:00",
+        "end": "2025-06-30T23:00:00",
+        "rows": 28416,
+        "expected_hourly_rows": 28488,
+        "hourly_coverage": 0.9974726200505476,
+        "longest_strict_run_hours": 23136,
+        "gap_count_gt_1h": 1,
+        "max_gap_hours": 73.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 28416,
+          "coverage": 1.0
+        },
+        "precipitation_mm": {
+          "observed_rows": 28416,
+          "coverage": 1.0
+        },
+        "sunshine_hours": {
+          "observed_rows": 28415,
+          "coverage": 0.9999648085585585
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 24810,
+          "coverage": 0.8730996621621622
+        },
+        "wind_speed_mps": {
+          "observed_rows": 28416,
+          "coverage": 1.0
+        },
+        "humidity_pct": {
+          "observed_rows": 28416,
+          "coverage": 1.0
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 28415,
+          "coverage": 0.9999648085585585
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 28413,
+          "coverage": 0.9998944256756757
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 1348,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 1348,
+            "months": [
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 7178,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7178,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "iwest:삼랑진 태양광 (FIT)",
+      "status": "STRUCTURAL_REJECT",
+      "hard_reject_reasons": [
+        "empty_overlap_splits:train,test"
+      ],
+      "target_continuity": {
+        "start": "2023-01-01T00:00:00",
+        "end": "2023-12-31T23:00:00",
+        "rows": 8760,
+        "expected_hourly_rows": 8760,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 8760,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2023-01-01T00:00:00",
+        "end": "2023-12-31T23:00:00",
+        "rows": 8760,
+        "expected_hourly_rows": 8760,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 8760,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 8758,
+          "coverage": 0.9997716894977169
+        },
+        "precipitation_mm": {
+          "observed_rows": 8758,
+          "coverage": 0.9997716894977169
+        },
+        "sunshine_hours": {
+          "observed_rows": 8760,
+          "coverage": 1.0
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 4361,
+          "coverage": 0.4978310502283105
+        },
+        "wind_speed_mps": {
+          "observed_rows": 8758,
+          "coverage": 0.9997716894977169
+        },
+        "humidity_pct": {
+          "observed_rows": 8758,
+          "coverage": 0.9997716894977169
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 8757,
+          "coverage": 0.9996575342465753
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 8759,
+          "coverage": 0.9998858447488584
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 6582,
+            "months": [
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 6582,
+            "months": [
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 2010,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12"
+            ],
+            "seasons": [
+              "autumn",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 2010,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12"
+            ],
+            "seasons": [
+              "autumn",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "iwest:영암F1 태양광",
+      "status": "STRUCTURAL_REJECT",
+      "hard_reject_reasons": [
+        "empty_overlap_splits:test"
+      ],
+      "target_continuity": {
+        "start": "2017-01-01T00:00:00",
+        "end": "2023-12-31T23:00:00",
+        "rows": 61340,
+        "expected_hourly_rows": 61344,
+        "hourly_coverage": 0.9999347939488784,
+        "longest_strict_run_hours": 28877,
+        "gap_count_gt_1h": 2,
+        "max_gap_hours": 4.0
+      },
+      "generation_weather_overlap": {
+        "start": "2017-01-01T00:00:00",
+        "end": "2023-12-31T23:00:00",
+        "rows": 61340,
+        "expected_hourly_rows": 61344,
+        "hourly_coverage": 0.9999347939488784,
+        "longest_strict_run_hours": 28877,
+        "gap_count_gt_1h": 2,
+        "max_gap_hours": 4.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 61337,
+          "coverage": 0.9999510922725791
+        },
+        "precipitation_mm": {
+          "observed_rows": 61340,
+          "coverage": 1.0
+        },
+        "sunshine_hours": {
+          "observed_rows": 61327,
+          "coverage": 0.9997880665145092
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 61327,
+          "coverage": 0.9997880665145092
+        },
+        "wind_speed_mps": {
+          "observed_rows": 61315,
+          "coverage": 0.9995924356048256
+        },
+        "humidity_pct": {
+          "observed_rows": 61319,
+          "coverage": 0.9996576459080535
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 58298,
+          "coverage": 0.9504075643951745
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 61189,
+          "coverage": 0.9975383110531464
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 47331,
+            "months": [
+              "2017-01",
+              "2017-02",
+              "2017-03",
+              "2017-04",
+              "2017-05",
+              "2017-06",
+              "2017-07",
+              "2017-08",
+              "2017-09",
+              "2017-10",
+              "2017-11",
+              "2017-12",
+              "2018-01",
+              "2018-02",
+              "2018-03",
+              "2018-04",
+              "2018-05",
+              "2018-06",
+              "2018-07",
+              "2018-08",
+              "2018-09",
+              "2018-10",
+              "2018-11",
+              "2018-12",
+              "2019-01",
+              "2019-02",
+              "2019-03",
+              "2019-04",
+              "2019-05",
+              "2019-06",
+              "2019-07",
+              "2019-08",
+              "2019-09",
+              "2019-10",
+              "2019-11",
+              "2019-12",
+              "2020-01",
+              "2020-02",
+              "2020-03",
+              "2020-04",
+              "2020-05",
+              "2020-06",
+              "2020-07",
+              "2020-08",
+              "2020-09",
+              "2020-10",
+              "2020-11",
+              "2020-12",
+              "2021-01",
+              "2021-02",
+              "2021-03",
+              "2021-04",
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 47331,
+            "months": [
+              "2017-01",
+              "2017-02",
+              "2017-03",
+              "2017-04",
+              "2017-05",
+              "2017-06",
+              "2017-07",
+              "2017-08",
+              "2017-09",
+              "2017-10",
+              "2017-11",
+              "2017-12",
+              "2018-01",
+              "2018-02",
+              "2018-03",
+              "2018-04",
+              "2018-05",
+              "2018-06",
+              "2018-07",
+              "2018-08",
+              "2018-09",
+              "2018-10",
+              "2018-11",
+              "2018-12",
+              "2019-01",
+              "2019-02",
+              "2019-03",
+              "2019-04",
+              "2019-05",
+              "2019-06",
+              "2019-07",
+              "2019-08",
+              "2019-09",
+              "2019-10",
+              "2019-11",
+              "2019-12",
+              "2020-01",
+              "2020-02",
+              "2020-03",
+              "2020-04",
+              "2020-05",
+              "2020-06",
+              "2020-07",
+              "2020-08",
+              "2020-09",
+              "2020-10",
+              "2020-11",
+              "2020-12",
+              "2021-01",
+              "2021-02",
+              "2021-03",
+              "2021-04",
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11663,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11663,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 2010,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12"
+            ],
+            "seasons": [
+              "autumn",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 2010,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12"
+            ],
+            "seasons": [
+              "autumn",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "koen:경상대태양광",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-09-30T23:00:00",
+        "rows": 32856,
+        "expected_hourly_rows": 32856,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 32856,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-09-30T23:00:00",
+        "rows": 32856,
+        "expected_hourly_rows": 32856,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 32856,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 32801,
+          "coverage": 0.9983260287314342
+        },
+        "precipitation_mm": {
+          "observed_rows": 32800,
+          "coverage": 0.9982955928901874
+        },
+        "sunshine_hours": {
+          "observed_rows": 32821,
+          "coverage": 0.9989347455563672
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 32820,
+          "coverage": 0.9989043097151206
+        },
+        "wind_speed_mps": {
+          "observed_rows": 32800,
+          "coverage": 0.9982955928901874
+        },
+        "humidity_pct": {
+          "observed_rows": 32779,
+          "coverage": 0.9976564402240078
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 32809,
+          "coverage": 0.9985695154614074
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 32543,
+          "coverage": 0.9904735816897979
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 9458,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 9458,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "koen:광양항세방태양광",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-09-30T23:00:00",
+        "rows": 32856,
+        "expected_hourly_rows": 32856,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 32856,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-09-30T23:00:00",
+        "rows": 32855,
+        "expected_hourly_rows": 32856,
+        "hourly_coverage": 0.9999695641587534,
+        "longest_strict_run_hours": 29646,
+        "gap_count_gt_1h": 1,
+        "max_gap_hours": 2.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 32844,
+          "coverage": 0.9996347699050402
+        },
+        "precipitation_mm": {
+          "observed_rows": 32849,
+          "coverage": 0.9997869491112734
+        },
+        "sunshine_hours": {
+          "observed_rows": 32848,
+          "coverage": 0.9997565132700268
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 32848,
+          "coverage": 0.9997565132700268
+        },
+        "wind_speed_mps": {
+          "observed_rows": 32840,
+          "coverage": 0.9995130265400536
+        },
+        "humidity_pct": {
+          "observed_rows": 32849,
+          "coverage": 0.9997869491112734
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 32820,
+          "coverage": 0.9989043097151206
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 32801,
+          "coverage": 0.9983260287314342
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 3507,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 9458,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 9458,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "koen:구미정수장",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-09-30T23:00:00",
+        "rows": 32856,
+        "expected_hourly_rows": 32856,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 32856,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-09-30T23:00:00",
+        "rows": 32854,
+        "expected_hourly_rows": 32856,
+        "hourly_coverage": 0.9999391283175066,
+        "longest_strict_run_hours": 31858,
+        "gap_count_gt_1h": 1,
+        "max_gap_hours": 3.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 32836,
+          "coverage": 0.999391283175067
+        },
+        "precipitation_mm": {
+          "observed_rows": 32835,
+          "coverage": 0.9993608473338204
+        },
+        "sunshine_hours": {
+          "observed_rows": 32813,
+          "coverage": 0.998691258826394
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 19489,
+          "coverage": 0.593164110056002
+        },
+        "wind_speed_mps": {
+          "observed_rows": 32826,
+          "coverage": 0.9990869247626004
+        },
+        "humidity_pct": {
+          "observed_rows": 32820,
+          "coverage": 0.9989043097151206
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 32810,
+          "coverage": 0.998599951302654
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 32721,
+          "coverage": 0.995891161431702
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 9458,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 9456,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "koen:해창만 수상(98MW)",
+      "status": "STRUCTURAL_REJECT",
+      "hard_reject_reasons": [
+        "empty_overlap_splits:train"
+      ],
+      "target_continuity": {
+        "start": "2023-09-01T00:00:00",
+        "end": "2025-09-30T23:00:00",
+        "rows": 18264,
+        "expected_hourly_rows": 18264,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 18264,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2023-09-01T00:00:00",
+        "end": "2025-09-30T23:00:00",
+        "rows": 18264,
+        "expected_hourly_rows": 18264,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 18264,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 18264,
+          "coverage": 1.0
+        },
+        "precipitation_mm": {
+          "observed_rows": 18264,
+          "coverage": 1.0
+        },
+        "sunshine_hours": {
+          "observed_rows": 18257,
+          "coverage": 0.999616732369689
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 16000,
+          "coverage": 0.8760402978537013
+        },
+        "wind_speed_mps": {
+          "observed_rows": 18264,
+          "coverage": 1.0
+        },
+        "humidity_pct": {
+          "observed_rows": 18264,
+          "coverage": 1.0
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 18262,
+          "coverage": 0.9998904949627683
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 18256,
+          "coverage": 0.9995619798510732
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 750,
+            "months": [
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 750,
+            "months": [
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 9458,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 9458,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "kospo:다송리",
+      "status": "STRUCTURAL_REJECT",
+      "hard_reject_reasons": [
+        "empty_overlap_splits:train,validation"
+      ],
+      "target_continuity": {
+        "start": "2024-01-01T00:00:00",
+        "end": "2025-08-08T23:00:00",
+        "rows": 14064,
+        "expected_hourly_rows": 14064,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 14064,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2024-01-01T00:00:00",
+        "end": "2025-08-08T23:00:00",
+        "rows": 14064,
+        "expected_hourly_rows": 14064,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 14064,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 14063,
+          "coverage": 0.9999288964732651
+        },
+        "precipitation_mm": {
+          "observed_rows": 14063,
+          "coverage": 0.9999288964732651
+        },
+        "sunshine_hours": {
+          "observed_rows": 14063,
+          "coverage": 0.9999288964732651
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 6890,
+          "coverage": 0.4899032992036405
+        },
+        "wind_speed_mps": {
+          "observed_rows": 14061,
+          "coverage": 0.9997866894197952
+        },
+        "humidity_pct": {
+          "observed_rows": 14063,
+          "coverage": 0.9999288964732651
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 14063,
+          "coverage": 0.9999288964732651
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 14063,
+          "coverage": 0.9999288964732651
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          },
+          "generation_weather_overlap": {
+            "rows": 0,
+            "months": [],
+            "seasons": []
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 5710,
+            "months": [
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 5710,
+            "months": [
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 8186,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 8186,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "kospo:신풍리 태양광(제주)",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2021-05-01T00:00:00",
+        "end": "2025-12-31T23:00:00",
+        "rows": 40944,
+        "expected_hourly_rows": 40944,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 40944,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2021-05-01T00:00:00",
+        "end": "2025-11-03T23:00:00",
+        "rows": 39552,
+        "expected_hourly_rows": 39552,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 39552,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 39535,
+          "coverage": 0.9655871434153966
+        },
+        "precipitation_mm": {
+          "observed_rows": 39535,
+          "coverage": 0.9655871434153966
+        },
+        "sunshine_hours": {
+          "observed_rows": 39532,
+          "coverage": 0.9655138726064869
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 19500,
+          "coverage": 0.4762602579132474
+        },
+        "wind_speed_mps": {
+          "observed_rows": 39533,
+          "coverage": 0.9655382962094569
+        },
+        "humidity_pct": {
+          "observed_rows": 39535,
+          "coverage": 0.9655871434153966
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 39415,
+          "coverage": 0.9626563110590074
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 39496,
+          "coverage": 0.9646346228995701
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 9388,
+            "months": [
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 9388,
+            "months": [
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11",
+              "2025-12"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 10274,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "kospo:영월철도부지",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2018-04-01T00:00:00",
+        "end": "2025-02-28T23:00:00",
+        "rows": 60624,
+        "expected_hourly_rows": 60624,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 60624,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2018-04-01T00:00:00",
+        "end": "2025-02-28T23:00:00",
+        "rows": 60624,
+        "expected_hourly_rows": 60624,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 60624,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 60603,
+          "coverage": 0.99965360253365
+        },
+        "precipitation_mm": {
+          "observed_rows": 60609,
+          "coverage": 0.9997525732383215
+        },
+        "sunshine_hours": {
+          "observed_rows": 60619,
+          "coverage": 0.9999175244127738
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 30173,
+          "coverage": 0.49770717867511216
+        },
+        "wind_speed_mps": {
+          "observed_rows": 60594,
+          "coverage": 0.9995051464766429
+        },
+        "humidity_pct": {
+          "observed_rows": 60609,
+          "coverage": 0.9997525732383215
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 57243,
+          "coverage": 0.9442300079176563
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 57016,
+          "coverage": 0.9404856162575878
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 36412,
+            "months": [
+              "2018-04",
+              "2018-05",
+              "2018-06",
+              "2018-07",
+              "2018-08",
+              "2018-09",
+              "2018-10",
+              "2018-11",
+              "2018-12",
+              "2019-01",
+              "2019-02",
+              "2019-03",
+              "2019-04",
+              "2019-05",
+              "2019-06",
+              "2019-07",
+              "2019-08",
+              "2019-09",
+              "2019-10",
+              "2019-11",
+              "2019-12",
+              "2020-01",
+              "2020-02",
+              "2020-03",
+              "2020-04",
+              "2020-05",
+              "2020-06",
+              "2020-07",
+              "2020-08",
+              "2020-09",
+              "2020-10",
+              "2020-11",
+              "2020-12",
+              "2021-01",
+              "2021-02",
+              "2021-03",
+              "2021-04",
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 36412,
+            "months": [
+              "2018-04",
+              "2018-05",
+              "2018-06",
+              "2018-07",
+              "2018-08",
+              "2018-09",
+              "2018-10",
+              "2018-11",
+              "2018-12",
+              "2019-01",
+              "2019-02",
+              "2019-03",
+              "2019-04",
+              "2019-05",
+              "2019-06",
+              "2019-07",
+              "2019-08",
+              "2019-09",
+              "2019-10",
+              "2019-11",
+              "2019-12",
+              "2020-01",
+              "2020-02",
+              "2020-03",
+              "2020-04",
+              "2020-05",
+              "2020-06",
+              "2020-07",
+              "2020-08",
+              "2020-09",
+              "2020-10",
+              "2020-11",
+              "2020-12",
+              "2021-01",
+              "2021-02",
+              "2021-03",
+              "2021-04",
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 4322,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02"
+            ],
+            "seasons": [
+              "autumn",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 4322,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02"
+            ],
+            "seasons": [
+              "autumn",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "kospo:이천D(백사면B)",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2021-02-09T00:00:00",
+        "end": "2025-02-28T23:00:00",
+        "rows": 35544,
+        "expected_hourly_rows": 35544,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 35544,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2021-02-09T00:00:00",
+        "end": "2025-02-28T23:00:00",
+        "rows": 35544,
+        "expected_hourly_rows": 35544,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 35544,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 35542,
+          "coverage": 0.9999437317128067
+        },
+        "precipitation_mm": {
+          "observed_rows": 35542,
+          "coverage": 0.9999437317128067
+        },
+        "sunshine_hours": {
+          "observed_rows": 35521,
+          "coverage": 0.9993529146972766
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 17717,
+          "coverage": 0.4984526221021832
+        },
+        "wind_speed_mps": {
+          "observed_rows": 35520,
+          "coverage": 0.9993247805536799
+        },
+        "humidity_pct": {
+          "observed_rows": 35542,
+          "coverage": 0.9999437317128067
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 35398,
+          "coverage": 0.9958924150348863
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 35447,
+          "coverage": 0.9972709880711231
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 11332,
+            "months": [
+              "2021-02",
+              "2021-03",
+              "2021-04",
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11332,
+            "months": [
+              "2021-02",
+              "2021-03",
+              "2021-04",
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 4322,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02"
+            ],
+            "seasons": [
+              "autumn",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 4322,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02"
+            ],
+            "seasons": [
+              "autumn",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "kospo:제주 용수리 태양광",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2020-10-01T00:00:00",
+        "end": "2025-12-31T23:00:00",
+        "rows": 46032,
+        "expected_hourly_rows": 46032,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 46032,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2020-10-01T00:00:00",
+        "end": "2025-11-03T23:00:00",
+        "rows": 44640,
+        "expected_hourly_rows": 44640,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 44640,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 44633,
+          "coverage": 0.9696080987139382
+        },
+        "precipitation_mm": {
+          "observed_rows": 44633,
+          "coverage": 0.9696080987139382
+        },
+        "sunshine_hours": {
+          "observed_rows": 44622,
+          "coverage": 0.96936913451512
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 44615,
+          "coverage": 0.9692170663885993
+        },
+        "wind_speed_mps": {
+          "observed_rows": 44260,
+          "coverage": 0.9615050399721933
+        },
+        "humidity_pct": {
+          "observed_rows": 44632,
+          "coverage": 0.9695863746958637
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 44483,
+          "coverage": 0.9663494960027806
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 44472,
+          "coverage": 0.9661105318039624
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 14476,
+            "months": [
+              "2020-10",
+              "2020-11",
+              "2020-12",
+              "2021-01",
+              "2021-02",
+              "2021-03",
+              "2021-04",
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 14476,
+            "months": [
+              "2020-10",
+              "2020-11",
+              "2020-12",
+              "2021-01",
+              "2021-02",
+              "2021-03",
+              "2021-04",
+              "2021-05",
+              "2021-06",
+              "2021-07",
+              "2021-08",
+              "2021-09",
+              "2021-10",
+              "2021-11",
+              "2021-12",
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11",
+              "2025-12"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 10274,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "krc:영암1차",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-12-31T23:00:00",
+        "rows": 35064,
+        "expected_hourly_rows": 35064,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 35064,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-11-03T23:00:00",
+        "rows": 33672,
+        "expected_hourly_rows": 33672,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 33672,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 33672,
+          "coverage": 0.9603011635865846
+        },
+        "precipitation_mm": {
+          "observed_rows": 33672,
+          "coverage": 0.9603011635865846
+        },
+        "sunshine_hours": {
+          "observed_rows": 33660,
+          "coverage": 0.9599589322381931
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 33660,
+          "coverage": 0.9599589322381931
+        },
+        "wind_speed_mps": {
+          "observed_rows": 33655,
+          "coverage": 0.9598163358430298
+        },
+        "humidity_pct": {
+          "observed_rows": 33672,
+          "coverage": 0.9603011635865846
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 33661,
+          "coverage": 0.9599874515172256
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 33667,
+          "coverage": 0.9601585671914215
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11",
+              "2025-12"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 10274,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "krc:영암2차",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-12-31T23:00:00",
+        "rows": 35064,
+        "expected_hourly_rows": 35064,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 35064,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-11-03T23:00:00",
+        "rows": 33672,
+        "expected_hourly_rows": 33672,
+        "hourly_coverage": 1.0,
+        "longest_strict_run_hours": 33672,
+        "gap_count_gt_1h": 0,
+        "max_gap_hours": 1.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 33672,
+          "coverage": 0.9603011635865846
+        },
+        "precipitation_mm": {
+          "observed_rows": 33672,
+          "coverage": 0.9603011635865846
+        },
+        "sunshine_hours": {
+          "observed_rows": 33660,
+          "coverage": 0.9599589322381931
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 33660,
+          "coverage": 0.9599589322381931
+        },
+        "wind_speed_mps": {
+          "observed_rows": 33655,
+          "coverage": 0.9598163358430298
+        },
+        "humidity_pct": {
+          "observed_rows": 33672,
+          "coverage": 0.9603011635865846
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 33661,
+          "coverage": 0.9599874515172256
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 33667,
+          "coverage": 0.9601585671914215
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11666,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11",
+              "2025-12"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 10274,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "plant_id": "krc:율치",
+      "status": "CANDIDATE_REQUIRES_THRESHOLD_REVIEW",
+      "hard_reject_reasons": [],
+      "target_continuity": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-12-31T23:00:00",
+        "rows": 35063,
+        "expected_hourly_rows": 35064,
+        "hourly_coverage": 0.9999714807209674,
+        "longest_strict_run_hours": 30169,
+        "gap_count_gt_1h": 1,
+        "max_gap_hours": 2.0
+      },
+      "generation_weather_overlap": {
+        "start": "2022-01-01T00:00:00",
+        "end": "2025-11-03T23:00:00",
+        "rows": 33671,
+        "expected_hourly_rows": 33672,
+        "hourly_coverage": 0.9999703017343787,
+        "longest_strict_run_hours": 28777,
+        "gap_count_gt_1h": 1,
+        "max_gap_hours": 2.0
+      },
+      "weather_column_coverage": {
+        "temperature_c": {
+          "observed_rows": 33535,
+          "coverage": 0.9564212988050081
+        },
+        "precipitation_mm": {
+          "observed_rows": 33536,
+          "coverage": 0.9564498188974132
+        },
+        "sunshine_hours": {
+          "observed_rows": 33450,
+          "coverage": 0.9539970909505747
+        },
+        "solar_irradiance_mj_m2": {
+          "observed_rows": 33425,
+          "coverage": 0.9532840886404472
+        },
+        "wind_speed_mps": {
+          "observed_rows": 33525,
+          "coverage": 0.9561360978809571
+        },
+        "humidity_pct": {
+          "observed_rows": 33533,
+          "coverage": 0.9563642586201979
+        },
+        "total_cloud_cover_tenths": {
+          "observed_rows": 32654,
+          "coverage": 0.9312950973961156
+        },
+        "low_mid_cloud_cover_tenths": {
+          "observed_rows": 32548,
+          "coverage": 0.928271967601175
+        }
+      },
+      "splits": {
+        "train": {
+          "eligible_target": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 3508,
+            "months": [
+              "2022-01",
+              "2022-02",
+              "2022-03",
+              "2022-04",
+              "2022-05"
+            ],
+            "seasons": [
+              "spring",
+              "winter"
+            ]
+          }
+        },
+        "validation": {
+          "eligible_target": {
+            "rows": 11665,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 11665,
+            "months": [
+              "2022-06",
+              "2022-07",
+              "2022-08",
+              "2022-09",
+              "2022-10",
+              "2022-11",
+              "2022-12",
+              "2023-01",
+              "2023-02",
+              "2023-03",
+              "2023-04",
+              "2023-05",
+              "2023-06",
+              "2023-07",
+              "2023-08",
+              "2023-09",
+              "2023-10"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "calibration": {
+          "eligible_target": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 7720,
+            "months": [
+              "2023-10",
+              "2023-11",
+              "2023-12",
+              "2024-01",
+              "2024-02",
+              "2024-03",
+              "2024-04",
+              "2024-05",
+              "2024-06",
+              "2024-07",
+              "2024-08"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        },
+        "test": {
+          "eligible_target": {
+            "rows": 11666,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11",
+              "2025-12"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          },
+          "generation_weather_overlap": {
+            "rows": 10274,
+            "months": [
+              "2024-09",
+              "2024-10",
+              "2024-11",
+              "2024-12",
+              "2025-01",
+              "2025-02",
+              "2025-03",
+              "2025-04",
+              "2025-05",
+              "2025-06",
+              "2025-07",
+              "2025-08",
+              "2025-09",
+              "2025-10",
+              "2025-11"
+            ],
+            "seasons": [
+              "autumn",
+              "spring",
+              "summer",
+              "winter"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "final_thresholds_applied": false,
+  "final_training_selection_ready": false,
+  "next_decision": "Inspect real overlap/duration/split distributions, then freeze explicit minimum coverage and effective-sample thresholds before filtering training input.",
+  "prediction_or_training_performed": false,
+  "test_used_for_selection": false,
+  "source": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+  "source_files": [
+    {
+      "path": "company=ewp/year=2022/part.csv.gz",
+      "bytes": 2064645,
+      "sha256": "df9ea49708b763ef84afbef0e02479dc961944493d5239d4e5b4ae7a3880b4f4"
+    },
+    {
+      "path": "company=ewp/year=2023/part.csv.gz",
+      "bytes": 2786014,
+      "sha256": "bdf560476b2a842472c2300694d057f822e7d599c10d63086f65e3e4f7cf464d"
+    },
+    {
+      "path": "company=ewp/year=2024/part.csv.gz",
+      "bytes": 3166480,
+      "sha256": "6937a87f6956fc6dc473a1e92e3a33d1d198ce5539fd0e9ab92ea7c746ea03c8"
+    },
+    {
+      "path": "company=ewp/year=2025/part.csv.gz",
+      "bytes": 1580721,
+      "sha256": "8920f0745396cf180f438053fe54417c1d7dcba527c648a53522196588f8d22b"
+    },
+    {
+      "path": "company=iwest/year=2017/part.csv.gz",
+      "bytes": 620641,
+      "sha256": "0141c579b8f3df0b9572a49341ffaaf201f5bc249d23a20d42a8172d564732eb"
+    },
+    {
+      "path": "company=iwest/year=2018/part.csv.gz",
+      "bytes": 614389,
+      "sha256": "1610b9f65c7c6fa75e7cbecfa22ec5e8166a3ce8af3d44bd3f71ead6c74ce516"
+    },
+    {
+      "path": "company=iwest/year=2019/part.csv.gz",
+      "bytes": 614886,
+      "sha256": "43ea02fc0b64b70bed714dbc49302d3d66ef03fc5e06f006efbe98e352e5726e"
+    },
+    {
+      "path": "company=iwest/year=2020/part.csv.gz",
+      "bytes": 615284,
+      "sha256": "88871140d1ad84bc32530234ea9a467e4d90ffdd698b55f848bb1266e35e1405"
+    },
+    {
+      "path": "company=iwest/year=2021/part.csv.gz",
+      "bytes": 619365,
+      "sha256": "b570d341020b14cf34357ed06b0232a7371d22196619c3c4787d68460bfd32f3"
+    },
+    {
+      "path": "company=iwest/year=2022/part.csv.gz",
+      "bytes": 624598,
+      "sha256": "8e91c8ae3c3b0fd8462688345ac7393061144a85a76f5b383245994faa91a99f"
+    },
+    {
+      "path": "company=iwest/year=2023/part.csv.gz",
+      "bytes": 2788702,
+      "sha256": "51c60ca251dd458b66d558fb5961412f12de849f6bf7a35e353bc10cb7a312ea"
+    },
+    {
+      "path": "company=koen/year=2022/part.csv.gz",
+      "bytes": 2303523,
+      "sha256": "4d2829bea9a3d550896304381780f08f284d730c21d6f3ae25e79104c97b0357"
+    },
+    {
+      "path": "company=koen/year=2023/part.csv.gz",
+      "bytes": 2477573,
+      "sha256": "efbe358380d2f22eb41e7e97e7f3dc077d8150e0492193e8a70537a44969602a"
+    },
+    {
+      "path": "company=koen/year=2024/part.csv.gz",
+      "bytes": 2750849,
+      "sha256": "8102edd2b3e83f86f228c481eb860cb7fed8b1fcf0ba0b50c88ea62e29b9f292"
+    },
+    {
+      "path": "company=koen/year=2025/part.csv.gz",
+      "bytes": 2210757,
+      "sha256": "b3df13bccd96b037c67ca44c7097576f4914ff3142d4ed88bcff171661fa8107"
+    },
+    {
+      "path": "company=kospo/year=2018/part.csv.gz",
+      "bytes": 450577,
+      "sha256": "1007cb7bf52aae28f844eb40b9f1e2eaa5b5f0457a911de0fa5a6d0970ad2ff6"
+    },
+    {
+      "path": "company=kospo/year=2019/part.csv.gz",
+      "bytes": 613088,
+      "sha256": "7b4527ce7bb7a14c6b8c7bcd25898d875749fa38b78bdafc25f69b79c3bf407a"
+    },
+    {
+      "path": "company=kospo/year=2020/part.csv.gz",
+      "bytes": 756460,
+      "sha256": "de5c789e4c0757e57170b616fd0c1454754d14ad1fdcc6265143bba7288aaf9a"
+    },
+    {
+      "path": "company=kospo/year=2021/part.csv.gz",
+      "bytes": 2171061,
+      "sha256": "824e2fe4d989df25e2faf5ead0819b3b755f4d16d790dd49018cb6e8af283e14"
+    },
+    {
+      "path": "company=kospo/year=2022/part.csv.gz",
+      "bytes": 2340865,
+      "sha256": "4fd7a0dd8bb4154bdd9be226570615b4239b9e35eda764a61f5000941807d827"
+    },
+    {
+      "path": "company=kospo/year=2023/part.csv.gz",
+      "bytes": 2315139,
+      "sha256": "d949079f1d024d3d9aa4d6f4c9ba7251971fcc5df2041597c8fb4735d3df1d82"
+    },
+    {
+      "path": "company=kospo/year=2024/part.csv.gz",
+      "bytes": 2909696,
+      "sha256": "9e9a37c884fe6131ec2d6898a3aefe9195bed37475818192f9ee6384ea9e4e45"
+    },
+    {
+      "path": "company=kospo/year=2025/part.csv.gz",
+      "bytes": 1670983,
+      "sha256": "6bf3320b8ea4ab23fe3d181e8b9ef09d642b87b114c91d540e3309f889472989"
+    },
+    {
+      "path": "company=krc/year=2022/part.csv.gz",
+      "bytes": 1495706,
+      "sha256": "8ee78a7987d23b4f39ce4193be2531ac13173a0bd95d8c27862e8673e82cdddf"
+    },
+    {
+      "path": "company=krc/year=2023/part.csv.gz",
+      "bytes": 1485536,
+      "sha256": "2b37ab878aba3e508fbfee45b7a5570c3c895185637173adc7c5bae96fa28df7"
+    },
+    {
+      "path": "company=krc/year=2024/part.csv.gz",
+      "bytes": 1481414,
+      "sha256": "b61131a3f0283bc2bcc29f51f04acdf76c99287c4f1e9cecd65140d0b8a591b3"
+    },
+    {
+      "path": "company=krc/year=2025/part.csv.gz",
+      "bytes": 1379901,
+      "sha256": "327f88bd9425a1f642a3a9ad856934e9ce1baeaf4da888a96c786524017a7174"
+    }
+  ],
+  "loading": {
+    "files": 27,
+    "input_bytes": 44908853,
+    "scanned_rows": 718531,
+    "retained_rows": 701011,
+    "selected_columns": [
+      "timestamp",
+      "plant_id",
+      "generation_mwh",
+      "quality_train_eligible",
+      "temperature_c",
+      "precipitation_mm",
+      "sunshine_hours",
+      "solar_irradiance_mj_m2",
+      "wind_speed_mps",
+      "humidity_pct",
+      "total_cloud_cover_tenths",
+      "low_mid_cloud_cover_tenths"
+    ],
+    "chunk_rows": 100000,
+    "numeric_dtype": "float64",
+    "dataframe_memory_mb": 94.9352855682373,
+    "memory_limit_mb": 1536
+  },
+  "experiment_config": "C:\\ESG_Project1\\config\\experiments\\optimized.json",
+  "experiment_config_sha256": "7ec1959f36344f6dd3b98c92ca2940f208d777648a7486a9b6e7c2cbdded12fa"
+}

@@ -1,0 +1,123 @@
+{
+  "contract": "solar-training-run-manifest.v1",
+  "schema_version": 1,
+  "status": "completed",
+  "model": "cnn_bilstm",
+  "run_id": "20260922_085957_779359",
+  "updated_at_utc": "2026-09-22T01:54:45.532779+00:00",
+  "details": {
+    "source": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+    "features": [
+      "hour",
+      "dayofweek",
+      "month",
+      "hour_sin",
+      "hour_cos",
+      "dayofyear_sin",
+      "dayofyear_cos",
+      "generation_lag_24h_mwh",
+      "generation_lag_168h_mwh",
+      "generation_rolling_7d_mean_mwh",
+      "capacity_mw",
+      "tilt_deg",
+      "station_latitude",
+      "station_longitude",
+      "station_elevation_m",
+      "solar_elevation_sin",
+      "clear_sky_irradiance_proxy",
+      "is_daylight"
+    ],
+    "n_rows": 671731,
+    "evaluation_contract": {
+      "dataset_fingerprint": "9386c841d06ca1427be54e77d7277c9c15b72820d762e3e72a2fa3f380093211",
+      "target": "generation_mwh",
+      "target_unit": "MWh",
+      "task": "historical_forecast",
+      "information_set": "observed_measurements_through_forecast_origin",
+      "horizon_hours": 72,
+      "prediction_key": [
+        "timestamp",
+        "plant_id",
+        "forecast_origin",
+        "horizon_hours"
+      ],
+      "prediction_schema": "solar-forecast-prediction.v2",
+      "origin_definition": "target_timestamp_minus_horizon",
+      "observation_availability_assumption": "hourly_measurement_available_at_timestamp; publication_latency_not_simulated"
+    },
+    "optimizer": {
+      "enabled": true,
+      "selection_data": "validation_only",
+      "objective_metric": "validation_mae",
+      "best_validation_mae": 0.28792368120564793,
+      "best_params": {
+        "cnn_channels": 90,
+        "kernel_size": 3,
+        "lstm_hidden": 60,
+        "lstm_layers": 2,
+        "dense_units": 78,
+        "dropout": 0.13736874205941257,
+        "readout": "final_hidden",
+        "lr": 0.00027010527749605503,
+        "weight_decay": 2.9204338471814074e-06
+      },
+      "summary_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_171451_447310\\candidates\\horizon_72h\\cnn_bilstm\\history_calendar_lookback_168h\\20260922_085957_779359\\optimization_summary.json",
+      "trials_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_171451_447310\\candidates\\horizon_72h\\cnn_bilstm\\history_calendar_lookback_168h\\20260922_085957_779359\\optimization_trials.csv",
+      "test_usage": "none"
+    },
+    "memory_aware_loading": {
+      "files": 27,
+      "input_bytes": 49818033,
+      "scanned_rows": 718531,
+      "retained_rows": 671731,
+      "selected_columns": [
+        "plant_id",
+        "timestamp",
+        "region",
+        "plant",
+        "hour",
+        "dayofweek",
+        "month",
+        "hour_sin",
+        "hour_cos",
+        "dayofyear_sin",
+        "dayofyear_cos",
+        "generation_lag_24h_mwh",
+        "generation_lag_168h_mwh",
+        "generation_rolling_7d_mean_mwh",
+        "capacity_mw",
+        "tilt_deg",
+        "station_latitude",
+        "station_longitude",
+        "station_elevation_m",
+        "solar_elevation_sin",
+        "clear_sky_irradiance_proxy",
+        "is_daylight",
+        "generation_mwh"
+      ],
+      "chunk_rows": 100000,
+      "numeric_dtype": "float32",
+      "dataframe_memory_mb": 94.17676639556885,
+      "memory_limit_mb": 1536
+    },
+    "checkpoint": {
+      "enabled": true,
+      "resume": true,
+      "contract": "solar-training-checkpoint.v2",
+      "fingerprint": "db5d41ebd283da1fc6a757bcb3258354bd6674777a1d9c570d17649f6aec28b6",
+      "directory": "C:\\ESG_Project1\\artifacts\\checkpoints\\cnn_bilstm\\db5d41ebd283da1fc6a757bcb3258354bd6674777a1d9c570d17649f6aec28b6",
+      "cnn_every_epochs": 1,
+      "xgboost_every_rounds": 50
+    },
+    "selection_only": true,
+    "run_context": {
+      "execution_mode": "full",
+      "energy_source": "solar",
+      "target": "generation_mwh",
+      "target_unit": "MWh",
+      "horizon_hours": 72,
+      "evaluation_protocol": "historical_observation_rolling_origin"
+    },
+    "phase": "candidate_search"
+  }
+}

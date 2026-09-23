@@ -1,0 +1,143 @@
+{
+  "selection_data": "validation_only",
+  "selection_score_source": "optimizer_best_validation_mae",
+  "test_used_for_selection": false,
+  "candidate_scores": {
+    "xgboost:observed_weather_history": 0.27185248075724966,
+    "xgboost:history_calendar": 0.2657281625010588,
+    "cnn_bilstm:observed_weather_history_lookback_24h": 0.29548139495825027,
+    "cnn_bilstm:observed_weather_history_lookback_168h": 0.2864659074995807,
+    "cnn_bilstm:history_calendar_lookback_24h": 0.280635181914171,
+    "cnn_bilstm:history_calendar_lookback_168h": 0.28792368120564793
+  },
+  "coverage": {
+    "mode": "optimizer_validation_objective",
+    "candidate_rows": null,
+    "common_rows": null,
+    "union_rows": null,
+    "common_fraction": null
+  },
+  "selected": {
+    "xgboost": {
+      "candidate_id": "history_calendar",
+      "run_dir": "candidates/horizon_72h/xgboost/history_calendar/20260922_044654_149505",
+      "sequence_length": null,
+      "feature_columns": [
+        "hour",
+        "dayofweek",
+        "month",
+        "hour_sin",
+        "hour_cos",
+        "dayofyear_sin",
+        "dayofyear_cos",
+        "generation_lag_24h_mwh",
+        "generation_lag_168h_mwh",
+        "generation_rolling_7d_mean_mwh",
+        "capacity_mw",
+        "tilt_deg",
+        "station_latitude",
+        "station_longitude",
+        "station_elevation_m",
+        "solar_elevation_sin",
+        "clear_sky_irradiance_proxy",
+        "is_daylight"
+      ],
+      "validation_mae": 0.2657281625010588,
+      "parameters": {
+        "max_depth": 5,
+        "learning_rate": 0.07277150634170934,
+        "min_child_weight": 2.9455874405973264,
+        "subsample": 0.8080272084711243,
+        "colsample_bytree": 0.8186841117373118,
+        "reg_alpha": 4.609885087947832e-07,
+        "reg_lambda": 70.45683638454501,
+        "gamma": 0.05531681668096113,
+        "max_bin": 128
+      },
+      "optimizer": {
+        "enabled": true,
+        "selection_data": "validation_only",
+        "objective_metric": "validation_mae",
+        "best_validation_mae": 0.2657281625010588,
+        "best_params": {
+          "max_depth": 5,
+          "learning_rate": 0.07277150634170934,
+          "min_child_weight": 2.9455874405973264,
+          "subsample": 0.8080272084711243,
+          "colsample_bytree": 0.8186841117373118,
+          "reg_alpha": 4.609885087947832e-07,
+          "reg_lambda": 70.45683638454501,
+          "gamma": 0.05531681668096113,
+          "max_bin": 128
+        },
+        "best_iteration": 77,
+        "tuning_train_rows": 477758,
+        "tuning_validation_rows": 38760,
+        "existing_trials": 0,
+        "executed_trials": 15,
+        "summary_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_171451_447310\\candidates\\horizon_72h\\xgboost\\history_calendar\\20260922_044654_149505\\optimization_summary.json",
+        "trials_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_171451_447310\\candidates\\horizon_72h\\xgboost\\history_calendar\\20260922_044654_149505\\optimization_trials.csv",
+        "test_usage": "none"
+      },
+      "resolved_config": "candidates/horizon_72h/xgboost/history_calendar/20260922_044654_149505/search_config.json"
+    },
+    "cnn_bilstm": {
+      "candidate_id": "history_calendar_lookback_24h",
+      "run_dir": "candidates/horizon_72h/cnn_bilstm/history_calendar_lookback_24h/20260922_072421_041417",
+      "sequence_length": 24,
+      "feature_columns": [
+        "hour",
+        "dayofweek",
+        "month",
+        "hour_sin",
+        "hour_cos",
+        "dayofyear_sin",
+        "dayofyear_cos",
+        "generation_lag_24h_mwh",
+        "generation_lag_168h_mwh",
+        "generation_rolling_7d_mean_mwh",
+        "capacity_mw",
+        "tilt_deg",
+        "station_latitude",
+        "station_longitude",
+        "station_elevation_m",
+        "solar_elevation_sin",
+        "clear_sky_irradiance_proxy",
+        "is_daylight"
+      ],
+      "validation_mae": 0.280635181914171,
+      "parameters": {
+        "cnn_channels": 90,
+        "kernel_size": 3,
+        "lstm_hidden": 60,
+        "lstm_layers": 2,
+        "dense_units": 78,
+        "dropout": 0.13736874205941257,
+        "readout": "final_hidden",
+        "lr": 0.00027010527749605503,
+        "weight_decay": 2.9204338471814074e-06
+      },
+      "optimizer": {
+        "enabled": true,
+        "selection_data": "validation_only",
+        "objective_metric": "validation_mae",
+        "best_validation_mae": 0.280635181914171,
+        "best_params": {
+          "cnn_channels": 90,
+          "kernel_size": 3,
+          "lstm_hidden": 60,
+          "lstm_layers": 2,
+          "dense_units": 78,
+          "dropout": 0.13736874205941257,
+          "readout": "final_hidden",
+          "lr": 0.00027010527749605503,
+          "weight_decay": 2.9204338471814074e-06
+        },
+        "summary_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_171451_447310\\candidates\\horizon_72h\\cnn_bilstm\\history_calendar_lookback_24h\\20260922_072421_041417\\optimization_summary.json",
+        "trials_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_171451_447310\\candidates\\horizon_72h\\cnn_bilstm\\history_calendar_lookback_24h\\20260922_072421_041417\\optimization_trials.csv",
+        "test_usage": "none"
+      },
+      "resolved_config": "candidates/horizon_72h/cnn_bilstm/history_calendar_lookback_24h/20260922_072421_041417/search_config.json"
+    }
+  }
+}

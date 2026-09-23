@@ -1,0 +1,142 @@
+{
+  "model": "cnn_bilstm",
+  "profile": "optimized",
+  "seed": 42,
+  "input_dataset": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+  "target_column": "generation_mwh",
+  "energy_source_filter": "solar",
+  "feature_columns": [
+    "hour",
+    "dayofweek",
+    "month",
+    "hour_sin",
+    "hour_cos",
+    "dayofyear_sin",
+    "dayofyear_cos",
+    "generation_lag_24h_mwh",
+    "generation_lag_168h_mwh",
+    "generation_rolling_7d_mean_mwh",
+    "capacity_mw",
+    "tilt_deg",
+    "station_latitude",
+    "station_longitude",
+    "station_elevation_m",
+    "solar_elevation_sin",
+    "clear_sky_irradiance_proxy",
+    "is_daylight"
+  ],
+  "feature_contract": "historical_origin_v1:history_calendar",
+  "quality_filter_column": "quality_train_eligible",
+  "missing_value_policy": "training_split_median_standard_with_missing_indicators",
+  "input_preprocessing_contract": "solar-cnn-input-preprocessing.v2",
+  "csv_chunk_rows": 100000,
+  "memory_limit_mb": 1536,
+  "numeric_dtype": "float32",
+  "entity_column": "plant_id",
+  "timestamp_column": "timestamp",
+  "output_root": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_171451_447310\\candidates\\horizon_72h\\cnn_bilstm\\history_calendar_lookback_168h",
+  "prediction_root": "artifacts/predictions/cnn_bilstm",
+  "forecast_horizon_hours": 72,
+  "evaluation_protocol": "historical_observation_rolling_origin",
+  "validation_fraction": 0.15,
+  "calibration_fraction": 0.1,
+  "test_fraction": 0.15,
+  "purge_gap_hours": 168,
+  "sequence_length": 168,
+  "batch_size": 64,
+  "shuffle_training_batches": true,
+  "append_missing_indicators": true,
+  "optimizer": {
+    "enabled": true,
+    "study_name": "historical_cnn_bilstm_72h_history_calendar_lookback_168h",
+    "storage_path": "artifacts/optimization/solar_models.db",
+    "objective_metric": "validation_mae",
+    "max_trials": 5,
+    "timeout_seconds": 3600,
+    "startup_trials": 5,
+    "pruner_startup_trials": 5,
+    "pruner_warmup_steps": 3,
+    "heartbeat_interval_seconds": 60,
+    "grace_period_seconds": 180,
+    "max_failed_trial_retries": 1,
+    "trial_epochs": 20,
+    "early_stopping_patience": 5,
+    "tuning_train_max_sequences": 250000,
+    "tuning_validation_max_sequences": 100000,
+    "search_space": {
+      "readout": {
+        "type": "categorical",
+        "choices": [
+          "final_hidden",
+          "last_output"
+        ]
+      },
+      "cnn_channels": {
+        "type": "int",
+        "low": 16,
+        "high": 128,
+        "log": true
+      },
+      "kernel_size": {
+        "type": "categorical",
+        "choices": [
+          3,
+          5,
+          7
+        ]
+      },
+      "lstm_hidden": {
+        "type": "int",
+        "low": 32,
+        "high": 256,
+        "log": true
+      },
+      "lstm_layers": {
+        "type": "int",
+        "low": 1,
+        "high": 2
+      },
+      "dense_units": {
+        "type": "int",
+        "low": 32,
+        "high": 256,
+        "log": true
+      },
+      "dropout": {
+        "type": "float",
+        "low": 0.05,
+        "high": 0.35
+      },
+      "lr": {
+        "type": "float",
+        "low": 0.0001,
+        "high": 0.003,
+        "log": true
+      },
+      "weight_decay": {
+        "type": "float",
+        "low": 1e-07,
+        "high": 0.001,
+        "log": true
+      }
+    }
+  },
+  "early_stopping_patience": 5,
+  "n_trials": 10,
+  "epochs": 50,
+  "use_optuna": true,
+  "checkpoint": {
+    "enabled": true,
+    "resume": true,
+    "root": "artifacts/checkpoints",
+    "cnn_every_epochs": 1,
+    "xgboost_every_rounds": 50
+  },
+  "prediction_task": "historical_forecast",
+  "train_end": "2024-06-30T23:00:00",
+  "validation_end": "2024-09-30T23:00:00",
+  "calibration_end": "2024-12-31T23:00:00",
+  "test_end": "2025-12-31T23:00:00",
+  "benchmark_candidate_id": "history_calendar_lookback_168h",
+  "checkpoint_identity_contract": "solar-benchmark-training-identity.v1"
+}

@@ -1,0 +1,30 @@
+{
+  "study_name": "historical_xgboost_24h_observed_weather_history_d00f8d7ff4dc",
+  "storage_path": "C:\\ESG_Project1\\artifacts\\optimization\\solar_models.db",
+  "direction": "minimize",
+  "selection_data": "validation_only",
+  "objective_metric": "validation_mae",
+  "max_total_trials": 15,
+  "heartbeat_interval_seconds": 60,
+  "grace_period_seconds": 180,
+  "max_failed_trial_retries": 1,
+  "existing_finished_trials": 15,
+  "executed_trials": 0,
+  "finished_trials": 15,
+  "completed_trials": 10,
+  "pruned_trials": 5,
+  "best_trial_number": 0,
+  "best_validation_mae": 0.26473666773260146,
+  "best_params": {
+    "max_depth": 6,
+    "learning_rate": 0.17254716573280354,
+    "min_child_weight": 12.640395588249113,
+    "subsample": 0.8394633936788146,
+    "colsample_bytree": 0.6624074561769746,
+    "reg_alpha": 2.5348407664333426e-07,
+    "reg_lambda": 0.0019517224641449498,
+    "gamma": 0.3426417745118369,
+    "max_bin": 256
+  },
+  "test_usage": "none"
+}

@@ -1,0 +1,18 @@
+{
+  "selection_data": "validation_only",
+  "objective_metric": "validation_mae",
+  "best_params": {
+    "cnn_channels": 90,
+    "kernel_size": 3,
+    "lstm_hidden": 60,
+    "lstm_layers": 2,
+    "dense_units": 78,
+    "dropout": 0.13736874205941257,
+    "readout": "final_hidden",
+    "lr": 0.00027010527749605503,
+    "weight_decay": 2.9204338471814074e-06
+  },
+  "best_value": 0.27556502914472547,
+  "best_trial_number": 1,
+  "test_usage": "none"
+}

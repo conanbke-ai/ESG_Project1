@@ -1,0 +1,33 @@
+{
+  "contract": "solar-optimized-benchmark.v1",
+  "schema_version": 1,
+  "status": "failed",
+  "execution_mode": "full",
+  "created_at_utc": "2026-09-21T07:53:38.923048+00:00",
+  "provenance": {
+    "dataset_fingerprint": "9386c841d06ca1427be54e77d7277c9c15b72820d762e3e72a2fa3f380093211",
+    "input_dataset": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+    "code_revision": "f6183a8ccc618dcfcd773fa90103546a179ee893",
+    "source_sha256": "da147daf6199376a0a122aa5f32f33f7cf5e23f907c0497e68b8a7fa0e8975dc",
+    "runtime": {
+      "numpy": "2.3.4",
+      "pandas": "2.3.3",
+      "scikit-learn": "1.7.2",
+      "torch": "2.13.0",
+      "xgboost": "3.1.0",
+      "optuna": "4.9.0"
+    },
+    "experiment_sha256": "0e7737ed432edcdcfed4535352257bf3600b908b45e0eaa029d62b381500fd83",
+    "optimization_scope": "configured_search_budget",
+    "data_provenance": {
+      "data_origin": "quality_gated_official_generation_and_asos_observations",
+      "purpose": "employment_portfolio_historical_model_comparison",
+      "historical_checkpoint_baseline": "not_reproduced_by_this_experiment",
+      "split_status": "global_calendar_canonical_reaudit_required_on_current_local_gold",
+      "evaluation_status": "historical_development_evaluation_not_unseen_confirmation"
+    },
+    "historical_checkpoint_performance_verified": false
+  },
+  "tasks": [],
+  "error": "TrainingAlreadyRunning: Another training job is active: {\"pid\": 30044, \"model\": \"cnn_bilstm\"}"
+}

@@ -1,0 +1,168 @@
+{
+  "contract": "solar-training-run-manifest.v1",
+  "schema_version": 1,
+  "status": "completed",
+  "model": "xgboost",
+  "run_id": "20260921_141904_677826",
+  "updated_at_utc": "2026-09-21T05:20:03.080616+00:00",
+  "details": {
+    "source": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+    "model_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_141749_918402\\candidates\\horizon_1h\\xgboost\\history_calendar\\20260921_141904_677826\\model.json",
+    "preprocessing_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_141749_918402\\candidates\\horizon_1h\\xgboost\\history_calendar\\20260921_141904_677826\\preprocessing.json",
+    "validation_predictions": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_141749_918402\\candidates\\horizon_1h\\xgboost\\history_calendar\\20260921_141904_677826\\validation_predictions.csv",
+    "calibration_predictions": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_141749_918402\\candidates\\horizon_1h\\xgboost\\history_calendar\\20260921_141904_677826\\calibration_predictions.csv",
+    "test_predictions": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_141749_918402\\candidates\\horizon_1h\\xgboost\\history_calendar\\20260921_141904_677826\\test_predictions.csv",
+    "features": [
+      "hour",
+      "dayofweek",
+      "month",
+      "hour_sin",
+      "hour_cos",
+      "dayofyear_sin",
+      "dayofyear_cos",
+      "generation_lag_24h_mwh",
+      "generation_lag_168h_mwh",
+      "generation_rolling_7d_mean_mwh",
+      "capacity_mw",
+      "tilt_deg",
+      "station_latitude",
+      "station_longitude",
+      "station_elevation_m",
+      "solar_elevation_sin",
+      "clear_sky_irradiance_proxy",
+      "is_daylight"
+    ],
+    "metrics": {
+      "mae": 0.3900456130504608,
+      "rmse": 2.2381496956663067,
+      "r2": 0.774491548538208
+    },
+    "n_train": 479345,
+    "n_validation": 38760,
+    "n_calibration": 38687,
+    "n_test": 105336,
+    "temporal_split": {
+      "protocol": "global_timestamp_train_validation_calibration_test",
+      "evaluation_protocol": "historical_rolling_origin_with_observation_updates",
+      "boundaries": {
+        "train_end": "2024-06-30T23:00:00",
+        "validation_end": "2024-09-30T23:00:00",
+        "calibration_end": "2024-12-31T23:00:00",
+        "gap_hours": 168,
+        "test_end": "2025-12-31T23:00:00",
+        "split_mode": "calendar"
+      },
+      "counts": {
+        "train": 479345,
+        "validation": 38760,
+        "calibration": 38687,
+        "test": 105336
+      },
+      "test_period": {
+        "start": "2025-01-08T00:00:00",
+        "end": "2025-12-31T23:00:00"
+      }
+    },
+    "evaluation_contract": {
+      "dataset_fingerprint": "9386c841d06ca1427be54e77d7277c9c15b72820d762e3e72a2fa3f380093211",
+      "target": "generation_mwh",
+      "target_unit": "MWh",
+      "test_start": "2025-01-08T00:00:00",
+      "test_end": "2025-12-31T23:00:00",
+      "task": "historical_forecast",
+      "information_set": "observed_measurements_through_forecast_origin",
+      "horizon_hours": 1,
+      "prediction_key": [
+        "timestamp",
+        "plant_id",
+        "forecast_origin",
+        "horizon_hours"
+      ],
+      "prediction_schema": "solar-forecast-prediction.v2",
+      "origin_definition": "target_timestamp_minus_horizon",
+      "observation_availability_assumption": "hourly_measurement_available_at_timestamp; publication_latency_not_simulated"
+    },
+    "optimizer": {
+      "enabled": true,
+      "selection_data": "validation_only",
+      "objective_metric": "validation_mae",
+      "best_validation_mae": 0.2641163766384125,
+      "best_params": {
+        "max_depth": 7,
+        "learning_rate": 0.1460163884685703,
+        "min_child_weight": 2.788733558325601,
+        "subsample": 0.853648855908228,
+        "colsample_bytree": 0.9036647437913499,
+        "reg_alpha": 5.6206514136389906e-08,
+        "reg_lambda": 5.663630360836638,
+        "gamma": 0.08104244860649834,
+        "max_bin": 128
+      },
+      "best_iteration": 30,
+      "tuning_train_rows": 479345,
+      "tuning_validation_rows": 38760,
+      "existing_trials": 0,
+      "executed_trials": 15,
+      "summary_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_141749_918402\\candidates\\horizon_1h\\xgboost\\history_calendar\\20260921_141904_677826\\optimization_summary.json",
+      "trials_path": "C:\\ESG_Project1\\artifacts\\benchmarks\\20260921_141749_918402\\candidates\\horizon_1h\\xgboost\\history_calendar\\20260921_141904_677826\\optimization_trials.csv",
+      "test_usage": "none"
+    },
+    "memory_aware_loading": {
+      "files": 27,
+      "input_bytes": 49818033,
+      "scanned_rows": 718531,
+      "retained_rows": 671731,
+      "selected_columns": [
+        "timestamp",
+        "region",
+        "plant",
+        "plant_id",
+        "hour",
+        "dayofweek",
+        "month",
+        "hour_sin",
+        "hour_cos",
+        "dayofyear_sin",
+        "dayofyear_cos",
+        "generation_lag_24h_mwh",
+        "generation_lag_168h_mwh",
+        "generation_rolling_7d_mean_mwh",
+        "capacity_mw",
+        "tilt_deg",
+        "station_latitude",
+        "station_longitude",
+        "station_elevation_m",
+        "solar_elevation_sin",
+        "clear_sky_irradiance_proxy",
+        "is_daylight",
+        "generation_mwh"
+      ],
+      "chunk_rows": 100000,
+      "numeric_dtype": "float32",
+      "dataframe_memory_mb": 94.17541980743408,
+      "memory_limit_mb": 1536
+    },
+    "checkpoint": {
+      "enabled": true,
+      "resume": true,
+      "contract": "solar-training-checkpoint.v2",
+      "fingerprint": "72286a956dbc66bc4d424ba07e9fa6babb323c1536849b77e281ca752a20a666",
+      "directory": "C:\\ESG_Project1\\artifacts\\checkpoints\\xgboost\\72286a956dbc66bc4d424ba07e9fa6babb323c1536849b77e281ca752a20a666",
+      "cnn_every_epochs": 1,
+      "xgboost_every_rounds": 50,
+      "stage": "final_fit_9835a3d275d0a6331074",
+      "resumed": false,
+      "initial_rounds": 0,
+      "completed_rounds": 81,
+      "retained_for_idempotent_resume": true
+    },
+    "run_context": {
+      "execution_mode": "full",
+      "energy_source": "solar",
+      "target": "generation_mwh",
+      "target_unit": "MWh",
+      "horizon_hours": 1,
+      "evaluation_protocol": "historical_observation_rolling_origin"
+    }
+  }
+}
