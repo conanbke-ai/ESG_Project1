@@ -12,7 +12,7 @@
   ],
   "optimization_scope": "configured_search_budget",
   "minimum_common_coverage": 0.95,
-  "minimum_relative_improvement": 0,
+  "minimum_relative_improvement": 0.02,
   "selection_gap_hours": 168,
   "split": {
     "train_end": "2024-06-30T23:00:00",
@@ -68,7 +68,7 @@
     "champion_selection": "calibration_late_half_after_purge",
     "test": "frozen_models_final_report_only",
     "metric": "pooled_plant_hour_mae",
-    "hybrid_rule": "strict_improvement_over_best_base",
+    "hybrid_rule": "pooled_mae_improvement_at_least_2pct_and_plant_win_fraction_at_least_55pct",
     "baseline": "generation_observed_at_forecast_origin"
   },
   "provenance": {
@@ -86,5 +86,7 @@
     "short_history_policy": "exclude_from_main_cohort_or_report_separately; never move that plant's Test window",
     "boundary_change_policy": "if coverage is insufficient, revise one global versioned boundary set before training; never choose per-plant cutoffs or move boundaries after viewing Test performance",
     "current_boundary_basis": "2026-09-17 coverage-audited calendar candidate promoted to canonical development-evaluation split; current local Gold must be re-audited before training"
-  }
+  },
+  "minimum_plant_win_fraction": 0.55,
+  "gate_min_group_samples": 48
 }
