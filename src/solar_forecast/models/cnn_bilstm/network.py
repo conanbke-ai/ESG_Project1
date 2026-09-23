@@ -26,10 +26,16 @@ class CnnBiLstmNetworkConfig:
     # Missing fields in historical checkpoints retain their original forward
     # semantics. New training explicitly selects final_hidden.
     readout: str = "last_output"
+    n_future_features: int = 0
+    future_units: int = 32
 
     def __post_init__(self) -> None:
         if self.readout not in {"last_output", "final_hidden"}:
             raise ValueError("readout must be last_output or final_hidden")
+        if self.n_future_features < 0:
+            raise ValueError("n_future_features cannot be negative")
+        if self.future_units < 1:
+            raise ValueError("future_units must be positive")
 
 
 class CNNBiLSTM(nn.Module):
@@ -60,14 +66,28 @@ class CNNBiLSTM(nn.Module):
             batch_first=True,
         )
 
+        self.future_encoder = None
+        future_width = 0
+        if config.n_future_features:
+            self.future_encoder = nn.Sequential(
+                nn.Linear(config.n_future_features, config.future_units),
+                nn.ReLU(),
+                nn.Dropout(config.dropout),
+            )
+            future_width = config.future_units
+
         self.head = nn.Sequential(
-            nn.Linear(config.lstm_hidden * 2, config.dense_units),
+            nn.Linear(config.lstm_hidden * 2 + future_width, config.dense_units),
             nn.ReLU(),
             nn.Dropout(config.dropout),
             nn.Linear(config.dense_units, 1),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        future: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         # x: (batch, seq_len, features)
         x = x.transpose(1, 2)  # (batch, features, seq_len)
         x = self.conv(x)
@@ -79,6 +99,12 @@ class CNNBiLSTM(nn.Module):
             summary = torch.cat((hidden[-2], hidden[-1]), dim=1)
         else:
             summary = output[:, -1]
+        if self.future_encoder is not None:
+            if future is None:
+                raise ValueError("Future covariates are required by this model")
+            summary = torch.cat((summary, self.future_encoder(future)), dim=1)
+        elif future is not None:
+            raise ValueError("Unexpected future covariates for this model")
         return self.head(summary).squeeze(-1)
 
 
