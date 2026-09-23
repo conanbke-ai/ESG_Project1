@@ -43,6 +43,11 @@ def _parser() -> argparse.ArgumentParser:
         "--output",
         default="artifacts/verification/future_weather_preflight.json",
     )
+    parser.add_argument(
+        "--minimum-coverage",
+        type=float,
+        default=0.98,
+    )
     return parser
 
 
@@ -84,7 +89,35 @@ def _feature_stats(frame: pd.DataFrame, features: tuple[str, ...]) -> dict:
     return result
 
 
-def validate(root: Path) -> dict:
+def _all_missing_breakdown(
+    frame: pd.DataFrame,
+    features: tuple[str, ...],
+) -> dict[str, object]:
+    missing = frame[list(features)].isna().all(axis=1)
+    affected = frame.loc[missing, ["plant_id", "timestamp"]].copy()
+    return {
+        "rows": int(missing.sum()),
+        "fraction": float(missing.mean()) if len(frame) else 0.0,
+        "plants": int(affected["plant_id"].nunique()) if not affected.empty else 0,
+        "plant_rows": (
+            affected["plant_id"].value_counts().sort_index().to_dict()
+            if not affected.empty
+            else {}
+        ),
+        "start": (
+            affected["timestamp"].min().isoformat()
+            if not affected.empty
+            else None
+        ),
+        "end": (
+            affected["timestamp"].max().isoformat()
+            if not affected.empty
+            else None
+        ),
+    }
+
+
+def validate(root: Path, *, minimum_coverage: float = 0.98) -> dict:
     reports = {}
     key_sets = {}
     for horizon in (24, 72):
@@ -105,6 +138,15 @@ def validate(root: Path) -> dict:
             for name, stats in feature_stats.items()
             if stats["invalid_rows"] > 0
         ]
+        entirely_missing_features = [
+            name
+            for name, stats in feature_stats.items()
+            if stats["observed_rows"] == 0
+        ]
+        core_missing = _all_missing_breakdown(frame, core)
+        extended_missing = _all_missing_breakdown(frame, extended)
+        core_coverage = 1.0 - float(core_missing["fraction"])
+        extended_coverage = 1.0 - float(extended_missing["fraction"])
         keys = pd.MultiIndex.from_frame(frame[["plant_id", "timestamp"]])
         key_sets[horizon] = keys
         reports[str(horizon)] = {
@@ -121,6 +163,16 @@ def validate(root: Path) -> dict:
             "extended_features": list(extended),
             "feature_stats": feature_stats,
             "invalid_features": invalid_features,
+            "entirely_missing_features": entirely_missing_features,
+            "aligned_core_all_missing": core_missing,
+            "extended_all_missing": extended_missing,
+            "aligned_core_coverage": core_coverage,
+            "extended_coverage": extended_coverage,
+            "minimum_required_coverage": float(minimum_coverage),
+            "coverage_passed": (
+                core_coverage >= minimum_coverage
+                and extended_coverage >= minimum_coverage
+            ),
             "fixed_lead_verified": True,
         }
 
@@ -130,13 +182,35 @@ def validate(root: Path) -> dict:
         for horizon, report in reports.items()
         if report["invalid_features"]
     }
+    entirely_missing = {
+        horizon: report["entirely_missing_features"]
+        for horizon, report in reports.items()
+        if report["entirely_missing_features"]
+    }
+    coverage_failures = {
+        horizon: {
+            "aligned_core_coverage": report["aligned_core_coverage"],
+            "extended_coverage": report["extended_coverage"],
+        }
+        for horizon, report in reports.items()
+        if not report["coverage_passed"]
+    }
+    passed = (
+        same_keys
+        and not invalid
+        and not entirely_missing
+        and not coverage_failures
+    )
     report = {
         "contract": "solar-future-weather-preflight.v1",
-        "status": "PASS" if same_keys and not invalid else "FAIL",
+        "status": "PASS" if passed else "FAIL",
         "future_weather_contract": FUTURE_WEATHER_CONTRACT,
         "horizons": reports,
         "same_plant_timestamp_keys_24h_72h": same_keys,
         "invalid_features": invalid,
+        "entirely_missing_features": entirely_missing,
+        "coverage_failures": coverage_failures,
+        "minimum_required_coverage": float(minimum_coverage),
         "historical_alignment": {
             "temperature": "Celsius_to_Celsius",
             "humidity": "percent_to_percent",
@@ -155,7 +229,12 @@ def main() -> None:
     args = _parser().parse_args()
     root = Path(args.root)
     output = Path(args.output)
-    report = validate(root)
+    if not 0 < args.minimum_coverage <= 1:
+        raise ValueError("--minimum-coverage must be in (0, 1]")
+    report = validate(
+        root,
+        minimum_coverage=float(args.minimum_coverage),
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(report, ensure_ascii=False, indent=2),
