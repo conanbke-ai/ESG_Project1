@@ -23,7 +23,7 @@ import pandas as pd
 import requests
 
 from solar_forecast.features.future_weather import (
-    FUTURE_WEATHER_FEATURES,
+    FUTURE_WEATHER_ARCHIVE_FEATURES,
     FUTURE_WEATHER_CONTRACT,
 )
 
@@ -35,11 +35,12 @@ SOURCE_VARIABLES = {
     "future_temperature_c": "temperature_2m",
     "future_humidity_pct": "relative_humidity_2m",
     "future_precipitation_mm": "precipitation",
-    "future_cloud_cover_pct": "cloud_cover",
+    "future_total_cloud_cover_tenths": "cloud_cover",
     "future_wind_speed_mps": "wind_speed_10m",
-    "future_ghi_w_m2": "shortwave_radiation",
-    "future_dni_w_m2": "direct_normal_irradiance",
-    "future_dhi_w_m2": "diffuse_radiation",
+    "future_solar_irradiance_mj_m2": "shortwave_radiation",
+    "future_sunshine_hours": "sunshine_duration",
+    "future_dni_mj_m2": "direct_normal_irradiance",
+    "future_dhi_mj_m2": "diffuse_radiation",
 }
 
 
@@ -248,11 +249,19 @@ def _normalize(
         values = hourly.get(key)
         if values is None:
             result[output_name] = pd.NA
-        else:
-            result[output_name] = pd.to_numeric(
-                pd.Series(values),
-                errors="coerce",
-            )
+            continue
+        numeric = pd.to_numeric(pd.Series(values), errors="coerce")
+        if output_name == "future_total_cloud_cover_tenths":
+            numeric = numeric / 10.0
+        elif output_name in {
+            "future_solar_irradiance_mj_m2",
+            "future_dni_mj_m2",
+            "future_dhi_mj_m2",
+        }:
+            numeric = numeric * 0.0036
+        elif output_name == "future_sunshine_hours":
+            numeric = numeric / 3600.0
+        result[output_name] = numeric
     result["forecast_origin"] = (
         result["timestamp"] - pd.Timedelta(hours=horizon)
     )
@@ -351,7 +360,7 @@ def collect(args: argparse.Namespace) -> None:
             "energy_source": str(args.energy_source),
             "start": combined["timestamp"].min().isoformat(),
             "end": combined["timestamp"].max().isoformat(),
-            "features": list(FUTURE_WEATHER_FEATURES),
+            "features": list(FUTURE_WEATHER_ARCHIVE_FEATURES),
             "forecast_origin_rule": "target_timestamp_minus_fixed_lead",
             "spatial_contract": (
                 "plant coordinates when available; otherwise the already "
