@@ -54,6 +54,9 @@ class _EntitySeries:
     horizon_hours: int | None = None
     is_daylight: np.ndarray | None = None
     capacity_mw: np.ndarray | None = None
+    raw_targets_mwh: np.ndarray | None = None
+    target_scale: np.ndarray | None = None
+    future_features: np.ndarray | None = None
 
 
 class LazyWindowSequenceDataset(Dataset):
@@ -70,6 +73,9 @@ class LazyWindowSequenceDataset(Dataset):
         counts = np.asarray([len(value) for value in self.positions], dtype=np.int64)
         self.cumulative = np.cumsum(counts)
         self.sequence_length = sequence_length
+        self.has_future_features = any(
+            item.future_features is not None for item in self.series
+        )
 
     def __len__(self) -> int:
         return int(self.cumulative[-1]) if len(self.cumulative) else 0
@@ -86,7 +92,12 @@ class LazyWindowSequenceDataset(Dataset):
             if item.origin_positions is not None else target_position
         )
         window = item.features[window_end - self.sequence_length : window_end]
-        return torch.from_numpy(window).float(), torch.tensor(item.targets[target_position]).float()
+        target = torch.tensor(item.targets[target_position]).float()
+        history = torch.from_numpy(window).float()
+        if item.future_features is not None:
+            future = torch.from_numpy(item.future_features[target_position]).float()
+            return (history, future), target
+        return history, target
 
     def context_frame(self, start: int, stop: int) -> pd.DataFrame:
         """Materialize metadata only for one sequential prediction batch."""
@@ -110,12 +121,24 @@ class LazyWindowSequenceDataset(Dataset):
                 records[-1].update({
                     "forecast_origin": item.timestamps[origin_position],
                     "horizon_hours": item.horizon_hours,
-                    "persistence_pred": float(item.targets[origin_position]),
+                    "persistence_pred": float(
+                        item.raw_targets_mwh[origin_position]
+                        if item.raw_targets_mwh is not None
+                        else item.targets[origin_position]
+                    ),
                 })
             if item.is_daylight is not None:
                 records[-1]["is_daylight"] = bool(item.is_daylight[target_position])
             if item.capacity_mw is not None:
                 records[-1]["capacity_mw"] = float(item.capacity_mw[target_position])
+            if item.raw_targets_mwh is not None:
+                records[-1]["y_true_mwh"] = float(
+                    item.raw_targets_mwh[target_position]
+                )
+            if item.target_scale is not None:
+                records[-1]["target_scale"] = float(
+                    item.target_scale[target_position]
+                )
         return pd.DataFrame.from_records(records)
 
 
@@ -143,6 +166,7 @@ class SequenceLoaders:
     calibration: DataLoader
     test: DataLoader
     n_features: int
+    n_future_features: int
     split_metadata: dict[str, object]
 
 
@@ -180,6 +204,36 @@ def _fit_and_transform_training_preprocessing(
     return state
 
 
+def _fit_and_transform_future_preprocessing(
+    series: Sequence[_EntitySeries],
+    future_feature_columns: Sequence[str],
+    *,
+    append_missing_indicators: bool,
+) -> dict[str, object] | None:
+    if not future_feature_columns:
+        return None
+    blocks: list[tuple[np.ndarray, np.ndarray]] = []
+    for item in series:
+        if item.future_features is None:
+            raise ValueError("Future feature matrix is missing for one entity")
+        selected = np.zeros(len(item.future_features), dtype=bool)
+        selected[item.target_positions["train"]] = True
+        blocks.append((item.future_features, selected))
+    state = fit_input_preprocessing(
+        blocks,
+        future_feature_columns,
+        append_missing_indicators=append_missing_indicators,
+    )
+    for item in series:
+        assert item.future_features is not None
+        item.future_features = transform_inputs(
+            item.future_features,
+            future_feature_columns,
+            state,
+        )
+    return state
+
+
 def prepare_dataset_splits(
     frame: pd.DataFrame,
     target_column: str,
@@ -198,14 +252,31 @@ def prepare_dataset_splits(
         excluded = {target_column, entity_column, timestamp_column}
         feature_columns = [column for column in frame.columns if column not in excluded]
     feature_columns = list(feature_columns)
+    future_feature_columns = list(cfg.future_feature_columns)
+    missing_future = set(future_feature_columns) - set(frame.columns)
+    if missing_future:
+        raise ValueError(
+            f"Future covariate columns are missing: {sorted(missing_future)}"
+        )
     frozen_preprocessing = (
         validate_input_preprocessing(preprocessing_state, feature_columns)
         if preprocessing_state is not None else None
     )
     if frozen_preprocessing is not None and frozen_preprocessing["append_missing_indicators"] != cfg.append_missing_indicators:
         raise ValueError("Sequence config missing indicators differ from saved preprocessing")
+    frozen_future_preprocessing = None
     if frozen_preprocessing is not None:
         saved_split = frozen_preprocessing.get("temporal_split") or {}
+        saved_future = frozen_preprocessing.get("future_covariates")
+        if future_feature_columns:
+            if not isinstance(saved_future, dict):
+                raise ValueError("Saved CNN preprocessing omits future covariates")
+            frozen_future_preprocessing = validate_input_preprocessing(
+                saved_future,
+                future_feature_columns,
+            )
+        elif saved_future is not None:
+            raise ValueError("Saved CNN preprocessing has unexpected future covariates")
         if saved_split.get("sequence_length", cfg.sequence_length) != cfg.sequence_length:
             raise ValueError("Sequence length differs from saved preprocessing")
         saved_horizon = saved_split.get("forecast_horizon_hours")
@@ -265,7 +336,36 @@ def prepare_dataset_splits(
         if len(group) <= cfg.sequence_length:
             continue
         features = group[feature_columns].to_numpy(dtype=np.float32)
-        targets = group[target_column].to_numpy(dtype=np.float32)
+        raw_targets = pd.to_numeric(
+            group[target_column], errors="coerce"
+        ).to_numpy(dtype=np.float32)
+        capacity = (
+            pd.to_numeric(
+                group[cfg.capacity_column],
+                errors="coerce",
+            ).to_numpy(dtype=np.float32)
+            if cfg.capacity_column in group.columns
+            else None
+        )
+        if cfg.target_transform == "capacity_factor":
+            if capacity is None:
+                raise ValueError(
+                    f"capacity_factor target requires {cfg.capacity_column}"
+                )
+            valid_capacity = np.isfinite(capacity) & (capacity > 0)
+            targets = np.full(len(group), np.nan, dtype=np.float32)
+            targets[valid_capacity] = (
+                raw_targets[valid_capacity] / capacity[valid_capacity]
+            )
+            target_scale = capacity.astype(np.float32, copy=True)
+        else:
+            targets = raw_targets.copy()
+            target_scale = np.ones(len(group), dtype=np.float32)
+        future_features = (
+            group[future_feature_columns].to_numpy(dtype=np.float32)
+            if future_feature_columns
+            else None
+        )
         origin_positions = None
         if historical:
             absolute_positions, origins = forecast_window_positions(
@@ -273,7 +373,13 @@ def prepare_dataset_splits(
                 horizon_hours=cfg.forecast_horizon_hours,
                 sequence_length=cfg.sequence_length,
             )
-            finite = np.isfinite(targets[absolute_positions]) & np.isfinite(targets[origins])
+            finite = (
+                np.isfinite(targets[absolute_positions])
+                & np.isfinite(raw_targets[absolute_positions])
+                & np.isfinite(raw_targets[origins])
+            )
+            if future_features is not None:
+                finite &= ~np.isnan(future_features[absolute_positions]).all(axis=1)
             absolute_positions, origins = absolute_positions[finite], origins[finite]
             origin_positions = np.full(len(group), -1, dtype=np.int64)
             origin_positions[absolute_positions] = origins
@@ -348,6 +454,9 @@ def prepare_dataset_splits(
                     if "capacity_mw" in group.columns
                     else None
                 ),
+                raw_targets_mwh=raw_targets.astype(np.float32, copy=False),
+                target_scale=target_scale,
+                future_features=future_features,
             )
         )
     if not series:
@@ -367,10 +476,26 @@ def prepare_dataset_splits(
             series, feature_columns,
             append_missing_indicators=cfg.append_missing_indicators,
         )
+        future_state = _fit_and_transform_future_preprocessing(
+            series,
+            future_feature_columns,
+            append_missing_indicators=cfg.append_missing_indicators,
+        )
+        if future_state is not None:
+            preprocessing_state["future_covariates"] = future_state
     else:
         preprocessing_state = frozen_preprocessing
         for item in series:
-            item.features = transform_inputs(item.features, feature_columns, preprocessing_state)
+            item.features = transform_inputs(
+                item.features, feature_columns, preprocessing_state
+            )
+            if future_feature_columns:
+                assert item.future_features is not None
+                item.future_features = transform_inputs(
+                    item.future_features,
+                    future_feature_columns,
+                    frozen_future_preprocessing,
+                )
     datasets = {
         name: LazyWindowSequenceDataset(series, name, cfg.sequence_length)
         for name in ("train", "validation", "calibration", "test")
@@ -396,6 +521,9 @@ def prepare_dataset_splits(
         ),
         "forecast_horizon_hours": cfg.forecast_horizon_hours if historical else None,
         "sequence_length": cfg.sequence_length,
+        "target_transform": cfg.target_transform,
+        "capacity_column": cfg.capacity_column,
+        "future_feature_columns": future_feature_columns,
         "continuous_hourly_windows_required": historical,
         "fractions": {
             "train": 1 - cfg.val_size - cfg.calibration_size - cfg.test_size,
@@ -426,12 +554,19 @@ def prepare_dataset_splits(
         loader.preprocessing_state = preprocessing_state
         loader.split_metadata = split_metadata
     n_features = len(preprocessing_state["effective_feature_columns"])
+    future_state = preprocessing_state.get("future_covariates")
+    n_future_features = (
+        len(future_state["effective_feature_columns"])
+        if isinstance(future_state, dict)
+        else 0
+    )
     return SequenceLoaders(
         train=loaders["train"],
         validation=loaders["validation"],
         calibration=loaders["calibration"],
         test=loaders["test"],
         n_features=n_features,
+        n_future_features=n_future_features,
         split_metadata=split_metadata,
     )
 
