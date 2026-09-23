@@ -37,6 +37,19 @@ from solar_forecast.models.cnn_bilstm.adaptive_training import BanditConfig, run
 from solar_forecast.infrastructure.artifact_store import create_run_directory
 
 
+def _move_prediction_inputs(inputs, device: torch.device):
+    if isinstance(inputs, (tuple, list)):
+        return tuple(value.to(device) for value in inputs)
+    return inputs.to(device)
+
+
+def _predict_batch(model: torch.nn.Module, inputs, device: torch.device):
+    moved = _move_prediction_inputs(inputs, device)
+    if isinstance(moved, tuple):
+        return model(*moved)
+    return model(moved)
+
+
 def _write_prediction_artifact(
     model: torch.nn.Module,
     loader,
@@ -56,11 +69,26 @@ def _write_prediction_artifact(
     model.eval()
     with torch.no_grad():
         for features, targets in loader:
-            predicted = model(features.to(device)).detach().cpu().numpy().reshape(-1)
-            actual = targets.detach().cpu().numpy().reshape(-1)
-            context = dataset.context_frame(offset, offset + len(actual))
-            if len(context) != len(actual):
+            model_predicted = (
+                _predict_batch(model, features, device)
+                .detach()
+                .cpu()
+                .numpy()
+                .reshape(-1)
+            )
+            model_actual = targets.detach().cpu().numpy().reshape(-1)
+            context = dataset.context_frame(offset, offset + len(model_actual))
+            if len(context) != len(model_actual):
                 raise ValueError("CNN prediction context is not aligned with model output")
+            if "y_true_mwh" in context and "target_scale" in context:
+                actual = context["y_true_mwh"].to_numpy(dtype=float)
+                predicted = (
+                    model_predicted
+                    * context["target_scale"].to_numpy(dtype=float)
+                )
+            else:
+                actual = model_actual
+                predicted = model_predicted
             context["split"] = split
             context["y_true"] = actual
             context["y_pred"] = predicted
@@ -223,7 +251,10 @@ def train_cnn_bilstm(
         )
         train_loader, val_loader, test_loader = loaders.train, loaders.validation, loaders.test
         model_cfg = CnnBiLstmNetworkConfig(
-            n_features=loaders.n_features, readout="final_hidden"
+            n_features=loaders.n_features,
+            readout="final_hidden",
+            n_future_features=loaders.n_future_features,
+            future_units=32,
         )
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = build_cnn_bilstm_network(model_cfg, device=device)
@@ -369,6 +400,9 @@ def train_cnn_bilstm(
             "feature_columns": preprocessing_state["feature_columns"],
             "sequence_config": cfg.__dict__,
             "target_column": target_column,
+            "target_transform": cfg.target_transform,
+            "capacity_column": cfg.capacity_column,
+            "future_feature_columns": list(cfg.future_feature_columns),
             "entity_column": entity_column,
             "timestamp_column": timestamp_column,
             "preprocessing": preprocessing_state,
