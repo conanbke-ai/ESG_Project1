@@ -555,14 +555,17 @@ class NationwideModelDatasetBuilder:
             "tilt_deg",
             "admin_province",
             "admin_city",
-            "admin_region_source",
-            "admin_region_status",
             "weather_station_id",
             "weather_station_name",
             "weather_mapping_method",
             "weather_mapping_confidence",
             "weather_mapping_review_required",
         ]
+        mapping_columns.extend(
+            column
+            for column in ("admin_region_source", "admin_region_status")
+            if column in eligible_registry.columns
+        )
         generation = generation.merge(
             eligible_registry[mapping_columns],
             on=["company", "plant", "energy_source"],
