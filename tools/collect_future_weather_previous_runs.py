@@ -71,23 +71,16 @@ def _registry(path: Path) -> pd.DataFrame:
         raise ValueError(f"Plant registry columns are missing: {sorted(missing)}")
     frame["latitude"] = pd.to_numeric(frame["latitude"], errors="coerce")
     frame["longitude"] = pd.to_numeric(frame["longitude"], errors="coerce")
-    if "model_ready_status" in frame:
-        frame = frame.loc[frame["model_ready_status"].eq("eligible")]
-    frame = frame.dropna(subset=["plant_id", "latitude", "longitude"]).copy()
-    frame = frame.loc[
-        frame["latitude"].between(32.0, 39.5)
-        & frame["longitude"].between(124.0, 132.5)
-    ]
-    eligible_ids = set(
-        frame.loc[
-            frame.get(
-                "model_ready_status",
-                pd.Series("eligible", index=frame.index),
-            ).eq("eligible"),
-            "plant_id",
-        ].astype(str)
+    eligible = (
+        frame["model_ready_status"].eq("eligible")
+        if "model_ready_status" in frame
+        else pd.Series(True, index=frame.index)
     )
-    usable = frame.dropna(subset=["plant_id", "latitude", "longitude"]).copy()
+    eligible_frame = frame.loc[eligible].copy()
+    eligible_ids = set(eligible_frame["plant_id"].dropna().astype(str))
+    usable = eligible_frame.dropna(
+        subset=["plant_id", "latitude", "longitude"]
+    ).copy()
     usable = usable.loc[
         usable["latitude"].between(32.0, 39.5)
         & usable["longitude"].between(124.0, 132.5)
