@@ -196,6 +196,8 @@ class NationwideModelDatasetBuilder:
         for column in (
             "admin_province",
             "admin_city",
+            "admin_region_source",
+            "admin_region_status",
             "station_id",
             "weather_station_name",
             "weather_mapping_method",
