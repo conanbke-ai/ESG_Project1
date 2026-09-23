@@ -68,12 +68,9 @@ def load_experiment_config(path: Path, *, project_root: Path = PROJECT_ROOT) -> 
         if not isinstance(future_weather, dict):
             raise ValueError("future_weather must be an object")
         enabled_horizons = future_weather.get("enabled_horizons", [])
-        if any(
-            type(value) is not int or value not in horizons
-            for value in enabled_horizons
-        ):
+        if any(type(value) is not int or value <= 0 for value in enabled_horizons):
             raise ValueError(
-                "future_weather.enabled_horizons must be a subset of horizons_hours"
+                "future_weather.enabled_horizons must contain positive integers"
             )
         if len(set(enabled_horizons)) != len(enabled_horizons):
             raise ValueError("future_weather.enabled_horizons cannot contain duplicates")
