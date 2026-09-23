@@ -16,13 +16,13 @@ from solar_forecast.collectors.generation_normalizers import read_csv_with_fallb
 
 
 PROVINCE_ALIASES = {
-    "서울특별시": ("서울특별시", "서울"),
-    "부산광역시": ("부산광역시", "부산"),
-    "대구광역시": ("대구광역시", "대구"),
-    "인천광역시": ("인천광역시", "인천"),
-    "광주광역시": ("광주광역시", "광주"),
-    "대전광역시": ("대전광역시", "대전"),
-    "울산광역시": ("울산광역시", "울산"),
+    "서울특별시": ("서울특별시", "서울시", "서울"),
+    "부산광역시": ("부산광역시", "부산시", "부산"),
+    "대구광역시": ("대구광역시", "대구시", "대구"),
+    "인천광역시": ("인천광역시", "인천시", "인천"),
+    "광주광역시": ("광주광역시", "광주시", "광주"),
+    "대전광역시": ("대전광역시", "대전시", "대전"),
+    "울산광역시": ("울산광역시", "울산시", "울산"),
     "세종특별자치시": ("세종특별자치시", "세종시", "세종"),
     "경기도": ("경기도", "경기"),
     "강원특별자치도": ("강원특별자치도", "강원도", "강원"),
@@ -218,6 +218,14 @@ class KmaStationCatalog:
                     "station_valid_to": values["종료일"],
                     "admin_province": area.province,
                     "admin_city": area.city,
+                    "admin_region_source": (
+                        admin_region_source
+                        if area.province or area.city
+                        else "unresolved"
+                    ),
+                    "admin_region_status": (
+                        "resolved" if area.province or area.city else "unknown"
+                    ),
                     "admin_locality": area.locality,
                 }
             )
@@ -545,7 +553,16 @@ class NationwidePlantRegistryBuilder:
             )
             capacity = record.capacity_mw if record and record.capacity_mw is not None else profile["capacity_mw"]
             tilt = record.tilt_deg if record and record.tilt_deg is not None else profile["tilt_deg"]
-            address = record.address if record and record.address else profile["address"]
+            metadata_address = record.address if record and record.address else None
+            source_address = profile["address"]
+            address = metadata_address or source_address
+            admin_region_source = (
+                "official_metadata_address"
+                if metadata_address
+                else "source_partition_address"
+                if source_address is not None and not pd.isna(source_address)
+                else "unresolved"
+            )
             latitude = profile["latitude"]
             longitude = profile["longitude"]
             if (
@@ -565,6 +582,7 @@ class NationwidePlantRegistryBuilder:
                     "latitude": latitude,
                     "longitude": longitude,
                     "area": area,
+                    "admin_region_source": admin_region_source,
                 }
             )
 
@@ -579,6 +597,7 @@ class NationwidePlantRegistryBuilder:
             latitude = profile["latitude"]
             longitude = profile["longitude"]
             area = profile["area"]
+            admin_region_source = profile["admin_region_source"]
             reviewed = self.reviewed_mappings.get(company, plant)
             legacy_candidate_id = legacy.get((company, plant))
             legacy_station = (
