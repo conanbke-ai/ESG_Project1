@@ -33,6 +33,11 @@ from solar_forecast.models.shared.checkpoint_store import (
 from solar_forecast.models.shared.optuna_study import OptimizationSettings
 from solar_forecast.models.xgboost.checkpoint import fit_xgboost_resumable
 from solar_forecast.models.xgboost.optimization import XGBoostHyperparameterOptimizer
+from solar_forecast.features.future_weather import (
+    FUTURE_WEATHER_FEATURES,
+    merge_future_weather,
+    read_future_weather,
+)
 
 
 class XGBoostTrainer:
@@ -75,11 +80,30 @@ class XGBoostTrainer:
             frame = frame.dropna(subset=["timestamp"]).sort_values("timestamp", kind="stable")
         frame = frame.head(512) if smoke and not historical else frame
         calendar_timestamps = frame["timestamp"].copy()
+        model_features = list(prepared.feature_columns)
+        future_weather_evidence = None
         if historical:
             frame = build_forecast_samples(
                 frame, prepared.feature_columns, target,
                 horizon_hours=task_contract["horizon_hours"],
             )
+            future_weather_config = config.values.get("future_weather") or {}
+            if not isinstance(future_weather_config, dict):
+                raise ValueError("future_weather configuration must be an object")
+            if bool(future_weather_config.get("enabled", False)) and not smoke:
+                archive = read_future_weather(
+                    str(future_weather_config["source"]),
+                    horizon_hours=int(task_contract["horizon_hours"]),
+                    plant_ids=frame["plant_id"].astype(str).unique().tolist(),
+                )
+                frame, future_weather_evidence = merge_future_weather(
+                    frame,
+                    archive,
+                    minimum_coverage=float(
+                        future_weather_config.get("minimum_coverage", 0.98)
+                    ),
+                )
+                model_features.extend(FUTURE_WEATHER_FEATURES)
         requested_gap = 0 if smoke else int(config.values.get("purge_gap_hours", 168))
         calendar_split, smoke_override = calendar_split_for_execution(config.values, smoke=smoke)
         train_frame, validation_frame, calibration_frame, test_frame, split_metadata = (
@@ -111,7 +135,7 @@ class XGBoostTrainer:
             ).optimize(
                 train_frame,
                 validation_frame,
-                feature_columns=prepared.feature_columns,
+                feature_columns=model_features,
                 target_column=target,
                 artifact_dir=run_dir,
             )
@@ -120,7 +144,7 @@ class XGBoostTrainer:
                 raise ValueError("selection_only requires enabled XGBoost optimization")
             return {
                 "source": str(source),
-                "features": prepared.feature_columns,
+                "features": model_features,
                 "n_train": len(train_frame),
                 "n_validation": len(validation_frame),
                 "n_calibration": len(calibration_frame),
@@ -136,6 +160,7 @@ class XGBoostTrainer:
                 },
                 "optimizer": optimization_result.to_dict(),
                 "memory_aware_loading": load_report.to_dict(),
+                "future_weather": future_weather_evidence,
                 "checkpoint": checkpoint_store.describe(),
                 "selection_only": True,
             }
@@ -174,7 +199,7 @@ class XGBoostTrainer:
         checkpoint_signature = stable_signature(
             {
                 "params": params,
-                "feature_columns": prepared.feature_columns,
+                "feature_columns": model_features,
                 "target_column": target,
                 "temporal_split": split_metadata,
             }
@@ -182,9 +207,9 @@ class XGBoostTrainer:
         checkpoint_stage = f"final_fit_{checkpoint_signature[:20]}"
         fit = fit_xgboost_resumable(
             params,
-            train_frame[prepared.feature_columns],
+            train_frame[model_features],
             train_frame[target],
-            validation_frame[prepared.feature_columns],
+            validation_frame[model_features],
             validation_frame[target],
             store=checkpoint_store,
             stage=checkpoint_stage,
@@ -192,9 +217,9 @@ class XGBoostTrainer:
             verbose=False,
         )
         model = fit.model
-        validation_predicted = model.predict(validation_frame[prepared.feature_columns])
-        calibration_predicted = model.predict(calibration_frame[prepared.feature_columns])
-        predicted = model.predict(test_frame[prepared.feature_columns])
+        validation_predicted = model.predict(validation_frame[model_features])
+        calibration_predicted = model.predict(calibration_frame[model_features])
+        predicted = model.predict(test_frame[model_features])
         model_path = run_dir / "model.json"
         temporary_model = model_path.with_name(f"{model_path.stem}.tmp{model_path.suffix}")
         model.save_model(temporary_model)
@@ -208,7 +233,7 @@ class XGBoostTrainer:
                     "feature_missing_fraction": {
                         split: {
                             column: float(partition[column].isna().mean())
-                            for column in prepared.feature_columns
+                            for column in model_features
                         }
                         for split, partition in {
                             "train": train_frame,
@@ -278,7 +303,7 @@ class XGBoostTrainer:
             "validation_predictions": str(validation_path),
             "calibration_predictions": str(calibration_path),
             "test_predictions": str(prediction_path),
-            "features": prepared.feature_columns, "metrics": metrics,
+            "features": model_features, "metrics": metrics,
             "n_train": len(train_frame),
             "n_validation": len(validation_frame),
             "n_calibration": len(calibration_frame),
@@ -301,6 +326,7 @@ class XGBoostTrainer:
                 }
             ),
             "memory_aware_loading": load_report.to_dict(),
+            "future_weather": future_weather_evidence,
             "checkpoint": checkpoint_details,
         }
 
