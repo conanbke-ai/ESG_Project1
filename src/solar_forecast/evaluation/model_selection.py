@@ -13,7 +13,7 @@ from solar_forecast.infrastructure.artifact_store import (
     sha256_file,
     write_json_atomic,
 )
-from solar_forecast.models.hybrid.dynamic_gate import ExplainableDynamicGate
+from solar_forecast.models.hybrid.dynamic_gate import DynamicGateConfig, ExplainableDynamicGate
 
 
 SELECTION_CONTRACT = "solar-benchmark-selection.v1"
@@ -143,6 +143,7 @@ class BenchmarkModelSelector:
         minimum_relative_improvement: float = 0.0,
         selection_gap_hours: int = 0,
         minimum_plant_win_fraction: float = 0.0,
+        gate_min_group_samples: int = 48,
     ):
         if not np.isfinite(minimum_relative_improvement) or not 0 <= minimum_relative_improvement < 1:
             raise ValueError("minimum_relative_improvement must be finite and in [0, 1)")
@@ -156,7 +157,14 @@ class BenchmarkModelSelector:
         self.output_dir = Path(output_dir)
         self.minimum_relative_improvement = float(minimum_relative_improvement)
         self.selection_gap_hours = int(selection_gap_hours)
+        if (
+            isinstance(gate_min_group_samples, bool)
+            or int(gate_min_group_samples) != gate_min_group_samples
+            or gate_min_group_samples < 1
+        ):
+            raise ValueError("gate_min_group_samples must be a positive integer")
         self.minimum_plant_win_fraction = float(minimum_plant_win_fraction)
+        self.gate_min_group_samples = int(gate_min_group_samples)
 
     def run(self, calibration: pd.DataFrame, test: pd.DataFrame, *,
             evaluation_contract: dict[str, Any], provenance: dict[str, Any]) -> dict[str, Any]:
@@ -194,7 +202,9 @@ class BenchmarkModelSelector:
             raise ValueError("Gate-fit targets overlap selection forecast origins")
         gate_inputs = gate_fit.copy()
         gate_inputs["plant"] = gate_inputs.plant_id
-        gate = ExplainableDynamicGate().fit(gate_inputs)
+        gate = ExplainableDynamicGate(
+            DynamicGateConfig(min_group_samples=self.gate_min_group_samples)
+        ).fit(gate_inputs)
         selection_predictions = _predict_gate(gate, selection)
         selection_metrics = _all_metrics(selection_predictions)
         best_base = min(("xgboost", "cnn_bilstm"), key=lambda model: selection_metrics[model]["pooled"]["mae"])
@@ -268,6 +278,7 @@ class BenchmarkModelSelector:
                 "minimum_relative_improvement": self.minimum_relative_improvement,
                 "hybrid_relative_improvement": improvement,
                 "minimum_plant_win_fraction": self.minimum_plant_win_fraction,
+                "gate_min_group_samples": self.gate_min_group_samples,
                 "hybrid_plant_wins": plant_wins,
                 "hybrid_plant_total": len(common_plants),
                 "hybrid_plant_win_fraction": plant_win_fraction,
