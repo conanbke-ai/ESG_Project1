@@ -2,7 +2,7 @@
 
 ## POLICY_ACK — ChatGPT logical orchestration — 2026-09-18
 
-- Common baseline: `conanbke-ai/Tori_Common_Project@da9611bc53e08105ce9d865917903736bec61b64`
+- Common baseline: `conanbke-ai/Tori_Common_Project@943b567e7740d72727c45ba4c03d267e99dc4596`
 - tags: `AGENT_ORCHESTRATION,AI_SURFACE,CREDIT,DATA,ML,SOLAR_FORECAST_REALITY,DOCUMENTATION`
 - result: `ADOPTED`
 - Runtime model: ChatGPT logical roles; no Cursor/plugin installation required.
@@ -27,18 +27,25 @@
 - No destructive data/branch/deployment action without explicit approval.
 
 ### ORCHESTRATION_V3_ACK — 2026-09-18
-- Common baseline: `conanbke-ai/Tori_Common_Project@da9611bc53e08105ce9d865917903736bec61b64`
+- Common baseline: `conanbke-ai/Tori_Common_Project@943b567e7740d72727c45ba4c03d267e99dc4596`
 - Added logical gates: Runtime Reliability / AI Output Evaluation.
 - Trigger/regression policy: ADOPTED.
 - Product runtime code unchanged by this ACK.
 
 ### ROUTING_REGRESSION_ACK — 2026-09-18
-- Common baseline: `conanbke-ai/Tori_Common_Project@da9611bc53e08105ce9d865917903736bec61b64`
+- Common baseline: `conanbke-ai/Tori_Common_Project@943b567e7740d72727c45ba4c03d267e99dc4596`
 - Result: `ORCHESTRATION_REGRESSION_PASS` — 15/15 representative scenarios.
 - No product runtime code changed by this ACK.
 
 ### PRODUCT_FLOW_QA_ACK — 2026-09-23
-- Common baseline: `conanbke-ai/Tori_Common_Project@da9611bc53e08105ce9d865917903736bec61b64`
+- Common baseline: `conanbke-ai/Tori_Common_Project@943b567e7740d72727c45ba4c03d267e99dc4596`
 - Result: `ADOPTED`
 - User-facing changes require PRE_IMPLEMENTATION_FLOW_QA and PRE_COMPLETION_FLOW_QA; implementation may be reordered/trimmed when the current journey is unnecessarily difficult or risky.
+- Product runtime code unchanged by this ACK.
+
+### PROFESSIONAL_QA_V5_ACK — 2026-09-23
+- Common baseline: `conanbke-ai/Tori_Common_Project@943b567e7740d72727c45ba4c03d267e99dc4596`
+- Result: `ADOPTED`
+- Non-trivial feature lifecycle: QA PRECHECK -> implementation -> Functional/Regression -> selected specialist QA -> Accessibility/Compatibility/Visual as applicable -> regression -> QA exit -> Acceptance.
+- User-facing flows keep mandatory Product Flow QA before implementation and completion.
 - Product runtime code unchanged by this ACK.
