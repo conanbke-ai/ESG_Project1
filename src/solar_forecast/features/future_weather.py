@@ -27,13 +27,17 @@ FUTURE_WEATHER_KEYS = (
     "horizon_hours",
 )
 FUTURE_WEATHER_COORDINATE_COLUMNS = (
-    "plant_latitude",
-    "plant_longitude",
+    "weather_query_latitude",
+    "weather_query_longitude",
     "grid_latitude",
     "grid_longitude",
     "coordinate_source",
     "cell_selection",
 )
+ALLOWED_COORDINATE_SOURCES = {
+    "plant_registry_coordinates",
+    "reviewed_asos_station_proxy",
+}
 
 
 def read_future_weather(
@@ -104,18 +108,21 @@ def read_future_weather(
         raise ValueError("Future-weather archive contains duplicate forecast keys")
 
     for column, lower, upper in (
-        ("plant_latitude", 32.0, 39.5),
-        ("plant_longitude", 124.0, 132.5),
+        ("weather_query_latitude", 32.0, 39.5),
+        ("weather_query_longitude", 124.0, 132.5),
         ("grid_latitude", -90.0, 90.0),
         ("grid_longitude", -180.0, 180.0),
     ):
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
         if frame[column].isna().any() or not frame[column].between(lower, upper).all():
             raise ValueError(f"Future-weather archive has invalid {column}")
-    if not frame["coordinate_source"].eq("plant_registry_coordinates").all():
+    invalid_sources = set(
+        frame["coordinate_source"].dropna().astype(str).unique()
+    ) - ALLOWED_COORDINATE_SOURCES
+    if invalid_sources:
         raise ValueError(
-            "Future-weather archive must use plant_registry_coordinates; "
-            "region or ASOS-station fallback is forbidden"
+            "Future-weather archive uses an unapproved spatial proxy: "
+            f"{sorted(invalid_sources)}"
         )
     if not frame["cell_selection"].eq("nearest").all():
         raise ValueError("Future-weather archive must use nearest grid selection")
@@ -184,7 +191,7 @@ def merge_future_weather(
             merged["forecast_source"].dropna().astype(str).unique().tolist()
         ),
         "leakage_guard": "forecast_origin_equals_target_minus_fixed_lead",
-        "spatial_contract": "plant_registry_coordinates_only",
+        "spatial_contract": "plant_coordinates_else_reviewed_asos_proxy; region_centroids_forbidden",
         "coordinate_sources": sorted(
             merged["coordinate_source"].dropna().astype(str).unique().tolist()
         ),
@@ -242,7 +249,7 @@ def attach_future_weather_to_observations(
         "row_weather_coverage": float(available.mean()) if len(merged) else 0.0,
         "minimum_forecast_cohort_coverage": float(minimum_coverage),
         "feature_columns": list(FUTURE_WEATHER_FEATURES),
-        "spatial_contract": "plant_registry_coordinates_only",
+        "spatial_contract": "plant_coordinates_else_reviewed_asos_proxy; region_centroids_forbidden",
         "coordinate_sources": sorted(
             merged["coordinate_source"].dropna().astype(str).unique().tolist()
         ),
