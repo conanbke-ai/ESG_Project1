@@ -1,6 +1,6 @@
 """Collect leakage-safe fixed-lead weather forecasts for 24h/72h benchmarks.
 
-Source: Open-Meteo Previous Runs API using JMA MSM for Korea.
+Source: Open-Meteo Previous Runs API using an explicit JMA model.
 The API's *_previous_day1 and *_previous_day3 fields represent forecasts made
 24 and 72 hours before valid time. Raw responses are cached per plant/year/lead
 so interrupted collection can resume without repeating successful downloads.
@@ -25,11 +25,11 @@ import requests
 from solar_forecast.features.future_weather import (
     FUTURE_WEATHER_ARCHIVE_FEATURES,
     FUTURE_WEATHER_CONTRACT,
+    FUTURE_WEATHER_METEOROLOGY_FEATURES,
 )
 
 
 ENDPOINT = "https://previous-runs-api.open-meteo.com/v1/forecast"
-MODEL = "jma_msm"
 LEAD_SUFFIX = {24: "previous_day1", 72: "previous_day3"}
 SOURCE_VARIABLES = {
     "future_temperature_c": "temperature_2m",
@@ -62,6 +62,12 @@ def _parser() -> argparse.ArgumentParser:
             "Official KMA station metadata used only as the reviewed weather "
             "query proxy when an eligible plant has no source coordinates."
         ),
+    )
+    parser.add_argument(
+        "--model",
+        choices=sorted(MODEL_FEATURES),
+        default="jma_msm",
+        help="Explicit JMA source model. Use jma_gsm for 72h archive forecasts.",
     )
     parser.add_argument(
         "--energy-source",
@@ -181,18 +187,23 @@ def _request_json(
     start_date: str,
     end_date: str,
     horizon: int,
+    model: str,
+    output_features: tuple[str, ...],
     timeout: int,
     retries: int,
 ) -> dict:
     suffix = LEAD_SUFFIX[horizon]
-    hourly = [f"{name}_{suffix}" for name in SOURCE_VARIABLES.values()]
+    hourly = [
+        f"{SOURCE_VARIABLES[name]}_{suffix}"
+        for name in output_features
+    ]
     params = {
         "latitude": latitude,
         "longitude": longitude,
         "start_date": start_date,
         "end_date": end_date,
         "hourly": ",".join(hourly),
-        "models": MODEL,
+        "models": model,
         "timezone": "Asia/Seoul",
         "wind_speed_unit": "ms",
         "temporal_resolution": "hourly",
@@ -233,6 +244,8 @@ def _normalize(
     weather_query_longitude: float,
     coordinate_source: str,
     horizon: int,
+    model: str,
+    output_features: tuple[str, ...],
 ) -> pd.DataFrame:
     hourly = payload.get("hourly")
     if not isinstance(hourly, dict) or "time" not in hourly:
@@ -244,7 +257,8 @@ def _normalize(
             "plant_id": str(plant_id),
         }
     )
-    for output_name, source_name in SOURCE_VARIABLES.items():
+    for output_name in output_features:
+        source_name = SOURCE_VARIABLES[output_name]
         key = f"{source_name}_{suffix}"
         values = hourly.get(key)
         if values is None:
@@ -276,7 +290,7 @@ def _normalize(
     result["coordinate_source"] = str(coordinate_source)
     result["cell_selection"] = "nearest"
     result["horizon_hours"] = int(horizon)
-    result["forecast_model"] = MODEL
+    result["forecast_model"] = model
     result["forecast_source"] = "open_meteo_previous_runs"
     return result
 
@@ -285,7 +299,12 @@ def _year_bounds(year: int) -> tuple[str, str]:
     return date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()
 
 
-def _cache_is_current(path: Path) -> bool:
+def _cache_is_current(
+    path: Path,
+    *,
+    output_features: tuple[str, ...],
+    model: str,
+) -> bool:
     """Return True only for caches already normalized to the current v2 schema."""
 
     if not path.is_file():
@@ -299,7 +318,7 @@ def _cache_is_current(path: Path) -> bool:
         "timestamp",
         "forecast_origin",
         "horizon_hours",
-        *FUTURE_WEATHER_ARCHIVE_FEATURES,
+        *output_features,
         "weather_query_latitude",
         "weather_query_longitude",
         "grid_latitude",
@@ -309,7 +328,17 @@ def _cache_is_current(path: Path) -> bool:
         "forecast_model",
         "forecast_source",
     }
-    return required.issubset(header.columns)
+    if not required.issubset(header.columns):
+        return False
+    try:
+        model_values = pd.read_csv(
+            path,
+            usecols=["forecast_model"],
+            nrows=1,
+        )["forecast_model"].astype(str)
+    except Exception:
+        return False
+    return bool(len(model_values) and model_values.iloc[0] == model)
 
 
 def collect(args: argparse.Namespace) -> None:
@@ -324,13 +353,22 @@ def collect(args: argparse.Namespace) -> None:
         energy_source=str(args.energy_source),
     )
     session = requests.Session()
+    model = str(args.model)
+    output_features = tuple(MODEL_FEATURES[model])
 
     for horizon in args.horizons:
         parts: list[pd.DataFrame] = []
         for row in plants.itertuples(index=False):
             for year in range(args.start_year, args.end_year + 1):
-                cached = cache / f"{row.plant_id.replace(':', '__')}_{year}_{horizon}h.csv.gz"
-                if _cache_is_current(cached):
+                cached = cache / (
+                    f"{model}_{row.plant_id.replace(':', '__')}_"
+                    f"{year}_{horizon}h.csv.gz"
+                )
+                if _cache_is_current(
+                    cached,
+                    output_features=output_features,
+                    model=model,
+                ):
                     part = pd.read_csv(
                         cached,
                         dtype={"plant_id": str},
@@ -345,6 +383,8 @@ def collect(args: argparse.Namespace) -> None:
                         start_date=start_date,
                         end_date=end_date,
                         horizon=horizon,
+                        model=model,
+                        output_features=output_features,
                         timeout=args.timeout,
                         retries=args.retries,
                     )
@@ -355,6 +395,8 @@ def collect(args: argparse.Namespace) -> None:
                         weather_query_longitude=float(row.weather_query_longitude),
                         coordinate_source=str(row.coordinate_source),
                         horizon=horizon,
+                        model=model,
+                        output_features=output_features,
                     )
                     part.to_csv(
                         cached,
@@ -369,7 +411,7 @@ def collect(args: argparse.Namespace) -> None:
             ["plant_id", "timestamp", "forecast_origin", "horizon_hours"],
             keep="last",
         ).sort_values(["timestamp", "plant_id"], kind="stable")
-        output = output_root / f"open_meteo_jma_msm_{horizon}h.csv.gz"
+        output = output_root / f"open_meteo_{model}_{horizon}h.csv.gz"
         combined.to_csv(
             output,
             index=False,
@@ -379,7 +421,7 @@ def collect(args: argparse.Namespace) -> None:
             "contract": FUTURE_WEATHER_CONTRACT,
             "source": "Open-Meteo Previous Runs API",
             "endpoint": ENDPOINT,
-            "model": MODEL,
+            "model": model,
             "horizon_hours": horizon,
             "lead_field_suffix": LEAD_SUFFIX[horizon],
             "normalization_contract": "asos_aligned_hourly_v1",
@@ -388,9 +430,17 @@ def collect(args: argparse.Namespace) -> None:
             "energy_source": str(args.energy_source),
             "start": combined["timestamp"].min().isoformat(),
             "end": combined["timestamp"].max().isoformat(),
-            "features": list(FUTURE_WEATHER_ARCHIVE_FEATURES),
-            "default_feature_profile": "aligned_core",
-            "ablation_feature_profile": "aligned_core_plus_components",
+            "features": list(output_features),
+            "default_feature_profile": (
+                "aligned_meteorology_core"
+                if model == "jma_gsm"
+                else "aligned_core"
+            ),
+            "ablation_feature_profile": (
+                None
+                if model == "jma_gsm"
+                else "aligned_core_plus_components"
+            ),
             "unit_alignment": {
                 "cloud_cover": "percent_divided_by_10_to_ASOS_tenths",
                 "shortwave_radiation": "hourly_mean_W_m2_times_0.0036_to_MJ_m2",
@@ -413,7 +463,7 @@ def collect(args: argparse.Namespace) -> None:
             "region_centroid_used_for_weather_lookup": False,
             "output": str(output),
         }
-        (output_root / f"open_meteo_jma_msm_{horizon}h.manifest.json").write_text(
+        (output_root / f"open_meteo_{model}_{horizon}h.manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
