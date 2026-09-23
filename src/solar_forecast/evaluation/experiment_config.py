@@ -74,29 +74,37 @@ def load_experiment_config(path: Path, *, project_root: Path = PROJECT_ROOT) -> 
             )
         if len(set(enabled_horizons)) != len(enabled_horizons):
             raise ValueError("future_weather.enabled_horizons cannot contain duplicates")
-        if enabled_horizons and not future_weather.get("source_template"):
-            raise ValueError(
-                "future_weather.source_template is required when enabled"
-            )
         coverage = float(future_weather.get("minimum_coverage", 0.98))
         if not 0 < coverage <= 1:
             raise ValueError("future_weather.minimum_coverage must be in (0, 1]")
-        profiles = future_weather.get(
-            "feature_profiles",
-            [future_weather.get("feature_profile", "aligned_core")],
-        )
+        by_horizon = future_weather.get("by_horizon", {})
+        if enabled_horizons and not isinstance(by_horizon, dict):
+            raise ValueError("future_weather.by_horizon must be an object")
         allowed_profiles = {
+            "aligned_meteorology_core",
             "aligned_core",
             "aligned_core_plus_components",
         }
-        if (
-            not profiles
-            or any(str(profile) not in allowed_profiles for profile in profiles)
-            or len(set(map(str, profiles))) != len(profiles)
-        ):
-            raise ValueError(
-                "future_weather.feature_profiles must contain unique supported profiles"
-            )
+        for horizon in enabled_horizons:
+            spec = by_horizon.get(str(horizon), by_horizon.get(horizon))
+            if not isinstance(spec, dict):
+                raise ValueError(
+                    f"future_weather.by_horizon[{horizon}] must be an object"
+                )
+            if not spec.get("source"):
+                raise ValueError(
+                    f"future_weather.by_horizon[{horizon}].source is required"
+                )
+            profiles = spec.get("feature_profiles", [])
+            if (
+                not profiles
+                or any(str(profile) not in allowed_profiles for profile in profiles)
+                or len(set(map(str, profiles))) != len(profiles)
+            ):
+                raise ValueError(
+                    f"future_weather.by_horizon[{horizon}].feature_profiles "
+                    "must contain unique supported profiles"
+                )
     if not values.get("input_dataset"):
         raise ValueError("input_dataset is required")
     return values
@@ -116,14 +124,17 @@ def build_candidate_configs(values: dict, horizon: int, run_dir: Path, *, projec
         lengths = settings.get("sequence_lengths", [1]) if model == "cnn_bilstm" else [1]
         future_weather = values.get("future_weather") or {}
         enabled_horizons = set(future_weather.get("enabled_horizons", []))
-        future_profiles = (
-            list(
-                future_weather.get(
-                    "feature_profiles",
-                    [future_weather.get("feature_profile", "aligned_core")],
-                )
+        horizon_future = (
+            (future_weather.get("by_horizon") or {}).get(
+                str(horizon),
+                (future_weather.get("by_horizon") or {}).get(horizon),
             )
             if horizon in enabled_horizons
+            else None
+        )
+        future_profiles = (
+            list(horizon_future.get("feature_profiles", []))
+            if isinstance(horizon_future, dict)
             else [None]
         )
         for feature_set in settings["feature_sets"]:
@@ -165,11 +176,15 @@ def build_candidate_configs(values: dict, horizon: int, run_dir: Path, *, projec
                         "checkpoint_identity_contract": BENCHMARK_CHECKPOINT_CONTRACT,
                     })
                     if horizon in enabled_horizons:
-                        source_template = str(future_weather["source_template"])
-                        source_value = source_template.format(horizon=horizon)
+                        assert isinstance(horizon_future, dict)
                         config["future_weather"] = {
                             "enabled": True,
-                            "source": str(_resolve_path(source_value, project_root)),
+                            "source": str(
+                                _resolve_path(
+                                    str(horizon_future["source"]),
+                                    project_root,
+                                )
+                            ),
                             "minimum_coverage": float(
                                 future_weather.get("minimum_coverage", 0.98)
                             ),
@@ -179,9 +194,11 @@ def build_candidate_configs(values: dict, horizon: int, run_dir: Path, *, projec
                                     "solar-future-weather-forecast.v2",
                                 )
                             ),
-                            "feature_profile": str(
-                                future_profile or "aligned_core"
+                            "source_model": str(
+                                horizon_future.get("source_model", "")
                             ),
+                            "usable_from": horizon_future.get("usable_from"),
+                            "feature_profile": str(future_profile),
                         }
                     else:
                         config["future_weather"] = {"enabled": False}
