@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 import re
 import shutil
+
+import numpy as np
 from typing import Iterable
 
 import pandas as pd
@@ -291,6 +293,31 @@ class NationwideModelDatasetBuilder:
                 ),
                 "quarantined_plants": quarantined_plants,
             },
+            "administrative_region_audit": {
+                "unknown_rows": int(result["region"].eq("unknown").sum())
+                if "region" in result else 0,
+                "unknown_plants": sorted(
+                    result.loc[result["region"].eq("unknown"), "plant_id"]
+                    .astype(str)
+                    .unique()
+                    .tolist()
+                )
+                if "region" in result else [],
+                "source_counts": (
+                    result["admin_region_source"]
+                    .fillna("unresolved")
+                    .astype(str)
+                    .value_counts()
+                    .to_dict()
+                    if "admin_region_source" in result
+                    else {}
+                ),
+                "policy": (
+                    "administrative region comes from reviewed official/source "
+                    "address metadata; ASOS station geography is never substituted "
+                    "for plant administrative geography"
+                ),
+            },
             "cross_partition_reconciliation": self._reconciliation,
             "gold_source_contribution": self._source_contribution,
             "dataset": str(destination),
@@ -526,6 +553,8 @@ class NationwideModelDatasetBuilder:
             "tilt_deg",
             "admin_province",
             "admin_city",
+            "admin_region_source",
+            "admin_region_status",
             "weather_station_id",
             "weather_station_name",
             "weather_mapping_method",
@@ -542,6 +571,18 @@ class NationwideModelDatasetBuilder:
         generation["region"] = generation["admin_province"].fillna(
             generation["admin_city"]
         ).fillna("unknown")
+        if "admin_region_status" not in generation:
+            generation["admin_region_status"] = np.where(
+                generation["region"].eq("unknown"),
+                "unknown",
+                "resolved",
+            )
+        if "admin_region_source" not in generation:
+            generation["admin_region_source"] = np.where(
+                generation["region"].eq("unknown"),
+                "unresolved",
+                "registry",
+            )
         generation["unit"] = ""
         generation["plant_id"] = generation["company"] + ":" + generation["plant"].astype(str)
         for column in ("latitude", "longitude", "address"):
