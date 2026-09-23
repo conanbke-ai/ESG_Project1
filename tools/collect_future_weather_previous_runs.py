@@ -285,6 +285,33 @@ def _year_bounds(year: int) -> tuple[str, str]:
     return date(year, 1, 1).isoformat(), date(year, 12, 31).isoformat()
 
 
+def _cache_is_current(path: Path) -> bool:
+    """Return True only for caches already normalized to the current v2 schema."""
+
+    if not path.is_file():
+        return False
+    try:
+        header = pd.read_csv(path, nrows=0)
+    except Exception:
+        return False
+    required = {
+        "plant_id",
+        "timestamp",
+        "forecast_origin",
+        "horizon_hours",
+        *FUTURE_WEATHER_ARCHIVE_FEATURES,
+        "weather_query_latitude",
+        "weather_query_longitude",
+        "grid_latitude",
+        "grid_longitude",
+        "coordinate_source",
+        "cell_selection",
+        "forecast_model",
+        "forecast_source",
+    }
+    return required.issubset(header.columns)
+
+
 def collect(args: argparse.Namespace) -> None:
     registry_path = Path(args.registry)
     output_root = Path(args.output_root)
@@ -303,7 +330,7 @@ def collect(args: argparse.Namespace) -> None:
         for row in plants.itertuples(index=False):
             for year in range(args.start_year, args.end_year + 1):
                 cached = cache / f"{row.plant_id.replace(':', '__')}_{year}_{horizon}h.csv.gz"
-                if cached.is_file():
+                if _cache_is_current(cached):
                     part = pd.read_csv(
                         cached,
                         dtype={"plant_id": str},
@@ -355,12 +382,21 @@ def collect(args: argparse.Namespace) -> None:
             "model": MODEL,
             "horizon_hours": horizon,
             "lead_field_suffix": LEAD_SUFFIX[horizon],
+            "normalization_contract": "asos_aligned_hourly_v1",
             "rows": int(len(combined)),
             "plants": int(combined["plant_id"].nunique()),
             "energy_source": str(args.energy_source),
             "start": combined["timestamp"].min().isoformat(),
             "end": combined["timestamp"].max().isoformat(),
             "features": list(FUTURE_WEATHER_ARCHIVE_FEATURES),
+            "default_feature_profile": "aligned_core",
+            "ablation_feature_profile": "aligned_core_plus_components",
+            "unit_alignment": {
+                "cloud_cover": "percent_divided_by_10_to_ASOS_tenths",
+                "shortwave_radiation": "hourly_mean_W_m2_times_0.0036_to_MJ_m2",
+                "sunshine_duration": "seconds_divided_by_3600_to_hours",
+                "dni_dhi": "hourly_mean_W_m2_times_0.0036_to_MJ_m2",
+            },
             "forecast_origin_rule": "target_timestamp_minus_fixed_lead",
             "spatial_contract": (
                 "plant coordinates when available; otherwise the already "
