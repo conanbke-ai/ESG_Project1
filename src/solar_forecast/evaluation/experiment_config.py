@@ -81,6 +81,22 @@ def load_experiment_config(path: Path, *, project_root: Path = PROJECT_ROOT) -> 
         coverage = float(future_weather.get("minimum_coverage", 0.98))
         if not 0 < coverage <= 1:
             raise ValueError("future_weather.minimum_coverage must be in (0, 1]")
+        profiles = future_weather.get(
+            "feature_profiles",
+            [future_weather.get("feature_profile", "aligned_core")],
+        )
+        allowed_profiles = {
+            "aligned_core",
+            "aligned_core_plus_components",
+        }
+        if (
+            not profiles
+            or any(str(profile) not in allowed_profiles for profile in profiles)
+            or len(set(map(str, profiles))) != len(profiles)
+        ):
+            raise ValueError(
+                "future_weather.feature_profiles must contain unique supported profiles"
+            )
     if not values.get("input_dataset"):
         raise ValueError("input_dataset is required")
     return values
@@ -98,6 +114,18 @@ def build_candidate_configs(values: dict, horizon: int, run_dir: Path, *, projec
         if base.model != model:
             raise ValueError(f"Model config does not match {model}")
         lengths = settings.get("sequence_lengths", [1]) if model == "cnn_bilstm" else [1]
+        future_weather = values.get("future_weather") or {}
+        enabled_horizons = set(future_weather.get("enabled_horizons", []))
+        future_profiles = (
+            list(
+                future_weather.get(
+                    "feature_profiles",
+                    [future_weather.get("feature_profile", "aligned_core")],
+                )
+            )
+            if horizon in enabled_horizons
+            else [None]
+        )
         for feature_set in settings["feature_sets"]:
             spec = values["feature_sets"][feature_set]
             features = spec.get("columns", base.values["feature_columns"])
@@ -105,70 +133,75 @@ def build_candidate_configs(values: dict, horizon: int, run_dir: Path, *, projec
             if not features or len(set(features)) != len(features):
                 raise ValueError(f"Invalid features for {feature_set}")
             for length in lengths:
-                candidate_id = f"{feature_set}_lookback_{length}h" if model == "cnn_bilstm" else feature_set
-                config = deepcopy(base.values)
-                # Overrides are model-specific; task identity below always wins.
-                config.update(deepcopy(settings.get("training_overrides", {})))
-                # Every candidate uses the same complete split specification,
-                # including unset dates; model overrides cannot alter its calendar.
-                config.update(shared_split)
-                if values.get("smoke_split_override"):
-                    config["smoke_split_override"] = deepcopy(values["smoke_split_override"])
-                config.update({
-                    "input_dataset": str(_resolve_path(values["input_dataset"], project_root)),
-                    "target_column": "generation_mwh", "energy_source_filter": "solar",
-                    "quality_filter_column": "quality_train_eligible",
-                    "prediction_task": "historical_forecast", "forecast_horizon_hours": horizon,
-                    "evaluation_protocol": "historical_observation_rolling_origin",
-                    "feature_columns": features, "feature_contract": f"historical_origin_v1:{feature_set}",
-                    "seed": int(values.get("seed", 42)),
-                    "output_root": str(run_dir / "candidates" / f"horizon_{horizon}h" / model / candidate_id),
-                    "benchmark_candidate_id": candidate_id,
-                    "checkpoint_identity_contract": BENCHMARK_CHECKPOINT_CONTRACT,
-                })
-                future_weather = values.get("future_weather") or {}
-                enabled_horizons = set(future_weather.get("enabled_horizons", []))
-                if horizon in enabled_horizons:
-                    source_template = str(future_weather["source_template"])
-                    source_value = source_template.format(horizon=horizon)
-                    config["future_weather"] = {
-                        "enabled": True,
-                        "source": str(_resolve_path(source_value, project_root)),
-                        "minimum_coverage": float(
-                            future_weather.get("minimum_coverage", 0.98)
-                        ),
-                        "source_contract": str(
-                            future_weather.get(
-                                "source_contract",
-                                "solar-future-weather-forecast.v2",
-                            )
-                        ),
-                        "feature_profile": str(
-                            future_weather.get(
-                                "feature_profile",
-                                "aligned_core",
-                            )
-                        ),
+                for future_profile in future_profiles:
+                    base_candidate_id = (
+                        f"{feature_set}_lookback_{length}h"
+                        if model == "cnn_bilstm"
+                        else feature_set
+                    )
+                    candidate_id = (
+                        f"{base_candidate_id}_future_{future_profile}"
+                        if future_profile is not None and len(future_profiles) > 1
+                        else base_candidate_id
+                    )
+                    config = deepcopy(base.values)
+                    # Overrides are model-specific; task identity below always wins.
+                    config.update(deepcopy(settings.get("training_overrides", {})))
+                    # Every candidate uses the same complete split specification,
+                    # including unset dates; model overrides cannot alter its calendar.
+                    config.update(shared_split)
+                    if values.get("smoke_split_override"):
+                        config["smoke_split_override"] = deepcopy(values["smoke_split_override"])
+                    config.update({
+                        "input_dataset": str(_resolve_path(values["input_dataset"], project_root)),
+                        "target_column": "generation_mwh", "energy_source_filter": "solar",
+                        "quality_filter_column": "quality_train_eligible",
+                        "prediction_task": "historical_forecast", "forecast_horizon_hours": horizon,
+                        "evaluation_protocol": "historical_observation_rolling_origin",
+                        "feature_columns": features, "feature_contract": f"historical_origin_v1:{feature_set}",
+                        "seed": int(values.get("seed", 42)),
+                        "output_root": str(run_dir / "candidates" / f"horizon_{horizon}h" / model / candidate_id),
+                        "benchmark_candidate_id": candidate_id,
+                        "checkpoint_identity_contract": BENCHMARK_CHECKPOINT_CONTRACT,
+                    })
+                    if horizon in enabled_horizons:
+                        source_template = str(future_weather["source_template"])
+                        source_value = source_template.format(horizon=horizon)
+                        config["future_weather"] = {
+                            "enabled": True,
+                            "source": str(_resolve_path(source_value, project_root)),
+                            "minimum_coverage": float(
+                                future_weather.get("minimum_coverage", 0.98)
+                            ),
+                            "source_contract": str(
+                                future_weather.get(
+                                    "source_contract",
+                                    "solar-future-weather-forecast.v2",
+                                )
+                            ),
+                            "feature_profile": str(
+                                future_profile or "aligned_core"
+                            ),
+                        }
+                    else:
+                        config["future_weather"] = {"enabled": False}
+    
+                    if model == "cnn_bilstm":
+                        from solar_forecast.models.cnn_bilstm.input_preprocessing import INPUT_PREPROCESSING_CONTRACT
+    
+                        config["sequence_length"] = length
+                        config["input_preprocessing_contract"] = INPUT_PREPROCESSING_CONTRACT
+                    config["purge_gap_hours"] = max(int(config.get("purge_gap_hours", 168)), horizon)
+                    TemporalSplitConfig.from_mapping(config)
+                    config["optimizer"] = {
+                        **config.get("optimizer", {}),
+                        **deepcopy(settings.get("optimizer_overrides", {})),
+                        "enabled": bool(settings.get("optimize", True)),
+                        "max_trials": settings["max_trials_per_candidate"],
+                        "timeout_seconds": settings["timeout_seconds_per_candidate"],
+                        "study_name": f"historical_{model}_{horizon}h_{candidate_id}",
                     }
-                else:
-                    config["future_weather"] = {"enabled": False}
-
-                if model == "cnn_bilstm":
-                    from solar_forecast.models.cnn_bilstm.input_preprocessing import INPUT_PREPROCESSING_CONTRACT
-
-                    config["sequence_length"] = length
-                    config["input_preprocessing_contract"] = INPUT_PREPROCESSING_CONTRACT
-                config["purge_gap_hours"] = max(int(config.get("purge_gap_hours", 168)), horizon)
-                TemporalSplitConfig.from_mapping(config)
-                config["optimizer"] = {
-                    **config.get("optimizer", {}),
-                    **deepcopy(settings.get("optimizer_overrides", {})),
-                    "enabled": bool(settings.get("optimize", True)),
-                    "max_trials": settings["max_trials_per_candidate"],
-                    "timeout_seconds": settings["timeout_seconds_per_candidate"],
-                    "study_name": f"historical_{model}_{horizon}h_{candidate_id}",
-                }
-                candidates.append((candidate_id, ModelJobConfig(model, "historical_optimized", config, config_path)))
+                    candidates.append((candidate_id, ModelJobConfig(model, "historical_optimized", config, config_path)))
     return candidates
 
 
