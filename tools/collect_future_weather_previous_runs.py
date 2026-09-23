@@ -43,6 +43,15 @@ SOURCE_VARIABLES = {
     "future_dhi_mj_m2": "diffuse_radiation",
 }
 
+MODEL_FEATURES = {
+    "jma_msm": tuple(FUTURE_WEATHER_ARCHIVE_FEATURES),
+    "jma_gsm": tuple(FUTURE_WEATHER_METEOROLOGY_FEATURES),
+}
+MODEL_ALLOWED_HORIZONS = {
+    "jma_msm": {24},
+    "jma_gsm": {72},
+}
+
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
@@ -355,6 +364,14 @@ def collect(args: argparse.Namespace) -> None:
     session = requests.Session()
     model = str(args.model)
     output_features = tuple(MODEL_FEATURES[model])
+    unsupported = sorted(
+        set(map(int, args.horizons)) - MODEL_ALLOWED_HORIZONS[model]
+    )
+    if unsupported:
+        raise ValueError(
+            f"{model} is not approved for benchmark horizons {unsupported}; "
+            f"allowed={sorted(MODEL_ALLOWED_HORIZONS[model])}"
+        )
 
     for horizon in args.horizons:
         parts: list[pd.DataFrame] = []
