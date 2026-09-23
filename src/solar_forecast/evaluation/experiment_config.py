@@ -63,6 +63,27 @@ def load_experiment_config(path: Path, *, project_root: Path = PROJECT_ROOT) -> 
         raise ValueError(
             "selection_protocol.test must reserve Test for final reporting"
         )
+    future_weather = values.get("future_weather")
+    if future_weather is not None:
+        if not isinstance(future_weather, dict):
+            raise ValueError("future_weather must be an object")
+        enabled_horizons = future_weather.get("enabled_horizons", [])
+        if any(
+            type(value) is not int or value not in horizons
+            for value in enabled_horizons
+        ):
+            raise ValueError(
+                "future_weather.enabled_horizons must be a subset of horizons_hours"
+            )
+        if len(set(enabled_horizons)) != len(enabled_horizons):
+            raise ValueError("future_weather.enabled_horizons cannot contain duplicates")
+        if enabled_horizons and not future_weather.get("source_template"):
+            raise ValueError(
+                "future_weather.source_template is required when enabled"
+            )
+        coverage = float(future_weather.get("minimum_coverage", 0.98))
+        if not 0 < coverage <= 1:
+            raise ValueError("future_weather.minimum_coverage must be in (0, 1]")
     if not values.get("input_dataset"):
         raise ValueError("input_dataset is required")
     return values
@@ -108,6 +129,27 @@ def build_candidate_configs(values: dict, horizon: int, run_dir: Path, *, projec
                     "benchmark_candidate_id": candidate_id,
                     "checkpoint_identity_contract": BENCHMARK_CHECKPOINT_CONTRACT,
                 })
+                future_weather = values.get("future_weather") or {}
+                enabled_horizons = set(future_weather.get("enabled_horizons", []))
+                if horizon in enabled_horizons:
+                    source_template = str(future_weather["source_template"])
+                    source_value = source_template.format(horizon=horizon)
+                    config["future_weather"] = {
+                        "enabled": True,
+                        "source": str(_resolve_path(source_value, project_root)),
+                        "minimum_coverage": float(
+                            future_weather.get("minimum_coverage", 0.98)
+                        ),
+                        "source_contract": str(
+                            future_weather.get(
+                                "source_contract",
+                                "solar-future-weather-forecast.v1",
+                            )
+                        ),
+                    }
+                else:
+                    config["future_weather"] = {"enabled": False}
+
                 if model == "cnn_bilstm":
                     from solar_forecast.models.cnn_bilstm.input_preprocessing import INPUT_PREPROCESSING_CONTRACT
 
