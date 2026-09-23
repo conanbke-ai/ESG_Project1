@@ -12,12 +12,16 @@ SUPPORTED_FIXED_LEADS = {24, 72}
 
 # These variables deliberately mirror the physical meaning and units of the
 # historical ASOS inputs as closely as the forecast provider allows.
-FUTURE_WEATHER_CORE_FEATURES = (
+FUTURE_WEATHER_METEOROLOGY_FEATURES = (
     "future_temperature_c",
     "future_humidity_pct",
     "future_precipitation_mm",
     "future_total_cloud_cover_tenths",
     "future_wind_speed_mps",
+)
+
+FUTURE_WEATHER_CORE_FEATURES = (
+    *FUTURE_WEATHER_METEOROLOGY_FEATURES,
     "future_solar_irradiance_mj_m2",
     "future_sunshine_hours",
 )
@@ -31,6 +35,7 @@ FUTURE_WEATHER_RADIATION_COMPONENT_FEATURES = (
 )
 
 FUTURE_WEATHER_FEATURE_PROFILES = {
+    "aligned_meteorology_core": FUTURE_WEATHER_METEOROLOGY_FEATURES,
     "aligned_core": FUTURE_WEATHER_CORE_FEATURES,
     "aligned_core_plus_components": (
         *FUTURE_WEATHER_CORE_FEATURES,
