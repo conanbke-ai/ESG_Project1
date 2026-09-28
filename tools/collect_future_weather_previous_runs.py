@@ -188,6 +188,21 @@ def _registry(
     ).reset_index(drop=True)
 
 
+def _response_reason(response: requests.Response) -> str:
+    """Return a concise provider error without echoing the full request URL."""
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+    if isinstance(payload, dict):
+        reason = payload.get("reason") or payload.get("error")
+        if reason:
+            return str(reason)[:500]
+    body = response.text.strip().replace("\n", " ")
+    return body[:500] if body else (response.reason or "no response body")
+
+
 def _request_json(
     session: requests.Session,
     *,
@@ -228,20 +243,61 @@ def _request_json(
                 headers={"User-Agent": "ESG_Project1 solar benchmark collector"},
             )
             if response.status_code == 429:
-                delay = min(60.0, 2.0 ** (attempt + 1))
-                time.sleep(delay)
-                continue
-            response.raise_for_status()
+                retry_after = response.headers.get("Retry-After")
+                try:
+                    server_delay = float(retry_after) if retry_after else 0.0
+                except ValueError:
+                    server_delay = 0.0
+                delay = max(
+                    server_delay,
+                    min(120.0, 2.0 ** (attempt + 2)),
+                )
+                last_error = RuntimeError(
+                    f"HTTP 429 rate limited: {_response_reason(response)}"
+                )
+                if attempt + 1 < retries:
+                    print(
+                        f"Open-Meteo rate limit · retry {attempt + 1}/{retries} "
+                        f"in {delay:.0f}s",
+                        flush=True,
+                    )
+                    time.sleep(delay)
+                    continue
+                break
+            if 400 <= response.status_code < 500:
+                raise ValueError(
+                    f"HTTP {response.status_code}: {_response_reason(response)}"
+                )
+            if response.status_code >= 500:
+                raise RuntimeError(
+                    f"HTTP {response.status_code}: {_response_reason(response)}"
+                )
             payload = response.json()
             if payload.get("error"):
-                raise RuntimeError(str(payload))
+                raise ValueError(
+                    "Provider error: "
+                    f"{payload.get('reason') or payload.get('error')}"
+                )
             return payload
-        except (requests.RequestException, ValueError, RuntimeError) as exc:
+        except ValueError:
+            raise
+        except (requests.RequestException, RuntimeError) as exc:
             last_error = exc
             if attempt + 1 < retries:
-                time.sleep(min(30.0, 2.0 ** attempt))
+                delay = min(60.0, 2.0 ** (attempt + 1))
+                print(
+                    f"Open-Meteo transient error · retry "
+                    f"{attempt + 1}/{retries} in {delay:.0f}s · {exc}",
+                    flush=True,
+                )
+                time.sleep(delay)
+    detail = (
+        str(last_error)
+        if last_error is not None
+        else "unknown provider failure"
+    )
     raise RuntimeError(
-        f"Previous Runs request failed after {retries} attempts"
+        f"Previous Runs request failed after {retries} attempts: {detail}"
     ) from last_error
 
 
@@ -393,18 +449,25 @@ def collect(args: argparse.Namespace) -> None:
                     )
                 else:
                     start_date, end_date = _year_bounds(year)
-                    payload = _request_json(
-                        session,
-                        latitude=float(row.weather_query_latitude),
-                        longitude=float(row.weather_query_longitude),
-                        start_date=start_date,
-                        end_date=end_date,
-                        horizon=horizon,
-                        model=model,
-                        output_features=output_features,
-                        timeout=args.timeout,
-                        retries=args.retries,
-                    )
+                    try:
+                        payload = _request_json(
+                            session,
+                            latitude=float(row.weather_query_latitude),
+                            longitude=float(row.weather_query_longitude),
+                            start_date=start_date,
+                            end_date=end_date,
+                            horizon=horizon,
+                            model=model,
+                            output_features=output_features,
+                            timeout=args.timeout,
+                            retries=args.retries,
+                        )
+                    except Exception as exc:
+                        raise RuntimeError(
+                            "Future-weather collection failed: "
+                            f"model={model}, horizon={horizon}h, "
+                            f"plant_id={row.plant_id}, year={year}: {exc}"
+                        ) from exc
                     part = _normalize(
                         payload,
                         plant_id=str(row.plant_id),
