@@ -86,10 +86,20 @@ class CnnBiLstmTrainer:
         if use_future_weather:
             if not entity_column or not timestamp_column:
                 raise ValueError("Future weather requires plant and timestamp columns")
+            future_profile = str(
+                future_weather_config.get(
+                    "feature_profile",
+                    "aligned_core",
+                )
+            )
+            selected_future_features = future_weather_feature_columns(
+                future_profile
+            )
             archive = read_future_weather(
                 str(future_weather_config["source"]),
                 horizon_hours=int(config.values["forecast_horizon_hours"]),
                 plant_ids=frame[entity_column].astype(str).unique().tolist(),
+                feature_profile=future_profile,
             )
             frame, future_weather_evidence = attach_future_weather_to_observations(
                 frame,
