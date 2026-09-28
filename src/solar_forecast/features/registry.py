@@ -10,6 +10,7 @@ from typing import Iterable
 import pandas as pd
 
 from solar_forecast.collectors.metadata import PlantMetadataCatalog
+from solar_forecast.collectors.identity import read_generation_partition
 from solar_forecast.collectors.normalization import read_csv_with_fallback
 
 
@@ -655,7 +656,7 @@ class NationwidePlantRegistryBuilder:
     def _scan(self, paths: Iterable[Path]) -> list[dict[str, object]]:
         profiles: dict[tuple[str, str, str], dict[str, object]] = {}
         for path in paths:
-            source = pd.read_csv(Path(path), usecols=self.scan_columns)
+            source = read_generation_partition(Path(path), self.scan_columns)
             source["timestamp"] = pd.to_datetime(source["timestamp"], errors="coerce")
             for key, group in source.groupby(["company", "plant", "energy_source"], sort=False):
                 company, source_plant, energy_source = map(str, key)

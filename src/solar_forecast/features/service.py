@@ -11,6 +11,7 @@ import pandas as pd
 
 from solar_forecast.artifacts.manifest import write_json_atomic
 from solar_forecast.collectors.metadata import PlantMetadataCatalog
+from solar_forecast.collectors.identity import read_generation_partition
 from solar_forecast.collectors.normalization import (
     GENERATION_COLUMNS,
     classify_energy_source,
@@ -403,9 +404,9 @@ class NationwideModelDatasetBuilder:
         parts: list[pd.DataFrame] = []
         source_stats: list[dict[str, object]] = []
         for partition_order, path in enumerate(paths):
-            source = pd.read_csv(
+            source = read_generation_partition(
                 Path(path),
-                usecols=[
+                columns=[
                     "timestamp",
                     "company",
                     "plant_id",
