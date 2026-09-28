@@ -106,7 +106,17 @@ class XGBoostHyperparameterOptimizer:
             validation_frame,
             int(self.raw.get("tuning_validation_max_rows", 250_000)),
         )
-        validation_cohort = forecast_cohort_contract(validation)
+        historical = (
+            self.values.get("prediction_task") == "historical_forecast"
+        )
+        validation_cohort = (
+            forecast_cohort_contract(validation)
+            if historical
+            else {
+                "contract": "legacy-validation-cohort.v1",
+                "rows": int(len(validation)),
+            }
+        )
         max_estimators = int(self.raw.get("trial_max_estimators", 1_500))
         early_stopping_rounds = int(
             self.raw.get(
