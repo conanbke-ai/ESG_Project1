@@ -70,8 +70,18 @@ def train_cnn_bilstm_epoch(
         loss = criterion(preds, y)
         loss.backward()
         optimizer.step()
-        running_loss += loss.item() * len(X)
+        running_loss += loss.item() * len(y)
     return running_loss / len(loader.dataset)
+
+
+def _loader_context_frame(loader: DataLoader) -> pd.DataFrame | None:
+    dataset = loader.dataset
+    if hasattr(dataset, "context_frame"):
+        return dataset.context_frame(0, len(dataset))
+    if isinstance(dataset, Subset) and hasattr(dataset.dataset, "context_frame"):
+        base = dataset.dataset.context_frame(0, len(dataset.dataset))
+        return base.iloc[list(dataset.indices)].reset_index(drop=True)
+    return None
 
 
 def evaluate_cnn_bilstm_loader(
@@ -85,7 +95,7 @@ def evaluate_cnn_bilstm_loader(
             X, y = _move_inputs(X, device), y.to(device)
             preds = _forward(model, X)
             loss = criterion(preds, y)
-            running_loss += loss.item() * len(X)
+            running_loss += loss.item() * len(y)
             all_preds.append(preds.cpu().numpy())
             all_targets.append(y.cpu().numpy())
     model_y_true = np.concatenate(all_targets)
@@ -96,8 +106,8 @@ def evaluate_cnn_bilstm_loader(
     daylight = None
     capacity = None
     plant_id = plant = region = timestamp = None
-    if hasattr(loader.dataset, "context_frame"):
-        context = loader.dataset.context_frame(0, len(loader.dataset))
+    context = _loader_context_frame(loader)
+    if context is not None:
         if "persistence_pred" in context:
             persistence = context["persistence_pred"].to_numpy()
         if "is_daylight" in context:
@@ -271,17 +281,17 @@ def optimize_cnn_bilstm(
         shuffle=False,
     )
 
-    def validation_context(loader: DataLoader) -> pd.DataFrame:
-        dataset = loader.dataset
-        if hasattr(dataset, "context_frame"):
-            return dataset.context_frame(0, len(dataset))
-        if isinstance(dataset, Subset) and hasattr(dataset.dataset, "context_frame"):
-            base = dataset.dataset.context_frame(0, len(dataset.dataset))
-            return base.iloc[list(dataset.indices)].reset_index(drop=True)
-        raise TypeError("Validation loader does not expose forecast context")
-
-    validation_context_frame = validation_context(val_loader)
-    validation_cohort = forecast_cohort_contract(validation_context_frame)
+    validation_context_frame = _loader_context_frame(val_loader)
+    historical = cfg.prediction_task == "historical_forecast"
+    if historical:
+        if validation_context_frame is None:
+            raise TypeError("Validation loader does not expose forecast context")
+        validation_cohort = forecast_cohort_contract(validation_context_frame)
+    else:
+        validation_cohort = {
+            "contract": "legacy-validation-cohort.v1",
+            "rows": int(len(val_loader.dataset)),
+        }
     n_features = loaders.n_features
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
     search_space = optimizer_parameter_space or {}
