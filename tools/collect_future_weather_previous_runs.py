@@ -406,6 +406,31 @@ def _cache_is_current(
     return bool(len(model_values) and model_values.iloc[0] == model)
 
 
+def _sanitize_physical_values(
+    frame: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Enforce physical bounds after provider interpolation.
+
+    JMA GSM is natively 6-hourly and Open-Meteo interpolates it to hourly.
+    Tiny negative hourly precipitation values can occur numerically even though
+    precipitation accumulation is physically nonnegative. Clamp only negative
+    precipitation to zero and record every correction for auditability.
+    """
+
+    result = frame.copy()
+    corrections = {"negative_precipitation_clipped_to_zero": 0}
+    column = "future_precipitation_mm"
+    if column in result:
+        values = pd.to_numeric(result[column], errors="coerce")
+        negative = values.lt(0) & values.notna()
+        corrections["negative_precipitation_clipped_to_zero"] = int(
+            negative.sum()
+        )
+        if negative.any():
+            result.loc[negative, column] = 0.0
+    return result, corrections
+
+
 def collect(args: argparse.Namespace) -> None:
     registry_path = Path(args.registry)
     output_root = Path(args.output_root)
@@ -431,6 +456,9 @@ def collect(args: argparse.Namespace) -> None:
 
     for horizon in args.horizons:
         parts: list[pd.DataFrame] = []
+        correction_totals = {
+            "negative_precipitation_clipped_to_zero": 0,
+        }
         for row in plants.itertuples(index=False):
             for year in range(args.start_year, args.end_year + 1):
                 cached = cache / (
@@ -484,6 +512,11 @@ def collect(args: argparse.Namespace) -> None:
                         compression={"method": "gzip", "compresslevel": 1, "mtime": 1},
                     )
                     time.sleep(args.sleep_seconds)
+                part, corrections = _sanitize_physical_values(part)
+                for name, count in corrections.items():
+                    correction_totals[name] = (
+                        correction_totals.get(name, 0) + int(count)
+                    )
                 parts.append(part)
 
         combined = pd.concat(parts, ignore_index=True)
@@ -528,6 +561,10 @@ def collect(args: argparse.Namespace) -> None:
                 "dni_dhi": "hourly_mean_W_m2_times_0.0036_to_MJ_m2",
             },
             "forecast_origin_rule": "target_timestamp_minus_fixed_lead",
+            "physical_sanitization": {
+                "negative_precipitation_policy": "clip_to_zero",
+                "corrections": correction_totals,
+            },
             "spatial_contract": (
                 "plant coordinates when available; otherwise the already "
                 "reviewed ASOS station is an explicit weather-query proxy"
