@@ -663,12 +663,10 @@ jobs 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작
 모델별 Validation 탐색과 하이브리드 선택 및 예측 산출물 연결
 
 - `align_prediction_frames(frames: dict[str, pd.DataFrame], *, minimum_coverage: float)` — Align an explicit cohort, failing on changed truth, IDs or low coverage.
-- `_validate_search_cohorts(cohorts: dict[str, dict], *, minimum_coverage: float)`
-- `_console_candidate_label(model: str, candidate_id: str, horizon: int)`
 - `BenchmarkService` — Execute independently tuned candidates and freeze selection before Test.
 - `BenchmarkService.__init__(self, *, project_root: Path=PROJECT_ROOT, training_service=None)`
 - `BenchmarkService.run(self, config_path: Path, *, smoke: bool=False)`
-- `BenchmarkService._candidate_summary(entry: tuple, score: float, run_root: Path, *, config_filename: str='resolved_config.json')`
+- `BenchmarkService._candidate_summary(entry: tuple, score: float, run_root: Path)`
 - `BenchmarkService._matching_contract(selected: dict)`
 - `BenchmarkService._merge_selected(selected: dict, split: str, values: dict)`
 - `BenchmarkService._provenance(self, source: Path, values: dict)`
@@ -1488,7 +1486,7 @@ Projection integrity tests; fixture scores are not PV accuracy evidence.
 
 Benchmark orchestration tests use labelled fixtures, never accuracy evidence.
 
-`_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_accepts_float32_csv_roundtrip_equivalent_truth`, `BenchmarkJobTests.test_alignment_still_rejects_real_float32_truth_change`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_search_candidate_cohorts_must_be_identical`, `BenchmarkJobTests.test_search_candidate_cohort_cannot_be_missing`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`, `BenchmarkJobTests.test_gzip_partition_directory_reaches_training_but_parquet_does_not`
+`_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`, `BenchmarkJobTests.test_gzip_partition_directory_reaches_training_but_parquet_does_not`
 
 ### [tests/test_benchmark_model_selection.py](../tests/test_benchmark_model_selection.py)
 
