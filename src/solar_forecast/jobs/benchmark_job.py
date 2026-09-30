@@ -61,8 +61,26 @@ def align_prediction_frames(frames: dict[str, pd.DataFrame], *, minimum_coverage
             if not reference[column].equals(frame[column]):
                 raise ValueError(f"{name}: inconsistent {column} on common prediction keys")
         for column in ("y_true", "persistence_pred"):
-            if not np.allclose(reference[column], frame[column], rtol=0, atol=1e-7):
-                raise ValueError(f"{name}: inconsistent {column} on common prediction keys")
+            # Model-ready numeric data is loaded as float32. CSV writers may
+            # render the same float32 value with different decimal lengths
+            # depending on whether pandas sees a float32 ndarray or a Python
+            # float. Canonicalize both artifacts back to source precision
+            # before enforcing truth identity so serialization text alone
+            # cannot invalidate an otherwise identical evaluation cohort.
+            reference_values = (
+                reference[column].to_numpy(dtype=np.float32).astype(float)
+            )
+            frame_values = (
+                frame[column].to_numpy(dtype=np.float32).astype(float)
+            )
+            if not np.array_equal(reference_values, frame_values):
+                delta = np.abs(reference_values - frame_values)
+                mismatched = int((delta > 0).sum())
+                max_abs_diff = float(delta.max()) if len(delta) else 0.0
+                raise ValueError(
+                    f"{name}: inconsistent {column} on common prediction keys "
+                    f"(mismatched={mismatched}, max_abs_diff={max_abs_diff:.12g})"
+                )
     return aligned, {"common_rows": len(common), "union_rows": len(union), "common_fraction": coverage,
                      "candidate_rows": {name: len(frame) for name, frame in normalized.items()},
                      "dropped_rows": {name: len(frame) - len(common) for name, frame in normalized.items()}}

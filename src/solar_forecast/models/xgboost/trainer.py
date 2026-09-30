@@ -462,7 +462,11 @@ class XGBoostTrainer:
             "region": normalized.get("region", "unknown"),
             "plant": normalized.get("plant", "unknown"),
             "split": split,
-            "y_true": actual,
+            # CNN serializes the float32 source target through Python float,
+            # which preserves the exact float32 numeric value in a float64
+            # container before CSV rendering. Do the same here so common-key
+            # truth identity is independent of pandas' shorter float32 text.
+            "y_true": np.asarray(actual, dtype=float),
             "y_pred": predicted,
             "xgb_pred": predicted,
         })
