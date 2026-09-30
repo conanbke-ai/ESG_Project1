@@ -1,6 +1,6 @@
 """Independent long-running jobs and their artifact contracts."""
 
-from .contracts import (
+from solar_forecast.jobs.contracts import (
     ANOMALY_EVENT_MANIFEST_CONTRACT,
     COLLECTION_MANIFEST_CONTRACT,
     E2E_VERIFICATION_MANIFEST_CONTRACT,

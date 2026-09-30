@@ -3,11 +3,9 @@ import json
 import pandas as pd
 import pytest
 
-from solar_forecast.collectors.candidates import (
-    CandidateAcceptancePolicy,
-    KrcYeongamCandidateIntakeService,
-)
-from solar_forecast.collectors.normalization import KrcYeongamGenerationNormalizer
+from solar_forecast.datasets.krc_candidate_intake import CandidateAcceptancePolicy
+from solar_forecast.datasets.krc_candidate_intake import KrcYeongamCandidateIntakeService
+from solar_forecast.collectors.generation_normalizers import KrcYeongamGenerationNormalizer
 
 
 def _krc_row(month: int, day: int, plant: str, value: float = 1_000) -> dict[str, object]:

@@ -4,8 +4,8 @@ import json
 
 import pandas as pd
 
-from solar_forecast.collectors.admission import CollectedGenerationAdmissionService
-from solar_forecast.collectors.normalization import GENERATION_COLUMNS
+from solar_forecast.datasets.collector_admission import CollectedGenerationAdmissionService
+from solar_forecast.collectors.generation_normalizers import GENERATION_COLUMNS
 
 
 def test_collected_generation_admission_accepts_only_plant_hour_contract(tmp_path):

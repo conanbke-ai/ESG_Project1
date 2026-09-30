@@ -3,15 +3,14 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from solar_forecast.collectors.metadata import PlantMetadata, PlantMetadataCatalog
-from solar_forecast.features.registry import (
-    KmaStationCatalog,
-    NationwidePlantRegistryBuilder,
-    ReviewedStationMapping,
-    ReviewedStationMappingCatalog,
-    parse_administrative_area,
-)
-from solar_forecast.features.service import NationwideModelDatasetBuilder
+from solar_forecast.collectors.plant_metadata import PlantMetadata
+from solar_forecast.collectors.plant_metadata import PlantMetadataCatalog
+from solar_forecast.datasets.plant_registry import KmaStationCatalog
+from solar_forecast.datasets.plant_registry import NationwidePlantRegistryBuilder
+from solar_forecast.datasets.plant_registry import ReviewedStationMapping
+from solar_forecast.datasets.plant_registry import ReviewedStationMappingCatalog
+from solar_forecast.datasets.plant_registry import parse_administrative_area
+from solar_forecast.datasets.model_dataset_builder import NationwideModelDatasetBuilder
 
 
 def _stations() -> KmaStationCatalog:
@@ -57,6 +56,62 @@ def test_administrative_region_is_separate_from_weather_station_name():
     assert match.station_id == 266
     assert match.method == "administrative_area_exact"
     assert not match.review_required
+
+
+def test_ewp_operational_aliases_resolve_to_official_location_metadata():
+    catalog = PlantMetadataCatalog(
+        [
+            PlantMetadata(
+                "ewp",
+                "울산화력태양광",
+                "solar",
+                0.5,
+                None,
+                "울산시 남구",
+                None,
+            ),
+            PlantMetadata(
+                "ewp",
+                "당진수상태양광",
+                "solar",
+                1.0,
+                None,
+                "충남 당진시 석문면",
+                None,
+            ),
+        ]
+    )
+
+    ulsan = catalog.lookup(
+        "ewp",
+        "울산태양광#1",
+        energy_source="solar",
+        aggregate=True,
+    )
+    dangjin = catalog.lookup(
+        "ewp",
+        "당진화력수상태양광",
+        energy_source="solar",
+        aggregate=True,
+    )
+
+    assert ulsan is not None
+    assert ulsan.address == "울산시 남구"
+    assert ulsan.capacity_mw == 0.5
+    assert parse_administrative_area(ulsan.address).province == "울산광역시"
+
+    assert dangjin is not None
+    assert dangjin.address == "충남 당진시 석문면"
+    assert dangjin.capacity_mw == 1.0
+    area = parse_administrative_area(dangjin.address)
+    assert area.province == "충청남도"
+    assert area.city == "당진시"
+
+
+def test_legacy_metropolitan_city_alias_is_normalized():
+    area = parse_administrative_area("울산시 남구")
+    assert area.province == "울산광역시"
+    assert area.city == "남구"
 
 
 def test_station_catalog_quarantines_an_address_without_a_defensible_match():

@@ -1,0 +1,518 @@
+"""공통 Optuna 저장소·탐색 공간·실험 예산·study 재개 관리."""
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from pathlib import Path
+from typing import Any, Callable, Mapping, Sequence
+import warnings
+
+import optuna
+from optuna.storages import RetryHeartbeatStaleTrialCallback
+from optuna.study import Study
+from optuna.trial import FrozenTrial, Trial, TrialState
+
+from solar_forecast.infrastructure.artifact_store import replace_file_atomic, write_json_atomic
+from solar_forecast.config_loader import PROJECT_ROOT
+
+
+def optimizer_search_space(values: Mapping[str, object]) -> Mapping[str, object]:
+    """Return an optional Optuna search-space section from a model config."""
+
+    raw = values.get("optimizer", {})
+    if not isinstance(raw, Mapping):
+        raise ValueError("optimizer configuration must be an object")
+    search_space = raw.get("search_space", {})
+    if search_space is None:
+        return {}
+    if not isinstance(search_space, Mapping):
+        raise ValueError("optimizer search_space must be an object")
+    return search_space
+
+
+def suggest_parameter(
+    trial: Trial,
+    name: str,
+    search_space: Mapping[str, object],
+    default: Mapping[str, object],
+) -> Any:
+    """Suggest one parameter from config, falling back to a model-owned default."""
+
+    spec = search_space.get(name, default)
+    if not isinstance(spec, Mapping):
+        raise ValueError(f"optimizer search_space.{name} must be an object")
+    kind = str(spec.get("type", default.get("type", "float"))).lower()
+    if kind == "fixed":
+        if "value" not in spec:
+            raise ValueError(f"optimizer search_space.{name}.value is required")
+        return trial.suggest_categorical(name, [spec["value"]])
+    if kind == "categorical":
+        choices = spec.get("choices")
+        if (
+            not isinstance(choices, Sequence)
+            or isinstance(choices, (str, bytes))
+            or not choices
+        ):
+            raise ValueError(f"optimizer search_space.{name}.choices must be a non-empty list")
+        return trial.suggest_categorical(name, list(choices))
+    if kind == "int":
+        low = int(spec["low"])
+        high = int(spec["high"])
+        log = bool(spec.get("log", False))
+        step = int(spec.get("step", 1))
+        if log and step != 1:
+            raise ValueError(f"optimizer search_space.{name} cannot use log with step")
+        return trial.suggest_int(name, low, high, step=step, log=log)
+    if kind == "float":
+        low = float(spec["low"])
+        high = float(spec["high"])
+        log = bool(spec.get("log", False))
+        if "step" in spec:
+            if log:
+                raise ValueError(f"optimizer search_space.{name} cannot use log with step")
+            return trial.suggest_float(
+                name,
+                low,
+                high,
+                step=float(spec["step"]),
+            )
+        return trial.suggest_float(name, low, high, log=log)
+    raise ValueError(f"unsupported optimizer search_space.{name}.type: {kind}")
+
+
+@dataclass(frozen=True)
+class OptimizationSettings:
+    """Shared, bounded Optuna contract for independently trained models."""
+
+    enabled: bool
+    study_name: str
+    storage_path: Path
+    max_trials: int
+    timeout_seconds: int | None
+    seed: int
+    startup_trials: int
+    pruner_startup_trials: int
+    pruner_warmup_steps: int
+    objective_metric: str = "validation_mae"
+    heartbeat_interval_seconds: int = 60
+    grace_period_seconds: int = 180
+    max_failed_trial_retries: int = 1
+
+    def scoped(self, training_fingerprint: str) -> "OptimizationSettings":
+        """Bind the persistent study to one data and training contract."""
+
+        if not training_fingerprint.strip():
+            raise ValueError("training fingerprint cannot be blank")
+        suffix = f"_{training_fingerprint[:12]}"
+        if self.study_name.endswith(suffix):
+            return self
+        return replace(
+            self,
+            study_name=f"{self.study_name}{suffix}",
+        )
+
+    @classmethod
+    def from_values(
+        cls,
+        values: Mapping[str, object],
+        *,
+        model: str,
+    ) -> "OptimizationSettings":
+        raw = values.get("optimizer", {})
+        if not isinstance(raw, Mapping):
+            raise ValueError("optimizer configuration must be an object")
+        feature_contract = str(values.get("feature_contract", "default"))
+        timeout_value = raw.get("timeout_seconds", 3600)
+        timeout_seconds = None if timeout_value is None else int(timeout_value)
+        settings = cls(
+            enabled=bool(raw.get("enabled", values.get("use_optuna", False))),
+            study_name=str(
+                raw.get("study_name", f"{model}_{feature_contract}_solar_v1")
+            ),
+            storage_path=Path(
+                str(raw.get("storage_path", "artifacts/optimization/solar_models.db"))
+            ),
+            max_trials=int(raw.get("max_trials", values.get("n_trials", 10))),
+            timeout_seconds=timeout_seconds,
+            seed=int(raw.get("seed", values.get("seed", 42))),
+            startup_trials=int(raw.get("startup_trials", 5)),
+            pruner_startup_trials=int(raw.get("pruner_startup_trials", 5)),
+            pruner_warmup_steps=int(raw.get("pruner_warmup_steps", 5)),
+            objective_metric=str(raw.get("objective_metric", "validation_mae")),
+            heartbeat_interval_seconds=int(raw.get("heartbeat_interval_seconds", 60)),
+            grace_period_seconds=int(raw.get("grace_period_seconds", 180)),
+            max_failed_trial_retries=int(raw.get("max_failed_trial_retries", 1)),
+        )
+        settings.validate()
+        return settings
+
+    def validate(self) -> None:
+        if not self.study_name.strip():
+            raise ValueError("optimizer study_name cannot be blank")
+        if self.max_trials < 1:
+            raise ValueError("optimizer max_trials must be positive")
+        if self.timeout_seconds is not None and self.timeout_seconds < 1:
+            raise ValueError("optimizer timeout_seconds must be positive or null")
+        if min(
+            self.startup_trials,
+            self.pruner_startup_trials,
+            self.pruner_warmup_steps,
+            self.max_failed_trial_retries,
+        ) < 0:
+            raise ValueError("optimizer startup, warmup, and retry values cannot be negative")
+        if min(self.heartbeat_interval_seconds, self.grace_period_seconds) < 1:
+            raise ValueError("optimizer heartbeat and grace period must be positive")
+        if self.objective_metric != "validation_mae":
+            raise ValueError(
+                "optimizer objective_metric must be validation_mae; Test is reserved"
+            )
+
+
+@dataclass(frozen=True)
+class OptimizationRun:
+    study: Study
+    summary_path: Path
+    trials_path: Path
+    existing_trials: int
+    executed_trials: int
+
+    @property
+    def best_params(self) -> dict[str, object]:
+        return dict(self.study.best_params)
+
+
+class OptunaStudyService:
+    """Run or resume one versioned study and persist auditable artifacts."""
+
+    def __init__(
+        self,
+        settings: OptimizationSettings,
+        *,
+        project_root: Path = PROJECT_ROOT,
+    ):
+        self.settings = settings
+        self.project_root = Path(project_root)
+
+    def run(
+        self,
+        objective: Callable[[Trial], float],
+        artifact_dir: Path,
+        *,
+        callbacks: Sequence[Callable[[Study, FrozenTrial], None]] = (),
+    ) -> OptimizationRun:
+        storage_path = self.settings.storage_path
+        if not storage_path.is_absolute():
+            storage_path = self.project_root / storage_path
+        storage_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # The benchmark owns the user-facing console. Optuna's default INFO
+        # records and experimental API warnings make long GPU runs unreadable.
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
+        with warnings.catch_warnings():
+            warnings.simplefilter(
+                "ignore",
+                category=optuna.exceptions.ExperimentalWarning,
+            )
+            storage = optuna.storages.RDBStorage(
+            url=f"sqlite:///{storage_path.resolve().as_posix()}",
+            heartbeat_interval=self.settings.heartbeat_interval_seconds,
+            grace_period=self.settings.grace_period_seconds,
+                heartbeat_stale_trial_callback=RetryHeartbeatStaleTrialCallback(
+                    max_retry=self.settings.max_failed_trial_retries
+                ),
+            )
+        sampler = optuna.samplers.TPESampler(
+            seed=self.settings.seed,
+            n_startup_trials=self.settings.startup_trials,
+        )
+        pruner = optuna.pruners.MedianPruner(
+            n_startup_trials=self.settings.pruner_startup_trials,
+            n_warmup_steps=self.settings.pruner_warmup_steps,
+        )
+        study = optuna.create_study(
+            study_name=self.settings.study_name,
+            storage=storage,
+            load_if_exists=True,
+            direction="minimize",
+            sampler=sampler,
+            pruner=pruner,
+        )
+        self._enqueue_failed_checkpoint_retries(study)
+        existing = self._finished_logical_trials(study.trials)
+        pending_retries = sum(
+            trial.state == TrialState.WAITING
+            and self._retry_root(trial) is not None
+            for trial in study.trials
+        )
+        # max_trials is a logical hyperparameter-search budget. Retry attempt
+        # records do not create a sixth search slot; they resume their root slot.
+        remaining = max(0, self.settings.max_trials - existing) + pending_retries
+
+        if existing:
+            print(
+                f"  기존 탐색 {min(existing, self.settings.max_trials)}/"
+                f"{self.settings.max_trials} 재사용",
+                flush=True,
+            )
+        if remaining:
+            def console_progress(current_study: Study, trial: FrozenTrial) -> None:
+                self._print_trial_progress(current_study, trial)
+
+            study.optimize(
+                objective,
+                n_trials=remaining,
+                timeout=self.settings.timeout_seconds,
+                gc_after_trial=True,
+                callbacks=[*callbacks, console_progress],
+            )
+        elif existing:
+            best = study.best_trial
+            metrics = best.user_attrs.get("validation_metrics") or {}
+            mae = float(study.best_value)
+            suffix = self._metric_suffix(metrics)
+            print(
+                f"  추가 탐색 없음 · 최저 MAE {mae:.6f} MWh{suffix}",
+                flush=True,
+            )
+        executed = self._finished_logical_trials(study.trials) - existing
+        completed = [
+            trial for trial in study.trials if trial.state == TrialState.COMPLETE
+        ]
+        if not completed:
+            raise RuntimeError(
+                f"Optuna study {self.settings.study_name!r} has no completed trial"
+            )
+
+        artifact_dir = Path(artifact_dir)
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        trials_path = artifact_dir / "optimization_trials.csv"
+        temporary = trials_path.with_name(trials_path.name + ".tmp")
+        study.trials_dataframe().to_csv(temporary, index=False, encoding="utf-8-sig")
+        replace_file_atomic(temporary, trials_path)
+        best_metrics = study.best_trial.user_attrs.get("validation_metrics") or {}
+        diagnostics_path = artifact_dir / "best_validation_diagnostics.json"
+        write_json_atomic(diagnostics_path, best_metrics)
+
+        plant_metrics_path = artifact_dir / "best_validation_plant_metrics.csv"
+        plant_metrics = best_metrics.get("plant_metrics") or []
+        if plant_metrics:
+            import pandas as pd
+            pd.DataFrame(plant_metrics).to_csv(
+                plant_metrics_path,
+                index=False,
+                encoding="utf-8-sig",
+            )
+
+        worst_errors_path = artifact_dir / "best_validation_worst_errors.csv"
+        worst_errors = best_metrics.get("top_absolute_errors") or []
+        if worst_errors:
+            import pandas as pd
+            pd.DataFrame(worst_errors).to_csv(
+                worst_errors_path,
+                index=False,
+                encoding="utf-8-sig",
+            )
+
+        summary_path = artifact_dir / "optimization_summary.json"
+        write_json_atomic(
+            summary_path,
+            {
+                "study_name": self.settings.study_name,
+                "storage_path": str(storage_path),
+                "direction": "minimize",
+                "selection_data": "validation_only",
+                "objective_metric": self.settings.objective_metric,
+                "max_total_trials": self.settings.max_trials,
+                "heartbeat_interval_seconds": self.settings.heartbeat_interval_seconds,
+                "grace_period_seconds": self.settings.grace_period_seconds,
+                "max_failed_trial_retries": self.settings.max_failed_trial_retries,
+                "existing_finished_trials": existing,
+                "executed_trials": executed,
+                "finished_trials": self._finished_logical_trials(study.trials),
+                "attempt_records": len(study.trials),
+                "completed_trials": len(completed),
+                "pruned_trials": sum(
+                    trial.state == TrialState.PRUNED for trial in study.trials
+                ),
+                "best_trial_number": study.best_trial.number,
+                "best_validation_mae": float(study.best_value),
+                "best_params": dict(study.best_params),
+                "best_validation_metrics": best_metrics,
+                "diagnostics_path": str(diagnostics_path),
+                "plant_metrics_path": (
+                    str(plant_metrics_path) if plant_metrics else None
+                ),
+                "worst_errors_path": (
+                    str(worst_errors_path) if worst_errors else None
+                ),
+                "test_usage": "none",
+            },
+        )
+        return OptimizationRun(
+            study=study,
+            summary_path=summary_path,
+            trials_path=trials_path,
+            existing_trials=existing,
+            executed_trials=executed,
+        )
+
+    @staticmethod
+    def _retry_root(trial: FrozenTrial | Trial) -> int | None:
+        root = trial.system_attrs.get("checkpoint_retry_root")
+        if root is not None:
+            return int(root)
+        failed = trial.system_attrs.get("failed_trial")
+        if failed is not None:
+            return int(failed)
+        return None
+
+    def _logical_trial_position(
+        self,
+        study: Study,
+        trial: FrozenTrial | Trial,
+    ) -> tuple[int, bool]:
+        """Map Optuna attempt records to one bounded search slot.
+
+        Retry attempts get a new Optuna trial number internally, but they retain
+        the original search slot in user-facing progress. Therefore a five-slot
+        search can show "탐색 2/5 재시도" but never "6/5".
+        """
+
+        root_number = self._retry_root(trial)
+        target_number = root_number if root_number is not None else trial.number
+        roots: list[int] = []
+        for item in sorted(study.trials, key=lambda value: value.number):
+            if self._retry_root(item) is None:
+                roots.append(int(item.number))
+        if target_number not in roots:
+            roots.append(int(target_number))
+            roots.sort()
+        position = roots.index(int(target_number)) + 1
+        return min(position, self.settings.max_trials), root_number is not None
+
+    def _print_trial_progress(
+        self,
+        study: Study,
+        trial: FrozenTrial,
+    ) -> None:
+        number, is_retry = self._logical_trial_position(study, trial)
+        total = self.settings.max_trials
+        retry_text = " 재시도" if is_retry else ""
+        state = trial.state
+        if state == TrialState.COMPLETE:
+            metrics = trial.user_attrs.get("validation_metrics") or {}
+            mae = float(trial.value)
+            marker = " ★ 최저" if study.best_trial.number == trial.number else ""
+            print(
+                f"  탐색 {number}/{total}{retry_text} 완료 · MAE {mae:.6f} MWh"
+                f"{self._metric_suffix(metrics)}{marker}",
+                flush=True,
+            )
+        elif state == TrialState.PRUNED:
+            print(
+                f"  탐색 {number}/{total}{retry_text} 조기 종료",
+                flush=True,
+            )
+        elif state == TrialState.FAIL:
+            print(
+                f"  탐색 {number}/{total}{retry_text} 실패",
+                flush=True,
+            )
+
+    @staticmethod
+    def _metric_suffix(metrics: Mapping[str, Any]) -> str:
+        if not metrics:
+            return ""
+        parts: list[str] = []
+        rmse = metrics.get("rmse_mwh")
+        r2 = metrics.get("r2")
+        bias = metrics.get("bias_mwh")
+        daylight = metrics.get("daylight_mae_mwh")
+        skill = metrics.get("persistence_skill_pct")
+        p99 = metrics.get("abs_error_p99_mwh")
+        max_error = metrics.get("abs_error_max_mwh")
+        nmae = metrics.get("nmae_capacity_pct")
+        if rmse is not None:
+            parts.append(f"RMSE {float(rmse):.4f}")
+        if r2 is not None:
+            parts.append(f"R² {float(r2):.3f}")
+        if bias is not None:
+            parts.append(f"Bias {float(bias):+.4f}")
+        if daylight is not None:
+            parts.append(f"주간MAE {float(daylight):.4f}")
+        if skill is not None:
+            skill_value = float(skill)
+            parts.append(
+                f"기준대비 {skill_value:+.1f}%"
+            )
+        if p99 is not None:
+            parts.append(f"P99 {float(p99):.3f}")
+        if max_error is not None:
+            parts.append(f"MAX {float(max_error):.3f}")
+        if nmae is not None:
+            parts.append(f"nMAE {float(nmae):.1f}%")
+        return (" │ " + " · ".join(parts)) if parts else ""
+
+    def _finished_logical_trials(
+        self,
+        trials: list[FrozenTrial],
+    ) -> int:
+        roots: set[int] = set()
+        for trial in trials:
+            if trial.state not in {
+                TrialState.COMPLETE,
+                TrialState.PRUNED,
+                TrialState.FAIL,
+            }:
+                continue
+            root = self._retry_root(trial)
+            roots.add(int(root if root is not None else trial.number))
+        return len(roots)
+
+    @staticmethod
+    def _finished_trials(trials: list[FrozenTrial]) -> int:
+        return sum(
+            trial.state in {TrialState.COMPLETE, TrialState.PRUNED, TrialState.FAIL}
+            for trial in trials
+        )
+
+    def _enqueue_failed_checkpoint_retries(self, study: Study) -> None:
+        if self.settings.max_failed_trial_retries == 0:
+            return
+        trials = study.get_trials(deepcopy=False)
+        existing_tokens: set[tuple[int, int]] = set()
+        for trial in trials:
+            root = trial.system_attrs.get("checkpoint_retry_root")
+            count = trial.system_attrs.get("checkpoint_retry_count")
+            if root is not None and count is not None:
+                existing_tokens.add((int(root), int(count)))
+            failed_trial = trial.system_attrs.get("failed_trial")
+            retry_history = trial.system_attrs.get("retry_history", [])
+            if failed_trial is not None:
+                existing_tokens.add((int(failed_trial), len(retry_history)))
+
+        for trial in trials:
+            if trial.state != TrialState.FAIL or not trial.user_attrs.get(
+                "checkpoint_stage"
+            ):
+                continue
+            root = int(trial.system_attrs.get("checkpoint_retry_root", trial.number))
+            retry_count = int(trial.system_attrs.get("checkpoint_retry_count", 0))
+            next_count = retry_count + 1
+            if (
+                next_count > self.settings.max_failed_trial_retries
+                or (root, next_count) in existing_tokens
+            ):
+                continue
+            study.add_trial(
+                optuna.create_trial(
+                    state=TrialState.WAITING,
+                    params=trial.params,
+                    distributions=trial.distributions,
+                    user_attrs=trial.user_attrs,
+                    system_attrs={
+                        "checkpoint_retry_root": root,
+                        "checkpoint_retry_count": next_count,
+                    },
+                )
+            )
+            existing_tokens.add((root, next_count))

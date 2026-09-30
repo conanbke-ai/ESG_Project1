@@ -36,13 +36,13 @@
   "output_root": "artifacts/models/xgboost",
   "prediction_root": "artifacts/predictions/xgboost",
   "forecast_horizon_hours": 24,
-  "feature_contract": "selected_v3_physics_aware_day_ahead",
+  "feature_contract": "observed_origin_physics_history_v1",
   "quality_filter_column": "quality_train_eligible",
   "validation_fraction": 0.15,
-  "calibration_fraction": 0.10,
+  "calibration_fraction": 0.1,
   "test_fraction": 0.15,
   "purge_gap_hours": 168,
-  "evaluation_protocol": "rolling_origin_day_ahead_with_observation_updates",
+  "evaluation_protocol": "historical_observation_rolling_origin",
   "missing_value_policy": "xgboost_native_nan_learned_default_direction",
   "csv_chunk_rows": 100000,
   "memory_limit_mb": 1536,
@@ -65,15 +65,59 @@
     "tuning_train_max_rows": 750000,
     "tuning_validation_max_rows": 250000,
     "search_space": {
-      "max_depth": { "type": "int", "low": 3, "high": 12 },
-      "learning_rate": { "type": "float", "low": 0.01, "high": 0.2, "log": true },
-      "min_child_weight": { "type": "float", "low": 1.0, "high": 32.0, "log": true },
-      "subsample": { "type": "float", "low": 0.6, "high": 1.0 },
-      "colsample_bytree": { "type": "float", "low": 0.6, "high": 1.0 },
-      "reg_alpha": { "type": "float", "low": 1e-8, "high": 10.0, "log": true },
-      "reg_lambda": { "type": "float", "low": 1e-3, "high": 100.0, "log": true },
-      "gamma": { "type": "float", "low": 1e-8, "high": 5.0, "log": true },
-      "max_bin": { "type": "categorical", "choices": [128, 256, 512] }
+      "max_depth": {
+        "type": "int",
+        "low": 3,
+        "high": 12
+      },
+      "learning_rate": {
+        "type": "float",
+        "low": 0.01,
+        "high": 0.2,
+        "log": true
+      },
+      "min_child_weight": {
+        "type": "float",
+        "low": 1.0,
+        "high": 32.0,
+        "log": true
+      },
+      "subsample": {
+        "type": "float",
+        "low": 0.6,
+        "high": 1.0
+      },
+      "colsample_bytree": {
+        "type": "float",
+        "low": 0.6,
+        "high": 1.0
+      },
+      "reg_alpha": {
+        "type": "float",
+        "low": 1e-08,
+        "high": 10.0,
+        "log": true
+      },
+      "reg_lambda": {
+        "type": "float",
+        "low": 0.001,
+        "high": 100.0,
+        "log": true
+      },
+      "gamma": {
+        "type": "float",
+        "low": 1e-08,
+        "high": 5.0,
+        "log": true
+      },
+      "max_bin": {
+        "type": "categorical",
+        "choices": [
+          128,
+          256,
+          512
+        ]
+      }
     }
   },
   "n_jobs": 4,
@@ -90,5 +134,6 @@
     "root": "artifacts/checkpoints",
     "xgboost_every_rounds": 50,
     "cnn_every_epochs": 1
-  }
+  },
+  "prediction_task": "historical_forecast"
 }

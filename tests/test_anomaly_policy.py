@@ -1,6 +1,6 @@
 import pytest
 
-from solar_forecast.anomalies.policy import validate_influence_factor
+from solar_forecast.anomalies.influence_policy import validate_influence_factor
 
 
 def test_supported_influence_factor_is_accepted() -> None:
