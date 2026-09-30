@@ -61,8 +61,16 @@ def align_prediction_frames(frames: dict[str, pd.DataFrame], *, minimum_coverage
             if not reference[column].equals(frame[column]):
                 raise ValueError(f"{name}: inconsistent {column} on common prediction keys")
         for column in ("y_true", "persistence_pred"):
-            if not np.allclose(reference[column], frame[column], rtol=0, atol=1e-7):
-                raise ValueError(f"{name}: inconsistent {column} on common prediction keys")
+            reference_values = reference[column].to_numpy(dtype=float)
+            frame_values = frame[column].to_numpy(dtype=float)
+            if not np.allclose(reference_values, frame_values, rtol=0, atol=1e-7):
+                delta = np.abs(reference_values - frame_values)
+                mismatched = int((delta > 1e-7).sum())
+                max_abs_diff = float(delta.max()) if len(delta) else 0.0
+                raise ValueError(
+                    f"{name}: inconsistent {column} on common prediction keys "
+                    f"(mismatched={mismatched}, max_abs_diff={max_abs_diff:.12g})"
+                )
     return aligned, {"common_rows": len(common), "union_rows": len(union), "common_fraction": coverage,
                      "candidate_rows": {name: len(frame) for name, frame in normalized.items()},
                      "dropped_rows": {name: len(frame) - len(common) for name, frame in normalized.items()}}
