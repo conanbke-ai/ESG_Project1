@@ -1486,7 +1486,7 @@ Projection integrity tests; fixture scores are not PV accuracy evidence.
 
 Benchmark orchestration tests use labelled fixtures, never accuracy evidence.
 
-`_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_accepts_float32_csv_roundtrip_equivalent_truth`, `BenchmarkJobTests.test_alignment_still_rejects_real_float32_truth_change`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`, `BenchmarkJobTests.test_gzip_partition_directory_reaches_training_but_parquet_does_not`
+`_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_accepts_float32_csv_roundtrip_equivalent_truth`, `BenchmarkJobTests.test_alignment_still_rejects_real_float32_truth_change`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_search_candidate_cohorts_must_be_identical`, `BenchmarkJobTests.test_search_candidate_cohort_cannot_be_missing`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`, `BenchmarkJobTests.test_gzip_partition_directory_reaches_training_but_parquet_does_not`
 
 ### [tests/test_benchmark_model_selection.py](../tests/test_benchmark_model_selection.py)
 
