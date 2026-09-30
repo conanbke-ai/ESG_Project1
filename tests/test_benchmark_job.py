@@ -88,7 +88,7 @@ class BenchmarkJobTests(unittest.TestCase):
         source = np.asarray([0.12345679], dtype=np.float32)[0]
         # Simulate two CSV round-trip renderings of the same float32 source.
         first.loc[0, "y_true"] = float(source)
-        second.loc[0, "y_true"] = float(f"{source:.7g}")
+        second.loc[0, "y_true"] = float(f"{source:.8g}")
         first.loc[0, "persistence_pred"] = float(source)
         second.loc[0, "persistence_pred"] = float(f"{source:.7g}")
         frames, coverage = align_prediction_frames(
