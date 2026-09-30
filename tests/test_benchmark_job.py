@@ -86,14 +86,24 @@ class BenchmarkJobTests(unittest.TestCase):
         first = _predictions("2024-01-01", 20, 0.1)
         second = first.copy()
         source = np.asarray([0.12345679], dtype=np.float32)[0]
+        # Simulate two CSV round-trip renderings of the same float32 source.
         first.loc[0, "y_true"] = float(source)
-        second.loc[0, "y_true"] = np.asarray(source, dtype=np.float32)
+        second.loc[0, "y_true"] = float(f"{source:.7g}")
+        first.loc[0, "persistence_pred"] = float(source)
+        second.loc[0, "persistence_pred"] = float(f"{source:.7g}")
         frames, coverage = align_prediction_frames(
             {"a": first, "b": second},
             minimum_coverage=0.95,
         )
         self.assertEqual(coverage["common_fraction"], 1.0)
         self.assertEqual(len(frames["a"]), 20)
+
+    def test_alignment_still_rejects_real_float32_truth_change(self):
+        first = _predictions("2024-01-01", 20, 0.1)
+        second = first.copy()
+        second.loc[0, "y_true"] = np.float32(first.loc[0, "y_true"]) + np.float32(1e-3)
+        with self.assertRaisesRegex(ValueError, "inconsistent y_true"):
+            align_prediction_frames({"a": first, "b": second}, minimum_coverage=0.95)
 
     def test_alignment_reports_every_dropped_row(self):
         first = _predictions("2024-01-01", 20, 0.1)
