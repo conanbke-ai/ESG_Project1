@@ -82,6 +82,19 @@ class BenchmarkJobTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "coverage"):
             align_prediction_frames({"a": first, "b": first.iloc[:5]}, minimum_coverage=0.95)
 
+    def test_alignment_accepts_float32_csv_roundtrip_equivalent_truth(self):
+        first = _predictions("2024-01-01", 20, 0.1)
+        second = first.copy()
+        source = np.asarray([0.12345679], dtype=np.float32)[0]
+        first.loc[0, "y_true"] = float(source)
+        second.loc[0, "y_true"] = np.asarray(source, dtype=np.float32)
+        frames, coverage = align_prediction_frames(
+            {"a": first, "b": second},
+            minimum_coverage=0.95,
+        )
+        self.assertEqual(coverage["common_fraction"], 1.0)
+        self.assertEqual(len(frames["a"]), 20)
+
     def test_alignment_reports_every_dropped_row(self):
         first = _predictions("2024-01-01", 20, 0.1)
         frames, coverage = align_prediction_frames({"a": first, "b": first.iloc[1:]}, minimum_coverage=0.95)
