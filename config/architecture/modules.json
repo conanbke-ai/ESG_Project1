@@ -159,7 +159,7 @@
     },
     "datasets/preparation_service.py": {
       "purpose": "preprocessing/preparation_service.py로 연결하는 compatibility shim",
-      "kind": "implementation"
+      "kind": "compatibility_shim"
     },
     "datasets/repository.py": {
       "purpose": "CSV·압축 CSV·파티션 학습 자료 탐색과 메모리 제한 분할 로딩",
@@ -463,11 +463,11 @@
     },
     "evaluation/training_eligibility.py": {
       "purpose": "preprocessing/training_eligibility.py로 연결하는 compatibility shim",
-      "kind": "implementation"
+      "kind": "compatibility_shim"
     },
     "evaluation/training_admission.py": {
       "purpose": "preprocessing/training_admission.py로 연결하는 compatibility shim",
-      "kind": "implementation"
+      "kind": "compatibility_shim"
     }
   }
 }
