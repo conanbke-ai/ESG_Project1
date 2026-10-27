@@ -38,6 +38,26 @@ def check_structure(project_root: Path = PROJECT_ROOT) -> list[str]:
     catalog = json.loads((project_root / "config/architecture/modules.json").read_text(encoding="utf-8"))["modules"]
     files = {path.relative_to(source_root).as_posix(): path for path in source_root.rglob("*.py")}
     errors = []
+    # Compatibility modules are temporary import bridges, never canonical feature owners.
+    for relative, entry in sorted(catalog.items()):
+        if entry.get("kind") != "compatibility_shim":
+            continue
+        source = files.get(relative)
+        if source is None:
+            continue  # Missing-file validation below owns this error.
+        old_module = "solar_forecast." + relative.removesuffix(".py").replace("/", ".")
+        move_catalog = json.loads(
+            (project_root / "config/architecture/module_moves.json").read_text(encoding="utf-8")
+        )["modules"]
+        target_relative = move_catalog.get(relative)
+        if not target_relative or target_relative == relative or target_relative not in files:
+            errors.append(f"Compatibility shim lacks a canonical move target: {relative}")
+            continue
+        canonical_module = "solar_forecast." + target_relative.removesuffix(".py").replace("/", ".")
+        if canonical_module not in source.read_text(encoding="utf-8"):
+            errors.append(f"Compatibility shim does not import canonical owner: {relative} -> {canonical_module}")
+        if old_module == canonical_module:
+            errors.append(f"Compatibility shim points to itself: {relative}")
     for missing in sorted(files.keys() - catalog.keys()):
         errors.append(f"Module lacks an explicit purpose: {missing}")
     for stale in sorted(catalog.keys() - files.keys()):
