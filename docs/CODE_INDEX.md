@@ -1545,7 +1545,7 @@ Validate fixed-lead future-weather archives before model training.
 
 Replay selected benchmark checkpoints on observed Test rows without training.
 
-`_sha256`, `_json`, `_resolve`, `_load_observations`, `_test_start`, `_test_mask`, `_indexed`, `_match_truth`, `_xgboost_replay`, `_cnn_replay`, `verify_selected_artifacts`, `main`
+`_sha256`, `_json`, `_resolve`, `_load_observations`, `_test_start`, `_test_mask`, `_indexed`, `_match_truth`, `_xgboost_replay`, `_cnn_target_scale`, `_cnn_replay`, `verify_selected_artifacts`, `main`
 
 ### [tools/verify_benchmark_retraining.py](../tools/verify_benchmark_retraining.py)
 
@@ -1612,6 +1612,12 @@ Calendar coverage and population tests; fixtures are not model accuracy evidence
 자동 검증 파일.
 
 `_krc_row`, `test_krc_normalizer_maps_entity_capacity_and_hourly_mwh`, `test_krc_normalizer_quarantines_files_without_entity_column`, `test_candidate_intake_separates_generation_gate_from_weather_admission`
+
+### [tests/test_cnn_artifact_replay.py](../tests/test_cnn_artifact_replay.py)
+
+Saved CNN replay preserves target units without training or refitting.
+
+`test_cnn_saved_replay_matches_exported_mwh_with_row_specific_capacity`, `test_cnn_saved_replay_matches_exported_mwh_with_row_specific_capacity.forbid_refit`, `test_cnn_replay_fails_closed_on_changed_or_missing_target_contract`
 
 ### [tests/test_cnn_bilstm_workflow.py](../tests/test_cnn_bilstm_workflow.py)
 
@@ -1750,6 +1756,12 @@ Strict artifact comparisons must never manufacture model performance evidence.
 자동 검증 파일.
 
 `_event`, `_alert`, `_route`, `_Directory`, `_Directory.__init__`, `_Directory.resolve`, `_Provider`, `_Provider.__init__`, `_Provider.send`, `_queue`, `_live_settings`, `test_external_delivery_requires_environment_and_separate_live_gate`, `test_dashboard_evaluation_and_unreviewed_events_are_rejected`, `test_stable_event_id_distinguishes_multiple_signals_at_same_timestamp`, `test_data_quality_alert_cannot_be_routed_to_plant_manager`, `test_plant_manager_route_cannot_cross_a_plant_boundary`, `test_enqueue_is_idempotent_and_persists_no_phone_or_api_secret`, `test_dry_run_suppresses_without_resolving_contact_or_calling_provider`, `test_live_dispatch_records_provider_acceptance_and_not_delivery`, `test_transient_failure_uses_exponential_retry_then_accepts`, `test_ambiguous_provider_outcome_is_quarantined_without_automatic_retry`, `test_permanent_kakao_failure_falls_back_to_sms_with_distinct_key`, `test_expired_dispatch_lease_is_in_doubt_not_automatically_resent`, `test_failure_audit_redacts_phone_and_bearer_token`, `_Response`, `_Response.json`, `_Session`, `_Session.__init__`, `_Session.post`, `_solapi_settings`, `_provider_message`, `test_solapi_uses_v4_hmac_and_approved_alimtalk_template_contract`, `test_solapi_credentials_cannot_be_redirected_to_another_host`, `test_solapi_long_sms_fallback_is_sent_as_lms_text_message`, `test_solapi_ambiguous_transport_outcomes_are_not_classified_as_retryable`, `test_solapi_ambiguous_transport_outcomes_are_not_classified_as_retryable.Session`, `test_solapi_ambiguous_transport_outcomes_are_not_classified_as_retryable.Session.post`, `test_solapi_accepts_registered_service_sender_but_requires_mobile_recipient`, `test_mapping_directory_is_runtime_only_and_missing_contact_falls_back`, `test_operational_event_rejects_other_energy_sources_and_fault_claims`, `test_operational_event_accepts_self_contained_nested_detector_and_evidence`, `test_operational_notification_requires_clean_physical_units_and_ranges`, `test_operational_event_batch_verifies_hash_count_and_excludes_contacts`, `_write_routes`, `test_runtime_route_directory_resolves_contacts_only_for_live_dispatch`, `test_notify_anomalies_cli_defaults_to_preview_and_has_explicit_live_gate`, `test_notify_anomalies_cli_dry_run_validates_manifest_and_uses_separate_outbox`, `test_notify_anomalies_cli_validates_all_rows_before_mutating_outbox`, `test_notify_anomalies_cli_live_is_blocked_without_environment_gate`, `test_notify_anomalies_cli_rejects_any_custom_preview_outbox`
+
+### [tests/test_observed_benchmark_pilot.py](../tests/test_observed_benchmark_pilot.py)
+
+Keep the observed integration pilot's preflight and executed cohort identical.
+
+`test_pilot_freezes_audited_calendar_and_excludes_unavailable_forecast_archives`, `test_pilot_rejects_unqualified_cohort`
 
 ### [tests/test_observed_preprocessing.py](../tests/test_observed_preprocessing.py)
 

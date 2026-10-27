@@ -63,3 +63,62 @@ evidence; its Test must not be used for further model tuning.
 Rollback is a normal revert of this repair commit on the same branch. No migration
 or data deletion is involved. Reverting restores the known CI failures; it does
 not require changing dataset/model artifacts.
+
+## Follow-up: previously skipped integration gates
+
+The first repair was published as `4c1d5bc7e882619c27471e05d1e0c6d3235d0cde`.
+[CI #40438890866](https://github.com/conanbke-ai/ESG_Project1/actions/runs/40438890866)
+passed structure and all 405 regression tests, then exposed an observed-pilot
+failure before training: `Temporal split produced empty partitions ['test']`.
+
+The pilot selected a complete 2024 plant-year using its availability audit's
+fraction-derived boundaries, but executed the inherited production calendar whose
+Test is in 2025. The preflight and trainer were therefore describing different
+cohorts. The pilot now freezes its already-audited boundaries as explicit shared
+calendar cutoffs for every candidate. Requested production dates and effective
+pilot dates are both recorded in `pilot_overrides`. `optimized.json`, production
+calendar enforcement and data eligibility remain unchanged. No model score is
+used to select these dates.
+
+The observed-only pilot also explicitly disables the inherited archived-weather
+candidates, which require separate local archives not included in this pilot's
+retained inputs. Requested archive configuration remains in its evidence. This is
+not a fallback in production forecasting, a weather-availability waiver, or
+validation of the full production experiment. Its budget remains two XGBoost
+trials / one CNN trial, three CNN epochs, 1h/24h horizons and 24h/168h lookbacks.
+
+Running that pilot locally then exposed a stored-model verifier error: CNN
+capacity-factor output was compared directly with exported MWh predictions.
+The verifier now restores the checkpoint's target-transform/capacity-column
+contract and each target row's float32 capacity scale. Legacy checkpoints without
+the field retain identity/MWh semantics. Contract mismatches and missing capacity
+fail closed; invalid target capacity is excluded consistently with training.
+Saved model weights, exported predictions, training code and `1e-6` tolerance
+remain unchanged. Tests include actual checkpoint serialization/export, reordered
+prediction keys, varying capacity, non-feature capacity passthrough and no refit.
+
+### Executed follow-up evidence
+
+- Pilot/calendar and retraining unit tests: **19 passed, 13 subtests passed**.
+- CNN replay/partition tests: **9 passed, 4 warnings**.
+- Full regression: **410 passed, 136 subtests passed, 14 warnings**, 33.44s, exit 0.
+- Generator, structure, compileall and diff whitespace: PASS.
+- Local retained-cohort CPU integration: all six candidate searches and four
+  selected base fits completed. Input: `ewp:광양항광양냉장태양광`, 2024, 8,952 rows
+  including 168 observed context hours; dataset SHA-256
+  `866f22e18656a4a18fa30c9433710318792c3503160eb77e07e9c74ccaf68fee`.
+  This exact CSV came from CI #40438890866 artifact 12705053243; local Gold
+  preparation was not rerun or substituted with synthetic data.
+- Stored-model replay: **4/4 passed**, 1,175 Test rows per selected model/horizon.
+  Maximum XGBoost delta: `1.4871597286969518e-08` MWh; maximum CNN delta:
+  `9.974659986866641e-17` MWh, within unchanged tolerance `1e-6`.
+- `python tools/verify_benchmark_retraining.py --pilot-dir <retained-cohort-run>`:
+  fresh optimizer/checkpoint roots in a separate process, **passed**, all six
+  search candidates and both final selections compared. Final XGBoost/CNN/Hybrid/
+  selected prediction deltas were **0.0** for both horizons in this environment.
+
+This confirms verifier/runner consistency for the bounded CPU experiment. It does
+not establish original-model equivalence, model improvement, unseen holdout
+generalization, production readiness or identical results on a different CPU/GPU.
+The repeated Test is existing development evidence, not a new test population.
+Final follow-up commit and hosted CI outcome are in the PR conversation.

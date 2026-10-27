@@ -309,7 +309,34 @@ def runtime_versions() -> dict:
 
 def build_pilot_config(base: dict, dataset: Path, output: Path, project_root: Path, provenance: dict) -> dict:
     """Bound resources explicitly while running ordinary, non-smoke trainers."""
+    from solar_forecast.evaluation.temporal_split import CALENDAR_FIELDS, TemporalSplitConfig
+
     values = json.loads(json.dumps(base))
+    cohort = provenance["cohort"]
+    coverage = cohort["continuous_window_coverage"]
+    if coverage.get("qualified") is not True:
+        raise ValueError("Pilot requires a qualified observed cohort before freezing its split")
+    # The availability audit uses this one plant-year's timestamps, whereas the
+    # production calendar may span multiple years. Freeze the audited boundaries
+    # once for ALL pilot candidates; never inherit unrelated production cutoffs.
+    boundaries = coverage["boundaries"]
+    pilot_split = {field: boundaries[field] for field in CALENDAR_FIELDS[:3]}
+    pilot_split.update(test_end=cohort["input_end"], purge_gap_hours=boundaries["gap_hours"])
+    TemporalSplitConfig.from_mapping(pilot_split)
+    values["pilot_overrides"] = {
+        "reason": "bounded_observed_integration_cohort_not_full_population_evaluation",
+        "requested_population_split": values.get("split"),
+        "effective_shared_calendar": pilot_split,
+        "requested_future_weather": values.get("future_weather"),
+        "effective_future_weather": "disabled_observations_only",
+        "model_performance_used_for_boundaries": False,
+        "new_holdout_evidence": False,
+    }
+    values["split"] = pilot_split
+    # Retained official observations are the pilot's only input contract. The
+    # production forecast-archive candidates keep their own availability gates.
+    values["future_weather"] = {"enabled_horizons": []}
+    values["selection_protocol"]["future_weather"] = "not_used_in_observed_only_integration_pilot"
     values.update({
         "name": "observed_plant_year_benchmark_pilot",
         "description": "공식 실측 발전소 1개 연도의 제한된 탐색; 전체 모집단 최적화 결과가 아님",
@@ -396,6 +423,8 @@ def main() -> None:
             "One plant-year chosen by observation availability, not the complete plant population",
             "Three CNN training epochs; bounded feature, lookback, and hyperparameter search",
             "Original trained checkpoint results are not reproduced by this pilot",
+            "Pilot uses its audited shared calendar, not the full-population experiment cutoffs",
+            "Archived future-weather candidates are outside this observations-only integration pilot",
         ],
         "runtime": runtime_versions(),
     }

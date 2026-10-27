@@ -53,6 +53,10 @@ def _load_observations(dataset: Path, values: dict, *, smoke: bool) -> pd.DataFr
     target = values["target_column"]
     features = values["feature_columns"]
     passthrough = ["plant_id", "timestamp", "plant", "region"]
+    if values.get("target_transform", "identity") == "capacity_factor":
+        capacity_column = str(values.get("capacity_column", "capacity_mw"))
+        if capacity_column not in features:
+            passthrough.append(capacity_column)
     _, frame, _ = DatasetRepository(dataset.parent).load_training_frame(
         dataset, columns=[*passthrough, *features, target],
         numeric_columns=[*features, target],
@@ -145,6 +149,25 @@ def _xgboost_replay(frame: pd.DataFrame, values: dict, details: dict, exported: 
     }
 
 
+def _cnn_target_scale(frame: pd.DataFrame, values: dict, checkpoint: dict) -> np.ndarray:
+    """Restore the saved target unit contract; old checkpoints default to MWh."""
+    transform = checkpoint.get("target_transform", "identity")
+    if transform != values.get("target_transform", "identity"):
+        raise ValueError("Stored CNN target transform differs from resolved configuration")
+    if transform == "identity":
+        return np.ones(len(frame), dtype=np.float32)
+    if transform != "capacity_factor":
+        raise ValueError(f"Unsupported stored CNN target transform: {transform}")
+    column = checkpoint.get("capacity_column", "capacity_mw")
+    if column != values.get("capacity_column", "capacity_mw"):
+        raise ValueError("Stored CNN capacity column differs from resolved configuration")
+    if column not in frame:
+        raise ValueError(f"Stored CNN capacity_factor target requires {column}")
+    capacity = pd.to_numeric(frame[column], errors="coerce").to_numpy(dtype=np.float32).copy()
+    capacity[~np.isfinite(capacity) | (capacity <= 0)] = np.nan
+    return capacity
+
+
 def _cnn_replay(frame: pd.DataFrame, values: dict, details: dict, exported: pd.DataFrame, run_dir: Path):
     import torch
     from solar_forecast.evaluation.forecast_samples import forecast_window_positions
@@ -162,6 +185,7 @@ def _cnn_replay(frame: pd.DataFrame, values: dict, details: dict, exported: pd.D
     series = {}
     expected_frames = []
     origin_by_key = {}
+    scale_by_key = {}
     horizon = int(values["forecast_horizon_hours"])
     for plant, group in frame.groupby("plant_id", sort=True, observed=True):
         group = group.sort_values("timestamp", kind="stable")
@@ -170,8 +194,10 @@ def _cnn_replay(frame: pd.DataFrame, values: dict, details: dict, exported: pd.D
             raise ValueError("Stored CNN input width differs from preprocessing")
         times = pd.DatetimeIndex(group["timestamp"])
         target_values = group[values["target_column"]].to_numpy(dtype=np.float32)
+        target_scale = _cnn_target_scale(group, values, checkpoint)
         targets, origins = forecast_window_positions(times, horizon_hours=horizon, sequence_length=length)
         keep = _test_mask(times[targets], split) & np.isfinite(target_values[targets]) & np.isfinite(target_values[origins])
+        keep &= np.isfinite(target_scale[targets])
         targets, origins = targets[keep], origins[keep]
         series[str(plant)] = numeric
         context = pd.DataFrame({
@@ -181,7 +207,9 @@ def _cnn_replay(frame: pd.DataFrame, values: dict, details: dict, exported: pd.D
         })
         expected_frames.append(context)
         for target, origin in zip(targets, origins):
-            origin_by_key[(str(plant), times[target], times[origin], horizon)] = int(origin)
+            key = (str(plant), times[target], times[origin], horizon)
+            origin_by_key[key] = int(origin)
+            scale_by_key[key] = float(target_scale[target])
     expected = _indexed(pd.concat(expected_frames, ignore_index=True))
     truth = _match_truth(expected, exported, target_dtype="float32")
     model = build_cnn_bilstm_network(CnnBiLstmNetworkConfig(**checkpoint["config"]), device=torch.device("cpu"))
@@ -198,11 +226,15 @@ def _cnn_replay(frame: pd.DataFrame, values: dict, details: dict, exported: pd.D
                 windows.append(series[key[0]][origin - length + 1:origin + 1])
             batch = torch.from_numpy(np.stack(windows)).float()
             predictions.append(model(batch).cpu().numpy().reshape(-1))
-    return np.concatenate(predictions), {
+    # Exported predictions are MWh, even when the network predicts capacity
+    # factor. Use each target row's stored float32 scale, as the exporter does.
+    predicted_mwh = np.concatenate(predictions) * np.asarray([scale_by_key[key] for key in keys])
+    return predicted_mwh, {
         **truth, "model_path": str(model_path), "model_sha256": _sha256(model_path),
         "preprocessing_sha256": hashlib.sha256(json.dumps(preprocessing, sort_keys=True).encode()).hexdigest(),
         "preprocessing_source": "checkpoint_stored_preprocessing_no_refit",
         "sequence_length": length, "batch_size": batch_size,
+        "target_transform": checkpoint.get("target_transform", "identity"),
     }
 
 
