@@ -116,6 +116,9 @@ class ForecastReadinessTests(unittest.TestCase):
                                      "max_trials_per_candidate": 1, "timeout_seconds_per_candidate": 1}
             spec = {"contract": "solar-optimized-experiment.v1", "input_dataset": str(source),
                     "horizons_hours": [24], "minimum_common_coverage": 0.95, "models": models,
+                    "selection_protocol": {"base_candidates": "validation_only_common_rows",
+                                           "metric": "pooled_plant_hour_mae",
+                                           "test": "frozen_models_final_report_only"},
                     "feature_sets": {"full": {}}, "split": {key: configurations[0][1].values[key] for key in
                         ("train_end", "validation_end", "calibration_end", "test_end", "purge_gap_hours")}}
             config = root / "experiment.json"

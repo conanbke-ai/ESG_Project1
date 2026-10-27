@@ -82,7 +82,10 @@ def test_eligibility_rejects_hourly_gap_in_any_split() -> None:
     )
 
 
-def test_eligibility_rejects_non_train_split_larger_than_train() -> None:
+@pytest.mark.parametrize("validation_fraction, expected_rows, rejected", [
+    (0.35, 35, False), (0.40, 40, False), (0.45, 45, True),
+])
+def test_eligibility_non_train_split_size_contract(validation_fraction, expected_rows, rejected) -> None:
     times = pd.date_range("2024-01-01", periods=100, freq="h")
     frame = pd.DataFrame(
         {
@@ -97,7 +100,7 @@ def test_eligibility_rejects_non_train_split_larger_than_train() -> None:
     report = audit_training_eligibility(
         frame,
         TemporalSplitConfig(
-            validation_fraction=0.40,
+            validation_fraction=validation_fraction,
             calibration_fraction=0.10,
             test_fraction=0.10,
             gap_hours=0,
@@ -106,8 +109,11 @@ def test_eligibility_rejects_non_train_split_larger_than_train() -> None:
     )
     plant = report["plants"][0]
 
-    assert plant["status"] == "STRUCTURAL_REJECT"
-    assert "non_train_split_rows_exceed_train:validation" in plant["hard_reject_reasons"]
+    assert plant["split_overlap_rows"]["validation"] == expected_rows
+    assert plant["split_overlap_rows"]["train"] == 80 - expected_rows
+    assert plant["status"] == ("STRUCTURAL_REJECT" if rejected else "STRUCTURALLY_ELIGIBLE")
+    reason = "non_train_split_rows_exceed_train:validation"
+    assert (reason in plant["hard_reject_reasons"]) is rejected
 
 
 def test_eligibility_rejects_duplicate_plant_hour_keys() -> None:

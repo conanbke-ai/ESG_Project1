@@ -76,6 +76,7 @@ prepare-data와 후보 데이터 심사 명령 처리
 
 - `handle_prepare_data_command(args: argparse.Namespace)`
 - `handle_audit_candidate_data_command(args: argparse.Namespace)`
+- `handle_training_data_eligibility_command(args: argparse.Namespace)` — Audit Gold plant-period continuity/split sufficiency without training.
 
 ## [cli/job_commands.py](../src/solar_forecast/cli/job_commands.py)
 
@@ -443,12 +444,9 @@ registry 승인 발전량과 ASOS·과거 특징을 결합해 Gold dataset 생�
 
 ## [datasets/preparation_service.py](../src/solar_forecast/datasets/preparation_service.py)
 
-원본 표준화·collector admission·registry·Gold·품질 감사 orchestration
+preprocessing/preparation_service.py로 연결하는 compatibility shim
 
-- `DataPreparationResult`
-- `DataPreparationService` — Application boundary for historical standardization and model-ready features.
-- `DataPreparationService.__init__(self, input_root: Path, weather_root: Path, merged_source: Path, output_dir: Path, collected_generation_dir: Path | None=COLLECTOR_SILVER_ROOT)`
-- `DataPreparationService.run(self)`
+공개 export 또는 설정 상수만 정의합니다.
 
 ## [datasets/repository.py](../src/solar_forecast/datasets/repository.py)
 
@@ -463,7 +461,7 @@ CSV·압축 CSV·파티션 학습 자료 탐색과 메모리 제한 분할 로�
 - `DatasetRepository` — Filesystem adapter for discovering and loading tabular model data.
 - `DatasetRepository.__init__(self, input_dir: Path)`
 - `DatasetRepository.load(self, data_path: Optional[Path]=None)`
-- `DatasetRepository.load_training_frame(self, data_path: Path, *, columns: Sequence[str], numeric_columns: Sequence[str], equals_filters: dict[str, object] | None=None, truthy_filter: str | None=None, row_limit: int | None=None, policy: DatasetLoadPolicy | None=None)` — Read only model columns and push row filters into bounded CSV chunks.
+- `DatasetRepository.load_training_frame(self, data_path: Path, *, columns: Sequence[str], numeric_columns: Sequence[str], equals_filters: dict[str, object] | None=None, allowed_values_filters: dict[str, Sequence[object]] | None=None, truthy_filter: str | None=None, row_limit: int | None=None, policy: DatasetLoadPolicy | None=None)` — Read only model columns and push row filters into bounded CSV chunks.
 - `DatasetRepository._training_files(source: Path)`
 - `load_dataset(data_path: Optional[Path], input_dir: Path)` — Compatibility facade around DatasetRepository.
 
@@ -515,6 +513,7 @@ evaluation 패키지의 공개 import 경계; 실행은 명시적 명령에서 �
 - `validate_observation_frame(frame: pd.DataFrame, *, entity_column: str, timestamp_column: str)` — Require a unique observed plant-hour before constructing forecast targets.
 - `build_forecast_samples(frame: pd.DataFrame, feature_columns: Sequence[str], target_column: str, horizon_hours: int, *, entity_column: str='plant_id', timestamp_column: str='timestamp')` — Pair y(t) with features observed at exactly t-h, independently per plant.
 - `forecast_window_positions(timestamps: Sequence[object], *, horizon_hours: int, sequence_length: int)` — Return target and origin positions whose input window is truly hourly.
+- `forecast_cohort_contract(frame: pd.DataFrame, *, key_columns: Sequence[str]=('plant_id', 'timestamp', 'forecast_origin', 'horizon_hours'))` — Fingerprint the exact forecast-key population used for model selection.
 - `forecast_evaluation_contract(prediction_task: str | None, horizon_hours: object, *, legacy_task: str)` — Describe implemented timing; legacy row models never claim a 24h horizon.
 
 ## [evaluation/model_parity.py](../src/solar_forecast/evaluation/model_parity.py)
@@ -539,7 +538,7 @@ evaluation 패키지의 공개 import 경계; 실행은 명시적 명령에서 �
 - `_predict_gate(gate: ExplainableDynamicGate, frame: pd.DataFrame)`
 - `_write_csv_atomic(frame: pd.DataFrame, path: Path, *, compression: str | None=None)`
 - `BenchmarkModelSelector` — Fit the blend before selection, freeze the champion before reading Test errors.
-- `BenchmarkModelSelector.__init__(self, output_dir: Path, minimum_relative_improvement: float=0.0, selection_gap_hours: int=0)`
+- `BenchmarkModelSelector.__init__(self, output_dir: Path, minimum_relative_improvement: float=0.0, selection_gap_hours: int=0, minimum_plant_win_fraction: float=0.0, gate_min_group_samples: int=48)`
 - `BenchmarkModelSelector.run(self, calibration: pd.DataFrame, test: pd.DataFrame, *, evaluation_contract: dict[str, Any], provenance: dict[str, Any])` — Persist a selection decision and four-model errors on identical held-out rows.
 
 ## [evaluation/regression_metrics.py](../src/solar_forecast/evaluation/regression_metrics.py)
@@ -550,6 +549,9 @@ evaluation 패키지의 공개 import 경계; 실행은 명시적 명령에서 �
 - `calculate_metrics(frame: pd.DataFrame)` — Calculate metrics from rows instead of averaging pre-calculated RMSE/R2.
 - `_group_metrics(frame: pd.DataFrame, columns: Sequence[str])`
 - `aggregate_metrics(frame: pd.DataFrame)` — Return exact plant, region and national metrics from aligned predictions.
+- `_aligned_optional(values, size: int, name: str, *, dtype=None)`
+- `_json_scalar(value)`
+- `validation_diagnostics(y_true, y_pred, *, persistence_pred=None, is_daylight=None, capacity_mw=None, plant_id=None, plant=None, region=None, timestamp=None, top_k: int=20)` — Return multi-axis Validation diagnostics while keeping MAE as selector.
 
 ## [evaluation/split_audit.py](../src/solar_forecast/evaluation/split_audit.py)
 
@@ -598,6 +600,15 @@ ASOS 관측값 이름·타입 표준화와 관측소 좌표 결합
 - `KmaAsosNormalizer.transform(self, frame: pd.DataFrame)`
 - `KmaAsosNormalizer._normalize_observation(result: pd.DataFrame, source: pd.DataFrame, column: str, aliases: tuple[str, ...])`
 - `KmaAsosNormalizer._join_station_history(self, result: pd.DataFrame)` — Use date-valid metadata; never extrapolate the newest dated record.
+
+## [features/future_weather.py](../src/solar_forecast/features/future_weather.py)
+
+발전소 좌표 기반 고정 lead 미래기상 아카이브 검증·결합과 누수 차단
+
+- `future_weather_feature_columns(profile: str='aligned_core')` — Return one explicit future-weather feature contract.
+- `read_future_weather(source: str | Path, *, horizon_hours: int, plant_ids: Sequence[str] | None=None, feature_profile: str='aligned_core')` — Read one fixed-lead archived forecast cohort and fail closed on leakage.
+- `merge_future_weather(forecast_samples: pd.DataFrame, future_weather: pd.DataFrame, *, minimum_coverage: float=0.98, feature_columns: Sequence[str] | None=None)` — Attach fixed-lead weather to target rows without changing forecast keys.
+- `attach_future_weather_to_observations(observations: pd.DataFrame, future_weather: pd.DataFrame, *, entity_column: str='plant_id', timestamp_column: str='timestamp', minimum_coverage: float=0.98, feature_columns: Sequence[str] | None=None)` — Attach target-time forecast values for the CNN future-covariate branch.
 
 ## [features/history_features.py](../src/solar_forecast/features/history_features.py)
 
@@ -663,10 +674,12 @@ jobs 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작
 모델별 Validation 탐색과 하이브리드 선택 및 예측 산출물 연결
 
 - `align_prediction_frames(frames: dict[str, pd.DataFrame], *, minimum_coverage: float)` — Align an explicit cohort, failing on changed truth, IDs or low coverage.
+- `_validate_search_cohorts(cohorts: dict[str, dict], *, minimum_coverage: float)`
+- `_console_candidate_label(model: str, candidate_id: str, horizon: int)`
 - `BenchmarkService` — Execute independently tuned candidates and freeze selection before Test.
 - `BenchmarkService.__init__(self, *, project_root: Path=PROJECT_ROOT, training_service=None)`
 - `BenchmarkService.run(self, config_path: Path, *, smoke: bool=False)`
-- `BenchmarkService._candidate_summary(entry: tuple, score: float, run_root: Path)`
+- `BenchmarkService._candidate_summary(entry: tuple, score: float, run_root: Path, *, config_filename: str='resolved_config.json')`
 - `BenchmarkService._matching_contract(selected: dict)`
 - `BenchmarkService._merge_selected(selected: dict, split: str, values: dict)`
 - `BenchmarkService._provenance(self, source: Path, values: dict)`
@@ -703,7 +716,9 @@ jobs 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작
 
 - `TrainingService` — Runs one model strategy behind a process-wide lock and manifest boundary.
 - `TrainingService.__init__(self, trainers: dict[str, tuple[str, str]] | None=None)`
-- `TrainingService.run(self, config: ModelJobConfig, *, smoke: bool=False)`
+- `TrainingService.run(self, config: ModelJobConfig, *, smoke: bool=False)` — Run the complete selected-model fit and prediction workflow.
+- `TrainingService.search(self, config: ModelJobConfig)` — Run Validation-only optimizer search without full-data final fit.
+- `TrainingService._execute(self, config: ModelJobConfig, *, smoke: bool, selection_only: bool, phase: str)`
 - `run_training(config: ModelJobConfig, *, smoke: bool=False)` — Compatibility facade around TrainingService.
 
 ## [jobs/training_lock.py](../src/solar_forecast/jobs/training_lock.py)
@@ -711,7 +726,10 @@ jobs 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작
 동시 학습 실행을 차단하는 프로세스 잠금
 
 - `TrainingAlreadyRunning`
-- `exclusive_training_lock(lock_path: Path, model: str)` — Prevent XGBoost and CNN training from consuming resources concurrently.
+- `_pid_is_running(pid: int)` — Return whether the recorded owner PID still exists.
+- `_lock_owner(lock_path: Path)`
+- `_create_lock(lock_path: Path, model: str)`
+- `exclusive_training_lock(lock_path: Path, model: str)` — Prevent concurrent training and recover locks whose owner process died.
 
 ## [jobs/verification_job.py](../src/solar_forecast/jobs/verification_job.py)
 
@@ -791,16 +809,19 @@ CNN-BiLSTM 신경망 구조·층 구성·forward와 네트워크 설정
 - `CnnBiLstmNetworkConfig.__post_init__(self)`
 - `CNNBiLSTM` — 1D CNN followed by a bidirectional LSTM for sequence regression.
 - `CNNBiLSTM.__init__(self, config: CnnBiLstmNetworkConfig)`
-- `CNNBiLSTM.forward(self, x: torch.Tensor)`
+- `CNNBiLSTM.forward(self, x: torch.Tensor, future: torch.Tensor | None=None)`
 - `build_cnn_bilstm_network(config: CnnBiLstmNetworkConfig, device: Optional[torch.device]=None)` — Helper to build and place the model on a device.
 
 ## [models/cnn_bilstm/optimization.py](../src/solar_forecast/models/cnn_bilstm/optimization.py)
 
 CNN epoch 학습·검증 루프, Optuna 탐색과 최적 설정 재학습
 
+- `_move_inputs(inputs, device: torch.device)`
+- `_forward(model: CNNBiLSTM, inputs)`
 - `train_cnn_bilstm_epoch(model: CNNBiLSTM, loader: DataLoader, criterion: nn.Module, optimizer: torch.optim.Optimizer, device: torch.device)`
+- `_loader_context_frame(loader: DataLoader)`
 - `evaluate_cnn_bilstm_loader(model: CNNBiLSTM, loader: DataLoader, criterion: nn.Module, device: torch.device)`
-- `suggest_cnn_bilstm_config(trial: Trial, n_features: int, search_space: dict[str, object] | None=None)`
+- `suggest_cnn_bilstm_config(trial: Trial, n_features: int, search_space: dict[str, object] | None=None, *, n_future_features: int=0)`
 - `limit_sequence_loader(loader: DataLoader, maximum_sequences: int | None, *, shuffle: bool)`
 - `optimize_cnn_bilstm(frame, target_column: str, feature_columns=None, sequence_config: Optional[SequenceConfig]=None, n_trials: int=20, device: Optional[torch.device]=None, timeout: Optional[int]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None, trial_epochs: int=20, early_stopping_patience: int=5, maximum_train_sequences: int | None=None, maximum_validation_sequences: int | None=None, settings: OptimizationSettings | None=None, artifact_dir: Path | None=None, checkpoint_store: TrainingCheckpointStore | None=None, optimizer_parameter_space: dict[str, object] | None=None)` — Select architecture and optimizer values from Validation only.
 - `optimize_cnn_bilstm.objective(trial: Trial)`
@@ -833,6 +854,7 @@ CNN 입력 길이·시간 분할 비율·배치 로더 설정
 - `SequenceLoaders`
 - `_position_labels(n_targets: int, cfg: SequenceConfig)`
 - `_fit_and_transform_training_preprocessing(series: Sequence[_EntitySeries], feature_columns: Sequence[str], *, append_missing_indicators: bool)`
+- `_fit_and_transform_future_preprocessing(series: Sequence[_EntitySeries], future_feature_columns: Sequence[str], *, append_missing_indicators: bool)`
 - `prepare_dataset_splits(frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, config: Optional[SequenceConfig]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None, *, preprocessing_state: dict[str, object] | None=None)` — Build one global four-way time split with lazy per-entity windows.
 - `prepare_datasets(frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, config: Optional[SequenceConfig]=None, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None, *, preprocessing_state: dict[str, object] | None=None)` — Compatibility view returning Train/Validation/Test from four-way splits.
 - `sequence_from_csv(path: str, target_column: str, feature_columns: Optional[Sequence[str]]=None, config: Optional[SequenceConfig]=None)`
@@ -843,13 +865,15 @@ CNN 입력 길이·시간 분할 비율·배치 로더 설정
 CNN 모델 JSON 설정을 데이터 로딩과 학습 workflow에 연결
 
 - `CnnBiLstmTrainer` — Concrete adapter from job configuration to the CNN-BiLSTM workflow.
-- `CnnBiLstmTrainer.train(self, config: ModelJobConfig, run_dir: Path, smoke: bool=False)`
-- `train(config: ModelJobConfig, *, run_dir: Path, smoke: bool=False)`
+- `CnnBiLstmTrainer.train(self, config: ModelJobConfig, run_dir: Path, smoke: bool=False, selection_only: bool=False)`
+- `train(config: ModelJobConfig, *, run_dir: Path, smoke: bool=False, selection_only: bool=False)`
 
 ## [models/cnn_bilstm/training_workflow.py](../src/solar_forecast/models/cnn_bilstm/training_workflow.py)
 
 CNN 최종 학습·체크포인트·Validation/Calibration/Test 예측 파일 기록
 
+- `_move_prediction_inputs(inputs, device: torch.device)`
+- `_predict_batch(model: torch.nn.Module, inputs, device: torch.device)`
 - `_write_prediction_artifact(model: torch.nn.Module, loader, path: Path, *, split: str, device: torch.device)` — Stream row-aligned CNN predictions without materializing a full table.
 - `train_cnn_bilstm(frame: pd.DataFrame, target_column: str, feature_columns: Optional[Sequence[str]]=None, sequence_config: Optional[SequenceConfig]=None, n_trials: int=10, output_dir: str='artifacts/models/cnn_bilstm', use_optuna: bool=True, use_reinforcement: bool=False, epochs: int=50, entity_column: Optional[str]=None, timestamp_column: Optional[str]=None, optimizer_settings: OptimizationSettings | None=None, optimizer_trial_epochs: int=20, early_stopping_patience: int=5, optimizer_max_train_sequences: int | None=None, optimizer_max_validation_sequences: int | None=None, optimizer_timeout_seconds: int | None=None, checkpoint_store: TrainingCheckpointStore | None=None, checkpoint_root: str | Path | None=None, optimizer_storage_path: str | Path | None=None, optimizer_parameter_space: Mapping[str, object] | None=None, seed: int=42)` — Train the model with Optuna and/or reinforcement learning then persist artifacts.
 
@@ -872,7 +896,7 @@ Validation 근거로 CNN/XGBoost 결합 비중 학습과 계층적 fallback
 - `ExplainableDynamicGate.fit_predict(self, validation: pd.DataFrame, test: pd.DataFrame)`
 - `normalize_prediction_columns(frame: pd.DataFrame)` — Map known source labels to the hybrid contract and derive hour.
 - `validate_aligned_predictions(frame: pd.DataFrame)`
-- `_optimal_convex_weight(y_true: np.ndarray, xgb_pred: np.ndarray, cnn_pred: np.ndarray)`
+- `_optimal_convex_weight(y_true: np.ndarray, xgb_pred: np.ndarray, cnn_pred: np.ndarray)` — Return the convex XGBoost weight that minimizes absolute error.
 - `fit_region_blend(validation: pd.DataFrame)` — Compatibility baseline: learn one convex weight per region.
 - `predict_region_blend(test: pd.DataFrame, weights: pd.DataFrame, fallback_weight: float=0.5)` — Compatibility baseline: apply frozen regional weights.
 - `_build_profiles(validation: pd.DataFrame, min_group_samples: int)` — Learn a transparent hierarchy of validation-only routing contexts.
@@ -943,6 +967,12 @@ models/shared 패키지의 공개 import 경계; 실행은 명시적 명령에�
 - `OptunaStudyService` — Run or resume one versioned study and persist auditable artifacts.
 - `OptunaStudyService.__init__(self, settings: OptimizationSettings, *, project_root: Path=PROJECT_ROOT)`
 - `OptunaStudyService.run(self, objective: Callable[[Trial], float], artifact_dir: Path, *, callbacks: Sequence[Callable[[Study, FrozenTrial], None]]=())`
+- `OptunaStudyService.run.console_progress(current_study: Study, trial: FrozenTrial)`
+- `OptunaStudyService._retry_root(trial: FrozenTrial | Trial)`
+- `OptunaStudyService._logical_trial_position(self, study: Study, trial: FrozenTrial | Trial)` — Map Optuna attempt records to one bounded search slot.
+- `OptunaStudyService._print_trial_progress(self, study: Study, trial: FrozenTrial)`
+- `OptunaStudyService._metric_suffix(metrics: Mapping[str, Any])`
+- `OptunaStudyService._finished_logical_trials(self, trials: list[FrozenTrial])`
 - `OptunaStudyService._finished_trials(trials: list[FrozenTrial])`
 - `OptunaStudyService._enqueue_failed_checkpoint_retries(self, study: Study)`
 
@@ -987,11 +1017,11 @@ XGBoost 전용 Optuna 탐색·pruning·튜닝 데이터 제한
 XGBoost 데이터 준비·학습·예측·모델 산출물 계약 구현
 
 - `XGBoostTrainer` — Concrete training strategy that owns XGBoost-specific persistence.
-- `XGBoostTrainer.train(self, config: ModelJobConfig, run_dir: Path, smoke: bool=False)`
+- `XGBoostTrainer.train(self, config: ModelJobConfig, run_dir: Path, smoke: bool=False, selection_only: bool=False)`
 - `XGBoostTrainer._chronological_split(frame: pd.DataFrame, *, validation_fraction: float, calibration_fraction: float, test_fraction: float, purge_gap_hours: int, calendar_timestamps: pd.Series | None=None, prediction_task: str='observed_conditions_estimation', calendar_split: dict[str, object] | None=None)`
 - `XGBoostTrainer._load(config: ModelJobConfig, *, columns: list[str], numeric_columns: list[str], energy_source: str | None, smoke: bool)`
 - `XGBoostTrainer._prediction_frame(context: pd.DataFrame, actual: np.ndarray, predicted: np.ndarray, *, split: str)`
-- `train(config: ModelJobConfig, *, run_dir: Path, smoke: bool=False)`
+- `train(config: ModelJobConfig, *, run_dir: Path, smoke: bool=False, selection_only: bool=False)`
 
 ## [notifications/__init__.py](../src/solar_forecast/notifications/__init__.py)
 
@@ -1364,6 +1394,59 @@ registry·품질·모델 결과를 대시보드 JSON과 정적 게시 파일로 
 - `_file_sha256(path: Path)`
 - `_zip_member_sha256(archive: ZipFile, member: Any)`
 
+## [preprocessing/__init__.py](../src/solar_forecast/preprocessing/__init__.py)
+
+발전소 데이터 전처리 패키지의 canonical 공개 import 경계
+
+- `__getattr__(name: str)`
+
+## [preprocessing/contracts.py](../src/solar_forecast/preprocessing/contracts.py)
+
+원본 보존→Gold→학습 모집단으로 이어지는 전처리 단계와 versioned contract 정의
+
+- `PreprocessingStage`
+
+## [preprocessing/preparation_service.py](../src/solar_forecast/preprocessing/preparation_service.py)
+
+원본 표준화·collector admission·registry·Gold·품질 감사를 조율하는 canonical 전처리 application service
+
+- `DataPreparationResult`
+- `DataPreparationService` — Application boundary for historical standardization and model-ready features.
+- `DataPreparationService.__init__(self, input_root: Path, weather_root: Path, merged_source: Path, output_dir: Path, collected_generation_dir: Path | None=COLLECTOR_SILVER_ROOT)`
+- `DataPreparationService.run(self)`
+
+## [preprocessing/training_eligibility.py](../src/solar_forecast/preprocessing/training_eligibility.py)
+
+공통 calendar split에서 발전량·ASOS overlap·연속성·split 충분성을 검사해 구조 적격 발전소를 결정
+
+- `_truthy(values: pd.Series)`
+- `_continuity(times: pd.Series)`
+- `_partition_summary(frame: pd.DataFrame)`
+- `audit_training_eligibility(frame: pd.DataFrame, split_config: TemporalSplitConfig, *, weather_columns: tuple[str, ...]=WEATHER_COLUMNS)` — Apply recovered historical plant-selection rules before model-specific readiness.
+- `run_training_eligibility_audit(config_path: Path, *, data_path: Path | None=None, output_path: Path | None=None, project_root: Path=PROJECT_ROOT)` — Audit current solar Gold and optionally persist an immutable evidence manifest.
+
+## [preprocessing/training_admission.py](../src/solar_forecast/preprocessing/training_admission.py)
+
+frozen 전처리 정책으로 구조 적격 발전소를 AI 모델 ADMITTED 모집단으로 고정
+
+- `AdmissionDecision`
+- `AdmissionDecision.to_dict(self)`
+- `validate_admission_policy(policy: dict[str, Any])`
+- `_metrics(item: dict[str, Any])`
+- `classify_training_population(eligibility: dict[str, Any], policy: dict[str, Any])` — Classify only the model population; never the nationwide service inventory.
+
+## [evaluation/training_eligibility.py](../src/solar_forecast/evaluation/training_eligibility.py)
+
+preprocessing/training_eligibility.py로 연결하는 compatibility shim
+
+공개 export 또는 설정 상수만 정의합니다.
+
+## [evaluation/training_admission.py](../src/solar_forecast/evaluation/training_admission.py)
+
+preprocessing/training_admission.py로 연결하는 compatibility shim
+
+공개 export 또는 설정 상수만 정의합니다.
+
 ## 대시보드 원본
 
 `dashboard/src/`를 수정하고 빌드 도구로 `dashboard/assets/dashboard.js`를 생성합니다.
@@ -1422,6 +1505,18 @@ Check module ownership, naming, imports, generated assets, and source/artifact s
 
 `module_exports`, `check_structure`, `main`
 
+### [tools/collect_future_weather_previous_runs.py](../tools/collect_future_weather_previous_runs.py)
+
+Collect leakage-safe fixed-lead weather forecasts for 24h/72h benchmarks.
+
+`_parser`, `_registry`, `_response_reason`, `_request_json`, `_normalize`, `_year_bounds`, `_cache_is_current`, `_sanitize_physical_values`, `collect`
+
+### [tools/inspect_benchmark_status.py](../tools/inspect_benchmark_status.py)
+
+자동 검증 파일.
+
+`CandidateSpec`, `TrialStatus`, `LockStatus`, `_load_json`, `_resolve`, `_model_progress_contract`, `build_candidate_specs`, `_pid_running_posix`, `_pid_running_windows`, `pid_running`, `read_lock`, `latest_benchmark_run`, `candidate_manifest_status`, `candidate_phase_statuses`, `latest_final_fit_checkpoint`, `_connect_readonly`, `_study_rows`, `_latest_heartbeat`, `_external_trial_params`, `_trial_user_attr`, `_trial_status_for_study`, `study_status`, `summarize`, `_fmt_value`, `print_human`, `_clear_screen`, `_progress_bar`, `_compact_candidate_label`, `_parse_time`, `_duration_text`, `_gpu_status`, `_box_line`, `_section`, `_paint`, `_state_text`, `_pct`, `_state_korean`, `_progress_label`, `_feature_description`, `_compact_params`, `_metric_value`, `print_active_monitor`, `_age_seconds`, `_age_text`, `_monitor_signature`, `_same_trial_line`, `_clear_keepalive_line`, `parse_args`, `main`
+
 ### [tools/run_local_benchmark.py](../tools/run_local_benchmark.py)
 
 기존 Gold로 사용자 로컬 GPU 학습·저장 모델 재예측·화면 생성을 실행한다.
@@ -1440,6 +1535,12 @@ Generate the complete Python symbol and dashboard source index from real files.
 
 `iter_symbols`, `render_code_index`, `main`
 
+### [tools/validate_future_weather.py](../tools/validate_future_weather.py)
+
+Validate fixed-lead future-weather archives before model training.
+
+`_parser`, `_manifest`, `_feature_stats`, `_all_missing_breakdown`, `validate`, `main`
+
 ### [tools/verify_benchmark_model_artifacts.py](../tools/verify_benchmark_model_artifacts.py)
 
 Replay selected benchmark checkpoints on observed Test rows without training.
@@ -1450,7 +1551,7 @@ Replay selected benchmark checkpoints on observed Test rows without training.
 
 Repeat the observed pilot from fresh optimizer/checkpoint state in a new process.
 
-`read_json`, `sha256_file`, `write_report`, `artifact_path`, `_prediction_rows`, `compare_predictions`, `fresh_experiment`, `semantic_config`, `_candidates`, `_chosen_identity`, `compare_benchmarks`, `main`
+`read_json`, `sha256_file`, `write_report`, `artifact_path`, `_prediction_rows`, `compare_predictions`, `fresh_experiment`, `semantic_config`, `_planned_candidates`, `_candidates`, `_selected_run_details`, `_chosen_identity`, `compare_benchmarks`, `main`
 
 ### [tools/verify_model_reorganization.py](../tools/verify_model_reorganization.py)
 
@@ -1486,19 +1587,19 @@ Projection integrity tests; fixture scores are not PV accuracy evidence.
 
 Benchmark orchestration tests use labelled fixtures, never accuracy evidence.
 
-`_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`, `BenchmarkJobTests.test_gzip_partition_directory_reaches_training_but_parquet_does_not`
+`_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_accepts_float32_csv_roundtrip_equivalent_truth`, `BenchmarkJobTests.test_alignment_rejects_one_float32_step_in_truth_or_persistence`, `BenchmarkJobTests.test_alignment_still_rejects_real_float32_truth_change`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_search_candidate_cohorts_must_be_identical`, `BenchmarkJobTests.test_search_candidate_cohort_cannot_be_missing`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`, `BenchmarkJobTests.test_gzip_partition_directory_reaches_training_but_parquet_does_not`
 
 ### [tests/test_benchmark_model_selection.py](../tests/test_benchmark_model_selection.py)
 
 Decision-contract tests use tiny fixtures, not real-model accuracy evidence.
 
-`predictions`, `artifact_path`, `BenchmarkModelSelectionTests`, `BenchmarkModelSelectionTests.setUp`, `BenchmarkModelSelectionTests.run_selector`, `BenchmarkModelSelectionTests.test_hybrid_is_selected_on_later_calibration_and_test_cannot_reverse_it`, `BenchmarkModelSelectionTests.test_test_truth_changes_only_report_not_gate_or_selection`, `BenchmarkModelSelectionTests.test_gate_fit_excludes_selection_and_purged_hours`, `BenchmarkModelSelectionTests.test_gate_fit_excludes_selection_and_purged_hours.record_fit`, `BenchmarkModelSelectionTests.test_ties_keep_base_model_and_persistence_is_not_a_champion`, `BenchmarkModelSelectionTests.test_minimum_improvement_is_required`, `BenchmarkModelSelectionTests.test_group_metrics_sum_generation_and_do_not_clip_negative_r2`, `BenchmarkModelSelectionTests.test_constant_target_r2_is_json_null`, `BenchmarkModelSelectionTests.test_distinct_registry_ids_can_share_a_display_name`, `BenchmarkModelSelectionTests.test_output_contains_frozen_predictions_hashes_and_exact_provenance`, `BenchmarkModelSelectionTests.test_duplicate_or_nonfinite_or_missing_predictions_are_rejected`, `BenchmarkModelSelectionTests.test_horizon_and_truth_mismatches_are_rejected`, `BenchmarkModelSelectionTests.test_calibration_and_test_origin_overlap_is_rejected`, `BenchmarkModelSelectionTests.test_short_calibration_cannot_skip_the_purge`, `BenchmarkModelSelectionTests.test_existing_evidence_is_not_overwritten`
+`predictions`, `artifact_path`, `BenchmarkModelSelectionTests`, `BenchmarkModelSelectionTests.setUp`, `BenchmarkModelSelectionTests.run_selector`, `BenchmarkModelSelectionTests.test_hybrid_is_selected_on_later_calibration_and_test_cannot_reverse_it`, `BenchmarkModelSelectionTests.test_test_truth_changes_only_report_not_gate_or_selection`, `BenchmarkModelSelectionTests.test_gate_fit_excludes_selection_and_purged_hours`, `BenchmarkModelSelectionTests.test_gate_fit_excludes_selection_and_purged_hours.record_fit`, `BenchmarkModelSelectionTests.test_ties_keep_base_model_and_persistence_is_not_a_champion`, `BenchmarkModelSelectionTests.test_minimum_improvement_is_required`, `BenchmarkModelSelectionTests.test_hybrid_must_improve_across_enough_plants`, `BenchmarkModelSelectionTests.test_group_metrics_sum_generation_and_do_not_clip_negative_r2`, `BenchmarkModelSelectionTests.test_constant_target_r2_is_json_null`, `BenchmarkModelSelectionTests.test_distinct_registry_ids_can_share_a_display_name`, `BenchmarkModelSelectionTests.test_output_contains_frozen_predictions_hashes_and_exact_provenance`, `BenchmarkModelSelectionTests.test_duplicate_or_nonfinite_or_missing_predictions_are_rejected`, `BenchmarkModelSelectionTests.test_horizon_and_truth_mismatches_are_rejected`, `BenchmarkModelSelectionTests.test_calibration_and_test_origin_overlap_is_rejected`, `BenchmarkModelSelectionTests.test_short_calibration_cannot_skip_the_purge`, `BenchmarkModelSelectionTests.test_existing_evidence_is_not_overwritten`
 
 ### [tests/test_benchmark_retraining.py](../tests/test_benchmark_retraining.py)
 
 Reject real retraining drift while allowing timestamp/output relocation.
 
-`write_json`, `write_predictions`, `benchmark_fixture`, `BenchmarkRetrainingTests`, `BenchmarkRetrainingTests.setUp`, `BenchmarkRetrainingTests.candidate_file`, `BenchmarkRetrainingTests.change_json`, `BenchmarkRetrainingTests.test_all_candidates_and_splits_compared_across_timestamp_directories`, `BenchmarkRetrainingTests.test_relocated_artifacts_use_new_folder_even_when_original_exists`, `BenchmarkRetrainingTests.test_unselected_candidate_drift_fails_for_each_split`, `BenchmarkRetrainingTests.test_small_prediction_delta_passes_but_truth_must_be_exact`, `BenchmarkRetrainingTests.test_duplicate_forecast_keys_fail`, `BenchmarkRetrainingTests.test_existing_output_is_rejected_without_overwriting_evidence`, `BenchmarkRetrainingTests.test_frozen_model_change_fails_even_with_identical_predictions`, `BenchmarkRetrainingTests.test_frozen_lookback_change_fails`, `BenchmarkRetrainingTests.test_frozen_lookback_change_fails.change`, `BenchmarkRetrainingTests.test_resolved_training_setting_change_is_not_treated_as_relocation`, `BenchmarkRetrainingTests.test_final_blend_drift_fails_after_identical_candidate_predictions`, `BenchmarkRetrainingTests.test_missing_candidate_rejected_instead_of_comparing_intersection`, `BenchmarkRetrainingTests.test_source_or_input_fingerprint_change_fails`, `BenchmarkRetrainingTests.test_existing_optimizer_trials_or_resumed_checkpoint_fail`, `BenchmarkRetrainingTests.test_fresh_configuration_changes_only_storage_locations`
+`write_json`, `write_predictions`, `benchmark_fixture`, `BenchmarkRetrainingTests`, `BenchmarkRetrainingTests.setUp`, `BenchmarkRetrainingTests.candidate_file`, `BenchmarkRetrainingTests.change_json`, `BenchmarkRetrainingTests.test_all_candidates_and_splits_compared_across_timestamp_directories`, `BenchmarkRetrainingTests.test_relocated_artifacts_use_new_folder_even_when_original_exists`, `BenchmarkRetrainingTests.test_search_only_candidate_directories_survive_relocation`, `BenchmarkRetrainingTests.test_artifact_gate_rejects_directories_missing_files_and_traversal`, `BenchmarkRetrainingTests.test_selected_run_rejects_manifest_symlink_escape`, `BenchmarkRetrainingTests.test_unselected_candidate_drift_fails_for_each_split`, `BenchmarkRetrainingTests.test_small_prediction_delta_passes_but_truth_must_be_exact`, `BenchmarkRetrainingTests.test_duplicate_forecast_keys_fail`, `BenchmarkRetrainingTests.test_existing_output_is_rejected_without_overwriting_evidence`, `BenchmarkRetrainingTests.test_frozen_model_change_fails_even_with_identical_predictions`, `BenchmarkRetrainingTests.test_frozen_lookback_change_fails`, `BenchmarkRetrainingTests.test_frozen_lookback_change_fails.change`, `BenchmarkRetrainingTests.test_resolved_training_setting_change_is_not_treated_as_relocation`, `BenchmarkRetrainingTests.test_final_blend_drift_fails_after_identical_candidate_predictions`, `BenchmarkRetrainingTests.test_missing_candidate_rejected_instead_of_comparing_intersection`, `BenchmarkRetrainingTests.test_source_or_input_fingerprint_change_fails`, `BenchmarkRetrainingTests.test_existing_optimizer_trials_or_resumed_checkpoint_fail`, `BenchmarkRetrainingTests.test_fresh_configuration_changes_only_storage_locations`
 
 ### [tests/test_calendar_split_audit.py](../tests/test_calendar_split_audit.py)
 
@@ -1571,6 +1672,12 @@ Gold construction must not invent feature-selection performance evidence.
 자동 검증 파일.
 
 `observations`, `test_forecast_uses_exact_origin_weather_and_target_generation_per_plant`, `test_missing_origin_is_excluded_without_row_shift_or_cross_plant_fill`, `test_future_weather_mutation_cannot_change_an_earlier_forecast_input`, `test_invalid_horizon_is_rejected`, `test_duplicate_plant_hour_is_rejected`, `test_cnn_window_ends_at_origin_inclusive_and_excludes_gapped_history`, `test_contract_distinguishes_real_horizon_from_legacy_row_estimation`
+
+### [tests/test_future_weather.py](../tests/test_future_weather.py)
+
+Future-weather contracts keep fixed lead time and plant-coordinate provenance.
+
+`_archive`, `test_future_weather_profiles_keep_components_out_of_default`, `test_future_weather_accepts_only_fixed_lead_plant_coordinates`, `test_future_weather_rejects_region_or_station_coordinate_fallback`, `test_future_weather_merge_preserves_spatial_provenance`
 
 ### [tests/test_generation_collectors.py](../tests/test_generation_collectors.py)
 
@@ -1660,13 +1767,19 @@ Dataset identity/replay plumbing tests; no model accuracy is simulated.
 
 자동 검증 파일.
 
-`_stations`, `test_administrative_region_is_separate_from_weather_station_name`, `test_station_catalog_quarantines_an_address_without_a_defensible_match`, `test_reviewed_alias_keeps_one_physical_plant_identity_and_filters_ess_capacity`, `test_reviewed_station_mapping_catalog_is_explicit_and_auditable`, `test_reviewed_station_mapping_requires_evidence_and_rationale`, `test_legacy_station_seed_is_audit_only_and_cannot_make_a_plant_eligible`, `test_reviewed_mapping_requires_one_station_record_to_cover_generation_dates`, `test_nationwide_builder_does_not_filter_to_legacy_company_or_date`, `test_nationwide_builder_rejects_unapproved_mapping_methods`, `test_nationwide_builder_rejects_null_reviewed_evidence`, `test_official_partitions_do_not_require_a_legacy_mapping_file`, `test_nationwide_builder_replaces_cumulative_revision_instead_of_summing_it`, `test_nationwide_builder_prefers_explicit_latest_snapshot_date`, `test_model_ready_partitions_are_replaced_by_company_and_year`
+`_stations`, `test_administrative_region_is_separate_from_weather_station_name`, `test_ewp_operational_aliases_resolve_to_official_location_metadata`, `test_legacy_metropolitan_city_alias_is_normalized`, `test_station_catalog_quarantines_an_address_without_a_defensible_match`, `test_reviewed_alias_keeps_one_physical_plant_identity_and_filters_ess_capacity`, `test_reviewed_station_mapping_catalog_is_explicit_and_auditable`, `test_reviewed_station_mapping_requires_evidence_and_rationale`, `test_legacy_station_seed_is_audit_only_and_cannot_make_a_plant_eligible`, `test_reviewed_mapping_requires_one_station_record_to_cover_generation_dates`, `test_nationwide_builder_does_not_filter_to_legacy_company_or_date`, `test_nationwide_builder_rejects_unapproved_mapping_methods`, `test_nationwide_builder_rejects_null_reviewed_evidence`, `test_official_partitions_do_not_require_a_legacy_mapping_file`, `test_nationwide_builder_replaces_cumulative_revision_instead_of_summing_it`, `test_nationwide_builder_prefers_explicit_latest_snapshot_date`, `test_model_ready_partitions_are_replaced_by_company_and_year`
 
 ### [tests/test_prediction_comparison_cli.py](../tests/test_prediction_comparison_cli.py)
 
 Exercise prediction comparison as a real process, including artifact safety.
 
 `PredictionComparisonCliTests`, `PredictionComparisonCliTests.setUp`, `PredictionComparisonCliTests.write_predictions`, `PredictionComparisonCliTests.invoke`, `PredictionComparisonCliTests.test_success_writes_matching_stdout_and_report_without_changing_inputs`, `PredictionComparisonCliTests.test_failed_parity_exits_one_and_preserves_failure_evidence`, `PredictionComparisonCliTests.test_invalid_artifact_exits_nonzero_without_publishing_success`, `PredictionComparisonCliTests.test_report_cannot_overwrite_either_input`, `PredictionComparisonCliTests.test_report_symlink_cannot_alias_an_input`, `PredictionComparisonCliTests.test_report_temporary_path_cannot_overwrite_an_input`, `PredictionComparisonCliTests.test_invalid_tolerance_exits_nonzero`, `PredictionComparisonCliTests.test_cli_help_does_not_import_optional_training_dependencies`
+
+### [tests/test_regression_metrics.py](../tests/test_regression_metrics.py)
+
+자동 검증 파일.
+
+`test_validation_diagnostics_exposes_tail_error_and_capacity_normalization`, `test_validation_diagnostics_handles_missing_optional_context`
 
 ### [tests/test_reorganization_harness.py](../tests/test_reorganization_harness.py)
 
@@ -1684,13 +1797,31 @@ Safety and fixture-contract checks independent of ML dependencies.
 
 자동 검증 파일.
 
-`test_global_timestamp_boundaries_are_shared_by_irregular_entities`, `test_purge_gap_removes_boundary_hours_from_all_entities`
+`test_global_timestamp_boundaries_are_shared_by_irregular_entities`, `test_purge_gap_removes_boundary_hours_from_all_entities`, `test_global_calendar_boundaries_keep_same_test_period_for_late_start_plant`
+
+### [tests/test_training_admission.py](../tests/test_training_admission.py)
+
+자동 검증 파일.
+
+`_plant`, `_eligibility`, `_policy`, `test_v2_admits_only_structurally_valid_candidates`, `test_v2_preserves_relational_rejection_reasons_from_eligibility`, `test_v1_eligibility_manifest_must_be_reaudited`, `test_v2_policy_rejects_invented_fixed_minimum_n`
+
+### [tests/test_training_eligibility.py](../tests/test_training_eligibility.py)
+
+자동 검증 파일.
+
+`_frame`, `_split`, `test_eligibility_keeps_complete_overlap_and_rejects_empty_test_overlap`, `test_eligibility_rejects_hourly_gap_in_any_split`, `test_eligibility_non_train_split_size_contract`, `test_eligibility_rejects_duplicate_plant_hour_keys`
 
 ### [tests/test_training_lock.py](../tests/test_training_lock.py)
 
 자동 검증 파일.
 
 `test_training_lock_blocks_second_model`, `test_completed_training_manifest_preserves_execution_mode`
+
+### [tests/test_training_population_filter.py](../tests/test_training_population_filter.py)
+
+자동 검증 파일.
+
+`test_training_loader_applies_admitted_plant_allow_list_without_mutating_source`, `test_training_loader_rejects_empty_allow_list`
 
 ### [tests/test_verification_job.py](../tests/test_verification_job.py)
 

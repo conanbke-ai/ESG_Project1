@@ -1,6 +1,7 @@
 """Benchmark orchestration tests use labelled fixtures, never accuracy evidence."""
 from __future__ import annotations
 
+from io import StringIO
 import json
 from pathlib import Path
 import tempfile
@@ -86,17 +87,30 @@ class BenchmarkJobTests(unittest.TestCase):
         first = _predictions("2024-01-01", 20, 0.1)
         second = first.copy()
         source = np.asarray([0.12345679], dtype=np.float32)[0]
-        # Simulate two CSV round-trip renderings of the same float32 source.
-        first.loc[0, "y_true"] = float(source)
-        second.loc[0, "y_true"] = float(f"{source:.8g}")
-        first.loc[0, "persistence_pred"] = float(source)
-        second.loc[0, "persistence_pred"] = float(f"{source:.7g}")
+        # Exercise real CSV writers at both dtypes. Arbitrary .7g rounding can
+        # change the float32 bit pattern and is not an equivalent serialization.
+        for column in ("y_true", "persistence_pred"):
+            first[column] = np.float32(source)
+            second[column] = float(source)
+        first = pd.read_csv(StringIO(first.to_csv(index=False)))
+        second = pd.read_csv(StringIO(second.to_csv(index=False)))
         frames, coverage = align_prediction_frames(
             {"a": first, "b": second},
             minimum_coverage=0.95,
         )
         self.assertEqual(coverage["common_fraction"], 1.0)
         self.assertEqual(len(frames["a"]), 20)
+
+    def test_alignment_rejects_one_float32_step_in_truth_or_persistence(self):
+        first = _predictions("2024-01-01", 20, 0.1)
+        source = np.float32(0.12345679)
+        for column in ("y_true", "persistence_pred"):
+            with self.subTest(column=column):
+                first.loc[0, column] = float(source)
+                second = first.copy()
+                second.loc[0, column] = float(np.nextafter(source, np.float32(np.inf)))
+                with self.assertRaisesRegex(ValueError, f"inconsistent {column}"):
+                    align_prediction_frames({"a": first, "b": second}, minimum_coverage=0.95)
 
     def test_alignment_still_rejects_real_float32_truth_change(self):
         first = _predictions("2024-01-01", 20, 0.1)

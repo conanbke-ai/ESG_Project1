@@ -154,9 +154,11 @@ def _candidates(run_dir: Path, manifest: dict | None = None) -> dict:
         for horizon, entries in search_entries.items():
             for label, summary in entries.items():
                 model, candidate_id = label.split(":", 1)
-                run_path = artifact_path(summary["run_dir"], run_dir)
+                # run_dir denotes a directory; validate its manifest as a file
+                # through the same relocation and containment gate.
+                manifest_path = artifact_path(str(Path(summary["run_dir"]) / "manifest.json"), run_dir)
                 config = read_json(artifact_path(summary["resolved_config"], run_dir))
-                candidate_manifest = read_json(run_path / "manifest.json")
+                candidate_manifest = read_json(manifest_path)
                 key = (horizon, model, candidate_id)
                 if key in candidates or candidate_manifest.get("status") != "completed":
                     raise ValueError(f"Duplicate or incomplete candidate search: {key}")
@@ -187,9 +189,9 @@ def _candidates(run_dir: Path, manifest: dict | None = None) -> dict:
 
 def _selected_run_details(run_dir: Path, task: dict, model: str) -> tuple[dict, dict]:
     chosen = task["optimization"][model]
-    candidate_dir = artifact_path(chosen["run_dir"], run_dir)
+    manifest_path = artifact_path(str(Path(chosen["run_dir"]) / "manifest.json"), run_dir)
     config = read_json(artifact_path(chosen["resolved_config"], run_dir))
-    manifest = read_json(candidate_dir / "manifest.json")
+    manifest = read_json(manifest_path)
     if manifest.get("status") != "completed":
         raise ValueError(f"Selected final fit is incomplete: {model}")
     return config, manifest["details"]

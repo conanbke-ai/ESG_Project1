@@ -12,7 +12,7 @@ import tempfile
 import unittest
 
 from tools.verify_benchmark_retraining import (
-    compare_benchmarks, compare_predictions, fresh_experiment, semantic_config,
+    artifact_path, _candidates, compare_benchmarks, compare_predictions, fresh_experiment, semantic_config,
 )
 
 
@@ -112,6 +112,42 @@ class BenchmarkRetrainingTests(unittest.TestCase):
         shutil.copytree(self.repeated, relocated)
         write_predictions(self.candidate_file(), prediction=0.9)
         self.assertEqual(compare_benchmarks(self.reference, relocated)["status"], "passed")
+
+    def test_search_only_candidate_directories_survive_relocation(self):
+        manifest = json.loads((self.repeated / "manifest.json").read_text())
+        entries = {}
+        for path in (self.repeated / "candidates").glob("*/*/*/*/resolved_config.json"):
+            config = json.loads(path.read_text())
+            label = f"{config['model']}:{config['benchmark_candidate_id']}"
+            entries[label] = {"run_dir": str(path.parent), "resolved_config": str(path)}
+            self.change_json(path.parent / "manifest.json", lambda v: v["details"].update(selection_only=True))
+        manifest["tasks"][0]["candidate_search"] = entries
+        relocated = self.root / "relocated" / self.repeated.name
+        shutil.copytree(self.repeated, relocated)
+        # The original stays present but must never be read after relocation.
+        for path in (self.repeated / "candidates").glob("*/*/*/*/manifest.json"):
+            self.change_json(path, lambda v: v.update(status="failed"))
+        self.assertEqual(len(_candidates(relocated, manifest)), 3)
+
+    def test_artifact_gate_rejects_directories_missing_files_and_traversal(self):
+        outside = self.root / "outside.json"
+        write_json(outside, {"status": "completed"})
+        for value in ("candidates", "missing.json", "../outside.json", str(outside)):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                artifact_path(value, self.repeated)
+
+    def test_selected_run_rejects_manifest_symlink_escape(self):
+        chosen = json.loads((self.repeated / "manifest.json").read_text())["tasks"][0]["optimization"]["xgboost"]
+        manifest = self.repeated / chosen["run_dir"] / "manifest.json"
+        outside = self.root / "outside_manifest.json"
+        outside.write_bytes(manifest.read_bytes())
+        manifest.unlink()
+        try:
+            manifest.symlink_to(outside)
+        except OSError as exc:
+            self.skipTest(f"Symlink creation unavailable: {exc}")
+        with self.assertRaisesRegex(ValueError, "Missing or external benchmark artifact"):
+            compare_benchmarks(self.reference, self.repeated)
 
     def test_unselected_candidate_drift_fails_for_each_split(self):
         for split in ("validation", "calibration", "test"):
