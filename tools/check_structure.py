@@ -12,6 +12,21 @@ from update_code_index import render_code_index
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 GENERIC_MODULE_NAMES = {"service", "config", "models", "model", "data", "base", "utils", "helpers", "common"}
 SOURCE_ARTIFACT_SUFFIXES = {".csv", ".gz", ".parquet", ".pt", ".pth", ".pkl", ".pickle", ".joblib", ".sqlite3", ".db", ".jsonl", ".html"}
+PYTHON_BYTECODE_SUFFIXES = {".pyc", ".pyo"}
+
+
+def is_generated_python_cache_tree(path: Path) -> bool:
+    """Return whether a directory contains only Python bytecode cache entries."""
+    if not path.is_dir():
+        return False
+    entries = list(path.rglob("*"))
+    if not entries:
+        return False
+    return all(
+        (entry.is_dir() and entry.name == "__pycache__")
+        or (entry.is_file() and entry.suffix.lower() in PYTHON_BYTECODE_SUFFIXES)
+        for entry in entries
+    )
 
 
 def module_exports(tree: ast.Module) -> set[str]:
@@ -96,7 +111,11 @@ def check_structure(project_root: Path = PROJECT_ROOT) -> list[str]:
             errors.append(f"JSON settings/artifacts belong outside source, except the provider catalog: {path.relative_to(project_root)}")
     model_ids = {path.stem for path in (project_root / "config/models").glob("*.json")}
     for path in (source_root / "models").iterdir():
-        if path.is_dir() and path.name not in model_ids | {"shared", "__pycache__"}:
+        if (
+            path.is_dir()
+            and path.name not in model_ids | {"shared", "__pycache__"}
+            and not is_generated_python_cache_tree(path)
+        ):
             errors.append(f"Model folder needs a matching config/models/<model_id>.json: {path.name}")
     for path in project_root.glob("*.py"):
         if path.name != "app.py":

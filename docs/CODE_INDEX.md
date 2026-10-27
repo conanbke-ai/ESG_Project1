@@ -1503,7 +1503,7 @@ Build the browser bundle from named view sources, without a Node dependency.
 
 Check module ownership, naming, imports, generated assets, and source/artifact separation.
 
-`module_exports`, `check_structure`, `main`
+`is_generated_python_cache_tree`, `module_exports`, `check_structure`, `main`
 
 ### [tools/collect_future_weather_previous_runs.py](../tools/collect_future_weather_previous_runs.py)
 
@@ -1804,6 +1804,12 @@ Safety and fixture-contract checks independent of ML dependencies.
 자동 검증 파일.
 
 `_official_boundaries`, `test_official_sgis_boundaries_have_complete_unique_regions_and_island_owners`, `test_boundary_validation_rejects_duplicate_region_ids`, `test_prepare_boundaries_cli_requires_auditable_source_digests`, `test_sgis_source_bundle_verifies_archive_and_every_sidecar`
+
+### [tests/test_structure_checker.py](../tests/test_structure_checker.py)
+
+Structure-policy checks for generated caches and real model source folders.
+
+`StructureCheckerTests`, `StructureCheckerTests._errors_for_model_folder`, `StructureCheckerTests.test_generated_bytecode_only_does_not_create_a_model_folder`, `StructureCheckerTests.test_generated_bytecode_only_does_not_create_a_model_folder.populate`, `StructureCheckerTests.test_legacy_python_source_still_requires_a_model_contract`, `StructureCheckerTests.test_legacy_python_source_still_requires_a_model_contract.populate`, `StructureCheckerTests.test_arbitrary_noncache_file_is_not_ignored`, `StructureCheckerTests.test_arbitrary_noncache_file_is_not_ignored.populate`
 
 ### [tests/test_temporal_split.py](../tests/test_temporal_split.py)
 
