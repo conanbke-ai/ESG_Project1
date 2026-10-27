@@ -104,3 +104,14 @@ python -m pytest
 구조 검사는 모듈 목적 누락, 모호한 파일명, 깨진 내부 import/심볼, 소스 폴더에 들어온 데이터·가중치, 생성 파일과 원본 불일치를 실패로 처리한다. 계산이나 저장 계약을 바꾼 경우 해당 회귀 검증도 통과해야 한다. 전체 의존성이 없는 환경의 구조 검사 성공을 전체 모델 학습 검증으로 표시하지 않는다.
 
 실제 변경 전후 수치 비교는 [MODEL_PARITY_VALIDATION.md](MODEL_PARITY_VALIDATION.md)를 따른다. `tools/verify_model_reorganization.py`는 별도 checkout의 비교 실험을 실행하고, 제품 CLI의 `compare-predictions`는 이미 저장한 예측 CSV를 비교한다.
+
+
+## 명명 규칙: 도메인 이름·단위·외부 계약
+
+- Python 파일/변수/함수는 `snake_case`, 클래스는 `PascalCase`, 상수는 `UPPER_SNAKE_CASE`; 프레임워크 예약명과 이미 공개한 API/파일 계약은 예외다. JavaScript 모듈은 기능별 의미 있는 이름, 변수/함수는 `camelCase`를 쓴다.
+- 같은 물리량을 다른 이름으로 섞지 않는다. 실제 시간 발전량 `generation_mwh`(MWh), 정격 설비용량 `capacity_mw`(MW), 시간별 예측 `predicted_generation_mwh`, 실제값 `observed_generation_mwh`처럼 의미·단위를 드러낸다. 이 예시는 새 내부 필드 명명 가이드이며 기존 API/CSV 직렬화 키를 자동 변경하지 않는다.
+- 시간에 관련된 명칭은 `forecast_issued_at`(예측 발행 시각), `forecast_target_at`(예측 대상 시각), `forecast_horizon_hours`(미래 예측 기간), `duration_seconds`(경과시간)처럼 역할을 구분한다. 실제 지원 시각·timezone 계약을 점검하기 전 이름만 변경하지 않는다.
+- 부울값은 `is_`/`has_`/`can_`/`should_` 접두사로 상태·판정을 표현한다(예: `has_legacy_mwh_header`). 레거시 보정은 원본과 정규화값·품질 근거를 유지해야 한다.
+- 기존 외부 CSV의 `발전량(MWh)`, `일자`, `호기` 등 제공자 원문은 수집 Adapter에서 변환한다. DB·JSON·테스트 fixture·체크포인트·CLI 옵션·경로·model ID 등 버전이 있는 계약은 계획/소비자 검증 없이 일괄 rename하지 않는다.
+- 기존 `datasets/preparation_service.py`, `evaluation/training_eligibility.py`, `evaluation/training_admission.py`는 `compatibility_shim`이고 새로운 기능의 소유자는 `preprocessing/`에 둔다. `new`, `final`, `fix2` 파일 복제 대신 기존 소유 모듈을 변경한다.
+- 명명 정리 완료 기준은 변경 전후 값·외부 계약의 동등성과 관련 targeted test, 구조 검사의 실행 근거이며, 단순 파일 개명이나 문서만으로 완료라고 판정하지 않는다.
