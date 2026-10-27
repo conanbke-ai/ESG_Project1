@@ -119,8 +119,8 @@ class KoenGenerationNormalizer:
             value_name="generation_mwh",
         )
         base_date = pd.to_datetime(long["일자"].astype(str).str.strip(), errors="coerce").dt.normalize()
-        hour = long["source_hour"].str.extract(r"^(\d{1,2})", expand=False).astype(int) - 1
-        long["timestamp"] = base_date + pd.to_timedelta(hour, unit="h")
+        hour_index = long["source_hour"].str.extract(r"^(\d{1,2})", expand=False).astype(int) - 1
+        long["timestamp"] = base_date + pd.to_timedelta(hour_index, unit="h")
         long["plant"] = long["발전구분"].astype(str).str.strip()
         long["unit"] = long["호기"].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
         long["plant_id"] = "koen:" + long["plant"] + "#" + long["unit"]
@@ -129,8 +129,8 @@ class KoenGenerationNormalizer:
         # official export changed the header to KWh without changing the value
         # scale. Values above 1,000 MWh in one hour are outside this portfolio's
         # physical scale, so treat that legacy header as a unit-label defect.
-        legacy_mislabeled_kwh = units == {"mwh"} and long["generation_mwh"].max(skipna=True) > 1_000
-        if units == {"kwh"} or legacy_mislabeled_kwh:
+        has_legacy_mwh_header = units == {"mwh"} and long["generation_mwh"].max(skipna=True) > 1_000
+        if units == {"kwh"} or has_legacy_mwh_header:
             long["generation_mwh"] = long["generation_mwh"] / 1_000
         long["company"] = "koen"
         long["energy_source"] = "solar"
@@ -143,11 +143,11 @@ class KoenGenerationNormalizer:
         result.attrs["generation_unit_resolution"] = {
             "declared_source_unit": declared_unit,
             "resolved_source_unit": (
-                "kwh" if declared_unit == "kwh" or legacy_mislabeled_kwh else declared_unit
+                "kwh" if declared_unit == "kwh" or has_legacy_mwh_header else declared_unit
             ),
             "method": (
                 "legacy_header_scale_correction"
-                if legacy_mislabeled_kwh
+                if has_legacy_mwh_header
                 else "declared_header"
             ),
             "capacity_factor_p99": None,
