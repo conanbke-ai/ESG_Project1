@@ -165,7 +165,9 @@ class BenchmarkJobTests(unittest.TestCase):
             config.update(input_dataset=str(source), output_root=str(root / "runs"))
             path = root / "experiment.json"
             write_json_atomic(path, config)
-            trainer = Mock()
+            # The fixture implements run(), not the optional hyperparameter search API.
+            # A bare Mock invents a callable .search attribute and selects the wrong path.
+            trainer = Mock(spec=["run"])
             trainer.run.side_effect = RuntimeError("fixture reached trainer")
             (source / "unsupported.parquet").write_bytes(b"fixture")
             with self.assertRaises(FileNotFoundError):
