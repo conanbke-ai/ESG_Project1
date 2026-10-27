@@ -8,9 +8,9 @@
         <label class="field-label" for="analysis-plant"><span>발전소</span><select id="analysis-plant">${renderAnalysisPlantOptions(analysis)}</select></label>
       </section>
       <div class="analysis-tabs" role="tablist" aria-label="모델 성능 분석 보기">
-        <button type="button" role="tab" id="tab-comparison" aria-controls="analysis-content" aria-selected="true" data-tab="comparison">모델 비교</button>
-        <button type="button" role="tab" id="tab-performance" aria-controls="analysis-content" aria-selected="false" data-tab="performance">지역·발전소 성능</button>
-        <button type="button" role="tab" id="tab-anomalies" aria-controls="analysis-content" aria-selected="false" data-tab="anomalies">이상·오차 분석</button>
+        <button type="button" role="tab" id="tab-comparison" aria-controls="analysis-content" aria-selected="true" tabindex="0" data-tab="comparison">모델 비교</button>
+        <button type="button" role="tab" id="tab-performance" aria-controls="analysis-content" aria-selected="false" tabindex="-1" data-tab="performance">지역·발전소 성능</button>
+        <button type="button" role="tab" id="tab-anomalies" aria-controls="analysis-content" aria-selected="false" tabindex="-1" data-tab="anomalies">이상·오차 분석</button>
       </div>
       <section id="analysis-content" class="analysis-content" role="tabpanel" aria-labelledby="tab-comparison"></section>`;
   }
@@ -96,18 +96,28 @@
       content.setAttribute("aria-labelledby", `tab-${state.tab}`);
       bindAnalysisLinks(analysis, render);
     };
-    tabs.forEach((button, index) => {
-      button.addEventListener("click", () => {
-        state.tab = button.dataset.tab;
-        tabs.forEach((candidate) => candidate.setAttribute("aria-selected", String(candidate === button)));
-        render();
+    const activateTab = (button, { focus = false } = {}) => {
+      state.tab = button.dataset.tab;
+      tabs.forEach((candidate) => {
+        const selected = candidate === button;
+        candidate.setAttribute("aria-selected", String(selected));
+        candidate.setAttribute("tabindex", selected ? "0" : "-1");
       });
+      render();
+      if (focus) button.focus();
+    };
+    tabs.forEach((button, index) => {
+      button.addEventListener("click", () => activateTab(button));
       button.addEventListener("keydown", (event) => {
-        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        const handledKeys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+        if (!handledKeys.includes(event.key)) return;
         event.preventDefault();
-        const next = tabs[(index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
-        next.focus();
-        next.click();
+        const next = event.key === "Home"
+          ? tabs[0]
+          : event.key === "End"
+            ? tabs[tabs.length - 1]
+            : tabs[(index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+        activateTab(next, { focus: true });
       });
     });
     document.getElementById("analysis-region").addEventListener("change", (event) => {
@@ -117,7 +127,7 @@
       render();
     });
     document.getElementById("analysis-plant").addEventListener("change", (event) => { state.plantId = event.target.value; render(); });
-    render();
+    activateTab(tabs.find((button) => button.dataset.tab === state.tab) || tabs[0]);
   }
 
   function bindAnalysisLinks(analysis, render) {

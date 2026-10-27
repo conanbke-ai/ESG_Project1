@@ -783,3 +783,20 @@ def test_dashboard_frontend_compares_all_metrics_and_supports_national_search():
     assert "성능 비교·분석" in coverage
     assert "발전량 예측" in analysis
     assert "성능 비교·분석" in analysis
+
+
+def test_dashboard_analysis_tabs_follow_roving_keyboard_contract():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "dashboard/src/analysis.js").read_text(encoding="utf-8")
+    bundle = (root / "dashboard/assets/dashboard.js").read_text(encoding="utf-8")
+
+    for script in (source, bundle):
+        assert 'aria-selected="true" tabindex="0" data-tab="comparison"' in script
+        assert 'aria-selected="false" tabindex="-1" data-tab="performance"' in script
+        assert 'aria-selected="false" tabindex="-1" data-tab="anomalies"' in script
+        assert 'candidate.setAttribute("tabindex", selected ? "0" : "-1")' in script
+        assert 'const handledKeys = ["ArrowLeft", "ArrowRight", "Home", "End"]' in script
+        assert 'event.key === "Home"' in script
+        assert 'event.key === "End"' in script
+        assert "activateTab(next, { focus: true })" in script
+        assert 'content.setAttribute("aria-labelledby", `tab-${state.tab}`)' in script
