@@ -436,6 +436,136 @@ def test_model_analytics_rejects_mislabelled_historical_test_contract(
     assert analytics["models"] == []
 
 
+@pytest.mark.parametrize(
+    (
+        "contract_override",
+        "test_timestamp",
+        "remove_artifact",
+        "expected_status",
+    ),
+    [
+        pytest.param({}, pd.Timestamp("2025-01-01"), False, "partial", id="valid"),
+        pytest.param({}, pd.Timestamp("2024-12-31"), False, "empty", id="before"),
+        pytest.param({}, pd.Timestamp("2025-01-03"), False, "empty", id="after"),
+        pytest.param({}, pd.Timestamp("2025-01-01"), True, "empty", id="missing"),
+        pytest.param(
+            {"test_start": "not-a-date"},
+            pd.Timestamp("2025-01-01"),
+            False,
+            "empty",
+            id="malformed-bound",
+        ),
+        pytest.param(
+            {
+                "test_start": "2025-01-01T00:00:00.900",
+                "test_end": "2025-01-01T00:00:00.100",
+            },
+            pd.Timestamp("2025-01-01T00:00:00.500"),
+            False,
+            "empty",
+            id="reversed-fractional-bounds",
+        ),
+        pytest.param(
+            {
+                "test_start": "2025-01-01T00:00:00.100",
+                "test_end": "2025-01-01T00:00:00.900",
+            },
+            pd.Timestamp("2025-01-01T00:00:00.500"),
+            False,
+            "partial",
+            id="fractional-bounds",
+        ),
+        pytest.param(
+            {
+                "test_start": "2025-01-01T00:00:00+09:00",
+                "test_end": "2024-12-31T16:00:00+00:00",
+            },
+            pd.Timestamp("2024-12-31T15:30:00+00:00"),
+            False,
+            "partial",
+            id="mixed-offset-bounds",
+        ),
+        pytest.param(
+            {
+                "test_start": "2025-01-01T00:00:00+09:00",
+                "test_end": "2024-12-31T16:00:00+00:00",
+            },
+            pd.Timestamp("2024-12-31T16:00:00.100+00:00"),
+            False,
+            "empty",
+            id="offset-outside-bound",
+        ),
+        pytest.param(
+            {"test_start": "2025-01-01T00:00:00+09:00"},
+            pd.Timestamp("2025-01-01"),
+            False,
+            "empty",
+            id="aware-naive-bounds",
+        ),
+    ],
+)
+def test_model_analytics_validates_single_model_artifact_before_partial_display(
+    tmp_path,
+    contract_override,
+    test_timestamp,
+    remove_artifact,
+    expected_status,
+):
+    contract = {
+        "dataset_fingerprint": "single-model-evaluation",
+        "target": "generation_mwh",
+        "target_unit": "MWh",
+        "horizon_hours": 24,
+        "test_start": "2025-01-01T00:00:00",
+        "test_end": "2025-01-02T00:00:00",
+        "prediction_key": ["timestamp", "plant_id"],
+        **contract_override,
+    }
+    test_frame = pd.DataFrame(
+        {
+            "timestamp": [test_timestamp],
+            "plant_id": ["p1"],
+            "region": ["전라남도"],
+            "plant": ["단일모델검증"],
+            "split": ["test"],
+            "y_true": [1.0],
+            "y_pred": [0.9],
+        }
+    )
+    calibration_frame = pd.DataFrame(
+        {
+            "plant_id": ["p1"] * 5,
+            "split": ["calibration"] * 5,
+            "y_true": [1.0] * 5,
+            "y_pred": [0.9] * 5,
+        }
+    )
+    _write_model_run(
+        tmp_path,
+        model="xgboost",
+        run="20260101_000000",
+        contract=contract,
+        test_frame=test_frame,
+        calibration_frame=calibration_frame,
+    )
+    if remove_artifact:
+        manifest_path = (
+            tmp_path
+            / "artifacts/models/xgboost/20260101_000000/manifest.json"
+        )
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["details"]["metrics"]["mae"] = 123.0
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        manifest_path.with_name("test_predictions.csv").unlink()
+
+    analytics = ModelAnalyticsService(tmp_path).build()
+
+    assert analytics["status"] == expected_status
+    assert {model["id"] for model in analytics["models"]} == (
+        {"xgboost"} if expected_status == "partial" else set()
+    )
+
+
 def test_model_analytics_uses_plant_calibration_and_unit_safe_event_ranking(
     tmp_path,
 ):
