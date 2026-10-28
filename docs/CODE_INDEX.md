@@ -1287,8 +1287,9 @@ registry·품질·모델 결과를 대시보드 JSON과 정적 게시 파일로 
 - `ModelAnalyticsService.build(self)`
 - `ModelAnalyticsService._aligned_analysis(self, runs: list[_ModelRun])`
 - `ModelAnalyticsService._comparison_signature(run: _ModelRun)`
+- `ModelAnalyticsService._test_period(contract: dict[str, Any])`
 - `ModelAnalyticsService._artifact_path(run: _ModelRun, key: str)`
-- `ModelAnalyticsService._insert_predictions(self, connection: sqlite3.Connection, path: Path, model_id: str)`
+- `ModelAnalyticsService._insert_predictions(self, connection: sqlite3.Connection, path: Path, model_id: str, test_period: tuple[str, str])`
 - `ModelAnalyticsService._calibration_threshold(self, connection: sqlite3.Connection, path: Path, model_id: str, capacity: dict[str, float], contamination: float=CALIBRATION_CONTAMINATION)`
 - `ModelAnalyticsService._calibration_threshold.records()`
 - `ModelAnalyticsService._residual_quantile(connection: sqlite3.Connection, *, model_id: str, basis: str, contamination: float, minimum_samples: int, plant_id: str | None=None)`
@@ -1641,7 +1642,7 @@ CPU/NumPy contract checks; runnable without Torch, Optuna, or pytest.
 
 자동 검증 파일.
 
-`_write_national_inventory_fixture`, `_write_static_dashboard`, `test_dashboard_builder_fails_fast_when_required_map_boundary_is_missing`, `_write_model_run`, `test_serve_dashboard_defaults_to_expected_local_url`, `test_dashboard_builder_publishes_clean_user_contract_without_registry`, `test_model_analytics_excludes_smoke_and_requires_matching_contract`, `test_model_analytics_excludes_smoke_and_requires_matching_contract.manifest`, `test_model_analytics_uses_plant_calibration_and_unit_safe_event_ranking`, `test_model_analytics_falls_back_to_global_capacity_normalized_threshold`, `test_model_analytics_caps_events_but_counts_all_and_keeps_latest_hourly_segment`, `test_model_analytics_selects_latest_complete_compatible_signature`, `test_dashboard_frontend_has_no_retired_developer_quality_view`, `test_dashboard_frontend_compares_all_metrics_and_supports_national_search`, `test_dashboard_analysis_tabs_follow_roving_keyboard_contract`
+`_write_national_inventory_fixture`, `_write_static_dashboard`, `test_dashboard_builder_fails_fast_when_required_map_boundary_is_missing`, `_write_model_run`, `test_serve_dashboard_defaults_to_expected_local_url`, `test_dashboard_builder_publishes_clean_user_contract_without_registry`, `test_model_analytics_excludes_smoke_and_requires_matching_contract`, `test_model_analytics_excludes_smoke_and_requires_matching_contract.manifest`, `test_model_analytics_rejects_mislabelled_historical_test_contract`, `test_model_analytics_uses_plant_calibration_and_unit_safe_event_ranking`, `test_model_analytics_falls_back_to_global_capacity_normalized_threshold`, `test_model_analytics_caps_events_but_counts_all_and_keeps_latest_hourly_segment`, `test_model_analytics_selects_latest_complete_compatible_signature`, `test_dashboard_frontend_has_no_retired_developer_quality_view`, `test_dashboard_frontend_compares_all_metrics_and_supports_national_search`, `test_dashboard_analysis_tabs_follow_roving_keyboard_contract`
 
 ### [tests/test_dataset_evidence.py](../tests/test_dataset_evidence.py)
 

@@ -378,6 +378,64 @@ def test_model_analytics_excludes_smoke_and_requires_matching_contract(tmp_path)
     ] == 4
 
 
+@pytest.mark.parametrize(
+    ("contract_override", "test_timestamp"),
+    [
+        ({"task": "production_forecast"}, pd.Timestamp("2025-01-01")),
+        ({"information_set": "future_weather"}, pd.Timestamp("2025-01-01")),
+        ({}, pd.Timestamp("2025-01-03")),
+    ],
+)
+def test_model_analytics_rejects_mislabelled_historical_test_contract(
+    tmp_path, contract_override, test_timestamp
+):
+    contract = {
+        "dataset_fingerprint": "mislabelled-evaluation",
+        "target": "generation_mwh",
+        "target_unit": "MWh",
+        "horizon_hours": 24,
+        "test_start": "2025-01-01T00:00:00",
+        "test_end": "2025-01-02T00:00:00",
+        "prediction_key": ["timestamp", "plant_id"],
+        **contract_override,
+    }
+    test_frame = pd.DataFrame(
+        {
+            "timestamp": [test_timestamp],
+            "plant_id": ["p1"],
+            "region": ["전라남도"],
+            "plant": ["계약검증"],
+            "split": ["test"],
+            "y_true": [1.0],
+            "y_pred": [0.9],
+        }
+    )
+    calibration_frame = pd.DataFrame(
+        {
+            "plant_id": ["p1"] * 5,
+            "split": ["calibration"] * 5,
+            "y_true": [1.0] * 5,
+            "y_pred": [0.9] * 5,
+        }
+    )
+    for model in ("xgboost", "cnn_bilstm"):
+        _write_model_run(
+            tmp_path,
+            model=model,
+            run="20260101_000000",
+            contract=contract,
+            test_frame=test_frame,
+            calibration_frame=calibration_frame,
+        )
+
+    analytics = ModelAnalyticsService(tmp_path).build()
+
+    assert analytics["status"] == "empty"
+    assert analytics["evaluation"]["from"] is None
+    assert analytics["evaluation"]["to"] is None
+    assert analytics["models"] == []
+
+
 def test_model_analytics_uses_plant_calibration_and_unit_safe_event_ranking(
     tmp_path,
 ):

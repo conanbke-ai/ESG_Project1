@@ -35,6 +35,10 @@ MINIMUM_GLOBAL_CALIBRATION_SAMPLES = 5
 MINIMUM_PLANT_CALIBRATION_SAMPLES = 168
 TOP_EVENTS_PER_MODEL = 250
 SERIES_POINTS_PER_PLANT = 168
+HISTORICAL_INFORMATION_SETS = {
+    "observed_measurements_through_forecast_origin",
+    "observed_until_origin",
+}
 
 
 @dataclass(frozen=True)
@@ -192,7 +196,11 @@ class ModelAnalyticsService:
         all_runs = self._full_runs()
         compatible_runs = self._latest_compatible_pair(all_runs)
         aligned = self._aligned_analysis(compatible_runs)
-        runs = compatible_runs if aligned is not None else self._latest_runs(all_runs)
+        runs = (
+            compatible_runs
+            if aligned is not None
+            else [] if compatible_runs else self._latest_runs(all_runs)
+        )
         if aligned is not None:
             models = aligned["models"]
             regions = aligned["regions"]
@@ -253,6 +261,9 @@ class ModelAnalyticsService:
         signature = self._comparison_signature(xgboost)
         if signature is None or signature != self._comparison_signature(cnn):
             return None
+        test_period = self._test_period(xgboost.details["evaluation_contract"])
+        if test_period is None:
+            return None
         test_paths = {
             model_id: self._artifact_path(run, "test_predictions")
             for model_id, run in (("xgboost", xgboost), ("cnn_bilstm", cnn))
@@ -293,7 +304,9 @@ class ModelAnalyticsService:
                     )
                     for model_id, path in test_paths.items():
                         assert path is not None
-                        self._insert_predictions(connection, path, model_id)
+                        self._insert_predictions(
+                            connection, path, model_id, test_period
+                        )
                     connection.execute(
                         "CREATE INDEX predictions_key ON "
                         "predictions(timestamp, plant_id)"
@@ -350,12 +363,30 @@ class ModelAnalyticsService:
             return None
         if contract.get("prediction_key") != ["timestamp", "plant_id"]:
             return None
+        if (
+            contract.get("task") != "historical_forecast"
+            or contract.get("information_set") not in HISTORICAL_INFORMATION_SETS
+            or ModelAnalyticsService._test_period(contract) is None
+        ):
+            return None
         return json.dumps(
             {key: contract[key] for key in required},
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
         )
+
+    @staticmethod
+    def _test_period(contract: dict[str, Any]) -> tuple[str, str] | None:
+        parsed = pd.to_datetime(
+            pd.Series([contract.get("test_start"), contract.get("test_end")]),
+            errors="coerce",
+        )
+        if parsed.isna().any():
+            return None
+        normalized = parsed.dt.strftime("%Y-%m-%dT%H:%M:%S")
+        start, end = str(normalized.iloc[0]), str(normalized.iloc[1])
+        return (start, end) if start <= end else None
 
     @staticmethod
     def _artifact_path(run: _ModelRun, key: str) -> Path | None:
@@ -372,7 +403,11 @@ class ModelAnalyticsService:
         return matches[-1] if matches else None
 
     def _insert_predictions(
-        self, connection: sqlite3.Connection, path: Path, model_id: str
+        self,
+        connection: sqlite3.Connection,
+        path: Path,
+        model_id: str,
+        test_period: tuple[str, str],
     ) -> None:
         header = pd.read_csv(path, nrows=0).columns.tolist()
         prediction_column = self._prediction_column(header, model_id)
@@ -420,6 +455,13 @@ class ModelAnalyticsService:
             ):
                 raise ValueError(
                     "Prediction artifact contains missing evaluation values"
+                )
+            if (
+                chunk["timestamp"].lt(test_period[0]).any()
+                or chunk["timestamp"].gt(test_period[1]).any()
+            ):
+                raise ValueError(
+                    "Prediction artifact contains rows outside its Test period"
                 )
             records = (
                 (
@@ -929,7 +971,9 @@ class ModelAnalyticsService:
                         or not self._is_full_run(details)
                     ):
                         continue
-                    runs.append(_ModelRun(model_id, path, details))
+                    run = _ModelRun(model_id, path, details)
+                    if self._comparison_signature(run) is not None:
+                        runs.append(run)
         return runs
 
     @staticmethod
