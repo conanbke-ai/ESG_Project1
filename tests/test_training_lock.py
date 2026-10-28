@@ -4,9 +4,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from solar_forecast.jobs.lock import TrainingAlreadyRunning, exclusive_training_lock
-from solar_forecast.jobs import training
-from solar_forecast.settings import ModelJobConfig
+from solar_forecast.jobs.training_lock import TrainingAlreadyRunning
+from solar_forecast.jobs.training_lock import exclusive_training_lock
+from solar_forecast.jobs import training_job as training
+from solar_forecast.config_loader import ModelJobConfig
 
 
 def test_training_lock_blocks_second_model(tmp_path):

@@ -1,73 +1,14 @@
 """Fail-safe anomaly notification outbox and SOLAPI delivery adapters."""
+from importlib import import_module
 
-from .config import NotificationSettings, SolapiSettings
-from .models import (
-    NOTIFICATION_CONTRACT,
-    OPERATIONAL_EVENT_CONTRACT,
-    AnomalyAlert,
-    DeliveryResult,
-    NotificationAudience,
-    NotificationChannel,
-    NotificationStatus,
-    RecipientRoute,
-    Severity,
-    stable_event_id,
-)
-from .outbox import (
-    OUTBOX_SCHEMA_VERSION,
-    EnqueueResult,
-    FailureTransition,
-    NotificationOutbox,
-    OutboxRecord,
-)
-from .providers import (
-    AmbiguousNotificationError,
-    ContactDirectory,
-    MappingContactDirectory,
-    NotificationProvider,
-    PermanentNotificationError,
-    ProviderMessage,
-    SolapiProvider,
-    TransientNotificationError,
-)
-from .runtime import ROUTE_DIRECTORY_CONTRACT, RuntimeRouteDirectory
-from .service import (
-    DispatchSummary,
-    NotificationDispatcher,
-    NotificationService,
-    build_solapi_dispatcher,
-)
+_EXPORTS = {'NotificationSettings': ('solar_forecast.notifications.notification_config', 'NotificationSettings'), 'SolapiSettings': ('solar_forecast.notifications.notification_config', 'SolapiSettings'), 'NOTIFICATION_CONTRACT': ('solar_forecast.notifications.contracts', 'NOTIFICATION_CONTRACT'), 'OPERATIONAL_EVENT_CONTRACT': ('solar_forecast.notifications.contracts', 'OPERATIONAL_EVENT_CONTRACT'), 'AnomalyAlert': ('solar_forecast.notifications.contracts', 'AnomalyAlert'), 'DeliveryResult': ('solar_forecast.notifications.contracts', 'DeliveryResult'), 'NotificationAudience': ('solar_forecast.notifications.contracts', 'NotificationAudience'), 'NotificationChannel': ('solar_forecast.notifications.contracts', 'NotificationChannel'), 'NotificationStatus': ('solar_forecast.notifications.contracts', 'NotificationStatus'), 'RecipientRoute': ('solar_forecast.notifications.contracts', 'RecipientRoute'), 'Severity': ('solar_forecast.notifications.contracts', 'Severity'), 'stable_event_id': ('solar_forecast.notifications.contracts', 'stable_event_id'), 'OUTBOX_SCHEMA_VERSION': ('solar_forecast.notifications.outbox_repository', 'OUTBOX_SCHEMA_VERSION'), 'EnqueueResult': ('solar_forecast.notifications.outbox_repository', 'EnqueueResult'), 'FailureTransition': ('solar_forecast.notifications.outbox_repository', 'FailureTransition'), 'NotificationOutbox': ('solar_forecast.notifications.outbox_repository', 'NotificationOutbox'), 'OutboxRecord': ('solar_forecast.notifications.outbox_repository', 'OutboxRecord'), 'AmbiguousNotificationError': ('solar_forecast.notifications.delivery_provider', 'AmbiguousNotificationError'), 'ContactDirectory': ('solar_forecast.notifications.delivery_provider', 'ContactDirectory'), 'MappingContactDirectory': ('solar_forecast.notifications.delivery_provider', 'MappingContactDirectory'), 'NotificationProvider': ('solar_forecast.notifications.delivery_provider', 'NotificationProvider'), 'PermanentNotificationError': ('solar_forecast.notifications.delivery_provider', 'PermanentNotificationError'), 'ProviderMessage': ('solar_forecast.notifications.delivery_provider', 'ProviderMessage'), 'SolapiProvider': ('solar_forecast.notifications.delivery_provider', 'SolapiProvider'), 'TransientNotificationError': ('solar_forecast.notifications.delivery_provider', 'TransientNotificationError'), 'ROUTE_DIRECTORY_CONTRACT': ('solar_forecast.notifications.recipient_routes', 'ROUTE_DIRECTORY_CONTRACT'), 'RuntimeRouteDirectory': ('solar_forecast.notifications.recipient_routes', 'RuntimeRouteDirectory'), 'DispatchSummary': ('solar_forecast.notifications.notification_service', 'DispatchSummary'), 'NotificationDispatcher': ('solar_forecast.notifications.notification_service', 'NotificationDispatcher'), 'NotificationService': ('solar_forecast.notifications.notification_service', 'NotificationService'), 'build_solapi_dispatcher': ('solar_forecast.notifications.notification_service', 'build_solapi_dispatcher')}
+__all__ = list(_EXPORTS)
 
-__all__ = [
-    "NOTIFICATION_CONTRACT",
-    "OPERATIONAL_EVENT_CONTRACT",
-    "OUTBOX_SCHEMA_VERSION",
-    "ROUTE_DIRECTORY_CONTRACT",
-    "AnomalyAlert",
-    "AmbiguousNotificationError",
-    "ContactDirectory",
-    "DeliveryResult",
-    "DispatchSummary",
-    "EnqueueResult",
-    "FailureTransition",
-    "MappingContactDirectory",
-    "NotificationAudience",
-    "NotificationChannel",
-    "NotificationDispatcher",
-    "NotificationOutbox",
-    "NotificationProvider",
-    "NotificationService",
-    "NotificationSettings",
-    "NotificationStatus",
-    "OutboxRecord",
-    "PermanentNotificationError",
-    "ProviderMessage",
-    "RecipientRoute",
-    "RuntimeRouteDirectory",
-    "Severity",
-    "SolapiProvider",
-    "SolapiSettings",
-    "TransientNotificationError",
-    "build_solapi_dispatcher",
-    "stable_event_id",
-]
+def __getattr__(name: str):
+    """Load a public symbol only when its owning feature is requested."""
+    if name not in _EXPORTS:
+        raise AttributeError(name)
+    module, symbol = _EXPORTS[name]
+    value = getattr(import_module(module), symbol)
+    globals()[name] = value
+    return value

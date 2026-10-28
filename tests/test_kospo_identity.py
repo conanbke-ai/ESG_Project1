@@ -11,26 +11,21 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from solar_forecast.collectors.admission import CollectedGenerationAdmissionService
-from solar_forecast.collectors.identity import (
-    KOSPO_IDENTITY_RULE,
-    read_generation_partition,
-    resolve_generation_identity,
-)
-from solar_forecast.collectors.metadata import PlantMetadata, PlantMetadataCatalog
-from solar_forecast.collectors.normalization import (
-    DailyWideGenerationNormalizer,
-    GENERATION_COLUMNS,
-    KOSPO_WIDE_SCHEMA,
-)
-from solar_forecast.features.registry import (
-    KmaStationCatalog,
-    NationwidePlantRegistryBuilder,
-    ReviewedStationMapping,
-    ReviewedStationMappingCatalog,
-)
-from solar_forecast.features.service import NationwideModelDatasetBuilder
-from solar_forecast.features.weather import WEATHER_COLUMN_MAP
+from solar_forecast.datasets.collector_admission import CollectedGenerationAdmissionService
+from solar_forecast.collectors.plant_identity import KOSPO_IDENTITY_RULE
+from solar_forecast.collectors.plant_identity import read_generation_partition
+from solar_forecast.collectors.plant_identity import resolve_generation_identity
+from solar_forecast.collectors.plant_metadata import PlantMetadata
+from solar_forecast.collectors.plant_metadata import PlantMetadataCatalog
+from solar_forecast.collectors.generation_normalizers import DailyWideGenerationNormalizer
+from solar_forecast.collectors.generation_normalizers import GENERATION_COLUMNS
+from solar_forecast.collectors.generation_normalizers import KOSPO_WIDE_SCHEMA
+from solar_forecast.datasets.plant_registry import KmaStationCatalog
+from solar_forecast.datasets.plant_registry import NationwidePlantRegistryBuilder
+from solar_forecast.datasets.plant_registry import ReviewedStationMapping
+from solar_forecast.datasets.plant_registry import ReviewedStationMappingCatalog
+from solar_forecast.datasets.model_dataset_builder import NationwideModelDatasetBuilder
+from solar_forecast.features.asos_features import WEATHER_COLUMN_MAP
 
 
 class KospoIdentityTests(unittest.TestCase):

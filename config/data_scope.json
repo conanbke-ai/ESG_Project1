@@ -4,6 +4,42 @@
   "current_generation_providers": ["koen", "kospo", "ewp", "iwest", "krc"],
   "expansion_providers": ["kdhc", "komipo", "kpx"],
   "nationwide_definition": "기관 수를 고정하지 않고, 공통 계약·기상 매핑·품질 게이트를 통과한 국내 공개 발전소를 지속적으로 확장하는 전국 표본",
+  "population_contract": {
+    "service_inventory": {
+      "purpose": "전국 태양광 발전설비 현황·검색·지역 통계",
+      "canonical_source": "config/national_solar_inventory.json",
+      "scope_semantics": "EPSIS 발전원=태양에너지 전국 등록 범위",
+      "preserve_full_source_scope": true,
+      "model_training_eligibility_must_not_filter": true,
+      "notes": [
+        "AI 학습에서 제외된 설비·등록행도 전국 현황 모집단에서는 제거하지 않는다.",
+        "지역명 표준화·검토된 위치 보정은 표시와 집계를 위한 것이며 원본 fact와 전국 총량을 임의로 축소하지 않는다.",
+        "공식 고유키가 없어 중복으로 보이는 등록행을 임의 삭제하지 않는다."
+      ]
+    },
+    "model_population": {
+      "purpose": "태양광 발전량 예측 모델의 학습·검증·Calibration·Test",
+      "canonical_input": "file/standardized/model_ready_parts",
+      "requires_training_eligibility": true,
+      "admission_policy": "config/training_admission.json",
+      "eligibility_dimensions": [
+        "energy_source",
+        "target_time_resolution",
+        "plant_identity_and_provenance",
+        "weather_mapping_evidence",
+        "generation_weather_overlap",
+        "continuous_hourly_coverage",
+        "weather_feature_coverage",
+        "temporal_split_effective_rows",
+        "purge_and_sequence_history_loss"
+      ],
+      "notes": [
+        "학습 제외는 원본 삭제가 아니라 모델 eligibility 상태다.",
+        "서비스 전체 현황 모집단과 모델 적용 가능 모집단을 혼동하지 않는다."
+      ]
+    },
+    "documentation": "docs/DATA_POPULATION_AND_MODEL_ELIGIBILITY.md"
+  },
   "current_validated_snapshot": {
     "as_of": "2026-08-27",
     "base_source_files": 88,

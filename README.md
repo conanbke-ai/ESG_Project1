@@ -1,5 +1,43 @@
 # 전국 재생에너지 표준화·태양광 발전량 예측·이상징후 알림 시스템
 
+현재 실측 기반 모델 최적화·하이브리드 채택 작업은 [실행 및 평가 계약](docs/OPTIMIZED_MODEL_BENCHMARK.md)을 따릅니다. `python app.py benchmark --plan`으로 모델별 탐색과 1·24·72시간 비교 설정을 확인할 수 있습니다. 과거 문서의 고정 24시간·동일 특징 조건보다 이 계약이 우선합니다.
+
+본 학습은 사용자 Windows 로컬 GPU에서 수행합니다. ChatGPT 작업 환경과 CI에서 본 학습을 시작하지 않습니다. 로컬에서 `python tools/run_local_benchmark.py --data file/standardized/model_ready_parts`를 사용하며 CUDA GPU가 없으면 학습 전에 종료합니다. 기본 날짜 고정 후보와 탐색 예산을 유지하고, `--preflight-only`는 학습 전 점검만 수행합니다.
+
+2026-09-17 전처리 보완은 발전량 원값·ASOS 결측 사유를 보존하고 CNN의 Train 전용 입력
+표준화 통계를 저장합니다. 확대 자료의 날짜 고정 분할 후보와 학습 없는 커버리지 점검은
+[분할 점검 방법](docs/OPTIMIZED_MODEL_BENCHMARK.md#날짜-고정-후보와-학습-전-점검)을 따릅니다.
+
+CI를 사용하지 않는 학습 준비는 `python tools/audit_forecast_readiness.py`로 실제 모델별
+표본·연속 입력창을 먼저 확인합니다. [로컬 학습·재개·저장 모델 검증 절차](docs/OPTIMIZED_MODEL_BENCHMARK.md#ci-없이-로컬에서-실행)를 제공합니다.
+
+[실측 실행 결과](docs/OBSERVED_BENCHMARK_RESULT.md)에는 공식 관측자료로 수행한 1·24시간 제한 실험과 저장 모델 재검증 근거를 기록했습니다. 24시간 Hybrid의 선택 구간 개선은 최종 Test에서 유지되지 않았습니다. 전체 데이터 최적화와 과거 저장 모델의 성능 재현은 아직 완료하지 않았습니다.
+
+후속 검수에서 실행 환경을 바꾼 CNN 재학습 결과의 차이도 확인했습니다. CPU 검증 환경의 패키지 버전을 고정하고, 저장 모델 재예측과 별도로 새 학습을 반복 비교하는 CI를 추가했습니다. 같은 환경의 재현성과 서로 다른 환경의 결과 비교를 구분합니다.
+
+## 코드 구조와 ASOS API 설정
+
+- 전체 폴더·파일·함수 생성 규칙: [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
+- Python 파일별 목적과 전체 함수 색인: [CODE_INDEX.md](docs/CODE_INDEX.md)
+- 변경 전후 모델 수치 비교와 실데이터 성능 검증 범위: [MODEL_PARITY_VALIDATION.md](docs/MODEL_PARITY_VALIDATION.md)
+- 발급받은 ASOS API 키 적용: [KMA_ASOS_API.md](docs/KMA_ASOS_API.md)
+
+실제 ASOS 키는 프로젝트 루트 `.env.local`의 `KMA_ASOS_SERVICE_KEY`에 일반인증키(Decoding)로 설정합니다. `.env.example`에는 빈 예시만 둡니다. 기존 `DATA_GO_SERVICE_KEY`는 중부발전용입니다.
+
+```powershell
+python app.py collect --sources kma --kma-mode api --station-ids 108,159 --start-date 2026-01-01 --end-date 2026-01-02 --api-max-calls 10
+python app.py prepare-data
+```
+
+모델 구현은 `models/cnn_bilstm/`, `models/xgboost/`, `models/hybrid/`로 모았습니다. CNN의 실제 네트워크는 `network.py`, 학습 설정 연결은 `trainer.py`, 학습 실행은 `training_workflow.py`, 저장 모델 평가는 `evaluation.py`에서 찾습니다. 대시보드 원본은 `dashboard/src/`, 생성된 배포 파일은 `dashboard/assets/dashboard.js`입니다.
+
+```powershell
+python tools/build_dashboard_assets.py
+python tools/update_code_index.py
+python tools/check_structure.py
+```
+
+
 현재 확보한 한국남동발전·한국남부발전·한국동서발전·한국서부발전·한국농어촌공사 자료를 출발점으로, 기관을
 고정하지 않고 공통 데이터 계약과 품질 게이트를 통과한 국내 발전소를 계속 추가하는 전국 발전량
 예측 프로젝트입니다. 예측 잔차와 공개 기상자료는 이상징후 분석·알림에 사용합니다.
@@ -44,7 +82,7 @@ python app.py pipeline target_column --input-dir file/merge_data --features feat
 4. 평가와 이상징후 탐지
 5. 최종 HTML 보고서와 실행 manifest 생성
 
-각 실행 결과는 기본적으로 `output/pipeline/<실행시간>/`에 저장됩니다. 단계 사이의 DataFrame은 메모리로 전달하고 기본 `minimal` 모드에서는 최종 산출물만 저장합니다.
+각 실행 결과는 기본적으로 `artifacts/pipeline/<실행시간>/`에 저장됩니다. 단계 사이의 DataFrame은 메모리로 전달하고 기본 `minimal` 모드에서는 최종 산출물만 저장합니다.
 
 ## 공식 데이터 자동 수집
 
@@ -534,7 +572,7 @@ XGBoost는 50 boosting round마다 Booster를 저장합니다. Optuna trial도 �
 - XGBoost: boosting iteration별 pruning + early stopping
 - CNN-BiLSTM: epoch별 pruning + early stopping, lazy sequence 중 제한된 대표 표본으로 탐색
 - 최종 학습: 선택된 설정으로 전체 Train을 다시 사용
-- Calibration: 잔차 임계값·구간 보정용으로 예약
+- Calibration: 개별 학습 경로에서는 잔차 임계값·구간 보정용, `benchmark`에서는 Hybrid 학습/선택용으로 분리하며 서로 재사용하지 않음
 - Test: 설정 선택이 끝난 뒤 마지막 성능 보고에만 1회 사용
 
 시간을 더 줄이거나 고정 설정을 재현할 때만 CLI에서 제한을 덮어씁니다.
@@ -557,11 +595,12 @@ RAM에 올리지 않고 임시 SQLite에서 같은 Test 행만 정렬할 수 있
 
 ## 포트폴리오 실험 구분
 
-실험 정의는 `config/experiments/` 아래에 분리되어 있습니다.
+현재 실행 가능한 비교 실험은 `config/experiments/optimized.json`이며 `python app.py benchmark`로 실행합니다.
 
-- `controlled.json`: 동일 lookback, 동일 피처 정보, 동일 시간 분할의 구조 비교
-- `optimized.json`: 같은 태양광 표본·피처·분할에서 Validation-only Optuna를 적용한 성능 비교
-- `hybrid.json`: Validation의 지역·시간대별 모델 신뢰도를 근거로 매 행의 결합비를 결정하는 동적 Hybrid
+- `optimized.json`: 예측 기간별 같은 목표·시작 시각과 시간 분할에서 모델별 특징·입력창·하이퍼파라미터를 각각 탐색합니다. Hybrid 비중 학습과 채택 평가는 별도 구간으로 나눕니다.
+- `controlled.json`, `hybrid.json`: 이전 설계 설명을 보관한 파일입니다. 현재 실행 스키마를 만족하지 않아 `benchmark --config` 입력으로 사용할 수 없습니다.
+
+아래의 독립 `hybrid` 명령은 이전 CSV 결합 경로입니다. 새로운 벤치마크의 별도 선택 구간 검증과 자동 채택을 대신하지 않습니다.
 
 Hybrid 입력 CSV는 두 모델의 예측이 같은 행에 정렬되어 있어야 합니다.
 
@@ -571,7 +610,7 @@ timestamp,region,plant,y_true,xgb_pred,cnn_pred
 
 ```bash
 python app.py hybrid output/validation_predictions.csv output/test_predictions.csv \
-  --output-dir output/experiments/hybrid --artifact-level minimal
+  --output-dir artifacts/experiments/hybrid --artifact-level minimal
 ```
 
 원본 병합 파일의 `일시`, `지역`, `발전구분`, `합산발전량(MWh)`는 각각

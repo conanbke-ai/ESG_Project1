@@ -445,6 +445,18 @@ nav a[aria-current="page"] { color: #fff; background: var(--green); }
 .chart-line.series-1 { stroke: var(--blue); }
 .chart-line.series-2 { stroke: var(--purple); }
 .chart-line.series-3 { stroke: var(--orange); }
+.benchmark-section { margin-block: 24px; }
+.benchmark-section h3 { margin: 24px 0 8px; font-size: 17px; }
+.benchmark-method, .benchmark-periods { color: var(--muted); line-height: 1.8; }
+.benchmark-horizon { max-width: 320px; margin-block: 20px; }
+.benchmark-selection { padding: 16px 0; }
+.benchmark-selection > strong { font-size: 20px; }
+.benchmark-selection p { margin-bottom: 0; line-height: 1.65; }
+.benchmark-details { margin-block: 20px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; }
+.benchmark-details summary { cursor: pointer; font-weight: 600; }
+.benchmark-details p { color: var(--muted); line-height: 1.7; }
+.benchmark-fingerprint { overflow-wrap: anywhere; font-size: 12px; }
+.benchmark-parameters { overflow-x: auto; font-size: 12px; line-height: 1.6; }
 
 .simple-bars { display: grid; gap: 12px; }
 .simple-bars > div { display: grid; grid-template-columns: minmax(110px, .8fr) minmax(100px, 1.4fr) 48px; gap: 10px; align-items: center; font-size: 13px; }

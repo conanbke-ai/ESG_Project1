@@ -6,6 +6,8 @@ It never promotes legacy or unmatched evaluations into a model comparison.
 
 from __future__ import annotations
 
+from solar_forecast.infrastructure.project_paths import PLANT_QUALITY_PATH, PLANT_REGISTRY_PATH
+
 from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -19,7 +21,7 @@ from typing import Any, Iterable
 
 import pandas as pd
 
-from solar_forecast.collectors.normalization import read_csv_with_fallback
+from solar_forecast.collectors.generation_normalizers import read_csv_with_fallback
 
 
 MODEL_LABELS = {
@@ -33,6 +35,17 @@ MINIMUM_GLOBAL_CALIBRATION_SAMPLES = 5
 MINIMUM_PLANT_CALIBRATION_SAMPLES = 168
 TOP_EVENTS_PER_MODEL = 250
 SERIES_POINTS_PER_PLANT = 168
+HISTORICAL_INFORMATION_SETS = {
+    "observed_measurements_through_forecast_origin",
+    "observed_until_origin",
+}
+
+
+@dataclass(frozen=True)
+class _TestPeriod:
+    start: pd.Timestamp
+    end: pd.Timestamp
+    timezone_aware: bool
 
 
 @dataclass(frozen=True)
@@ -190,7 +203,14 @@ class ModelAnalyticsService:
         all_runs = self._full_runs()
         compatible_runs = self._latest_compatible_pair(all_runs)
         aligned = self._aligned_analysis(compatible_runs)
-        runs = compatible_runs if aligned is not None else self._latest_runs(all_runs)
+        fallback_runs = self._latest_runs(all_runs)
+        runs = (
+            compatible_runs
+            if aligned is not None
+            else []
+            if compatible_runs
+            else [run for run in fallback_runs if self._valid_test_artifact(run)]
+        )
         if aligned is not None:
             models = aligned["models"]
             regions = aligned["regions"]
@@ -251,6 +271,9 @@ class ModelAnalyticsService:
         signature = self._comparison_signature(xgboost)
         if signature is None or signature != self._comparison_signature(cnn):
             return None
+        test_period = self._test_period(xgboost.details["evaluation_contract"])
+        if test_period is None:
+            return None
         test_paths = {
             model_id: self._artifact_path(run, "test_predictions")
             for model_id, run in (("xgboost", xgboost), ("cnn_bilstm", cnn))
@@ -272,26 +295,12 @@ class ModelAnalyticsService:
                 database = Path(directory) / "predictions.sqlite3"
                 connection = sqlite3.connect(database)
                 try:
-                    connection.execute("PRAGMA journal_mode=OFF")
-                    connection.execute("PRAGMA synchronous=OFF")
-                    connection.execute("PRAGMA temp_store=FILE")
-                    connection.execute(
-                        """
-                        CREATE TABLE predictions (
-                            model TEXT NOT NULL,
-                            timestamp TEXT NOT NULL,
-                            plant_id TEXT NOT NULL,
-                            region TEXT NOT NULL,
-                            plant TEXT NOT NULL,
-                            y_true REAL NOT NULL,
-                            y_pred REAL NOT NULL,
-                            PRIMARY KEY (model, timestamp, plant_id)
-                        ) WITHOUT ROWID
-                        """
-                    )
+                    self._prepare_prediction_database(connection)
                     for model_id, path in test_paths.items():
                         assert path is not None
-                        self._insert_predictions(connection, path, model_id)
+                        self._insert_predictions(
+                            connection, path, model_id, test_period
+                        )
                     connection.execute(
                         "CREATE INDEX predictions_key ON "
                         "predictions(timestamp, plant_id)"
@@ -328,6 +337,54 @@ class ModelAnalyticsService:
             # remain unavailable rather than surfacing a misleading comparison.
             return None
 
+    def _valid_test_artifact(self, run: _ModelRun) -> bool:
+        path = self._artifact_path(run, "test_predictions")
+        test_period = self._test_period(run.details["evaluation_contract"])
+        if path is None or test_period is None:
+            return False
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix="solar-model-artifact-check-"
+            ) as directory:
+                connection = sqlite3.connect(Path(directory) / "predictions.sqlite3")
+                try:
+                    self._prepare_prediction_database(connection)
+                    self._insert_predictions(
+                        connection, path, run.model_id, test_period
+                    )
+                finally:
+                    connection.close()
+            return True
+        except (
+            OSError,
+            UnicodeDecodeError,
+            ValueError,
+            KeyError,
+            sqlite3.Error,
+            pd.errors.ParserError,
+        ):
+            return False
+
+    @staticmethod
+    def _prepare_prediction_database(connection: sqlite3.Connection) -> None:
+        connection.execute("PRAGMA journal_mode=OFF")
+        connection.execute("PRAGMA synchronous=OFF")
+        connection.execute("PRAGMA temp_store=FILE")
+        connection.execute(
+            """
+            CREATE TABLE predictions (
+                model TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                plant_id TEXT NOT NULL,
+                region TEXT NOT NULL,
+                plant TEXT NOT NULL,
+                y_true REAL NOT NULL,
+                y_pred REAL NOT NULL,
+                PRIMARY KEY (model, timestamp, plant_id)
+            ) WITHOUT ROWID
+            """
+        )
+
     @staticmethod
     def _comparison_signature(run: _ModelRun) -> str | None:
         contract = run.details.get("evaluation_contract")
@@ -341,16 +398,46 @@ class ModelAnalyticsService:
             "test_start",
             "test_end",
             "prediction_key",
+            "task",
+            "information_set",
         )
         if any(contract.get(key) in (None, "") for key in required):
             return None
         if contract.get("prediction_key") != ["timestamp", "plant_id"]:
+            return None
+        if (
+            contract.get("task") != "historical_forecast"
+            or contract.get("information_set") not in HISTORICAL_INFORMATION_SETS
+            or ModelAnalyticsService._test_period(contract) is None
+        ):
             return None
         return json.dumps(
             {key: contract[key] for key in required},
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
+        )
+
+    @staticmethod
+    def _test_period(contract: dict[str, Any]) -> _TestPeriod | None:
+        try:
+            start = pd.Timestamp(contract.get("test_start"))
+            end = pd.Timestamp(contract.get("test_end"))
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if pd.isna(start) or pd.isna(end):
+            return None
+        start_aware = start.tzinfo is not None
+        end_aware = end.tzinfo is not None
+        if start_aware != end_aware:
+            return None
+        if start_aware:
+            start = start.tz_convert("UTC")
+            end = end.tz_convert("UTC")
+        return (
+            _TestPeriod(start=start, end=end, timezone_aware=start_aware)
+            if start <= end
+            else None
         )
 
     @staticmethod
@@ -368,7 +455,11 @@ class ModelAnalyticsService:
         return matches[-1] if matches else None
 
     def _insert_predictions(
-        self, connection: sqlite3.Connection, path: Path, model_id: str
+        self,
+        connection: sqlite3.Connection,
+        path: Path,
+        model_id: str,
+        test_period: _TestPeriod,
     ) -> None:
         header = pd.read_csv(path, nrows=0).columns.tolist()
         prediction_column = self._prediction_column(header, model_id)
@@ -395,7 +486,9 @@ class ModelAnalyticsService:
             chunk = chunk.drop(columns=["split"], errors="ignore")
             if chunk.empty:
                 continue
-            chunk["timestamp"] = self._normalize_timestamps(chunk["timestamp"])
+            chunk["timestamp"] = self._normalize_timestamps(
+                chunk["timestamp"], test_period
+            )
             chunk["plant_id"] = chunk["plant_id"].astype(str).str.strip()
             if chunk["plant_id"].isin({"", "unknown", "nan"}).any():
                 raise ValueError("Prediction artifact contains an unstable plant_id")
@@ -877,7 +970,7 @@ class ModelAnalyticsService:
         }
 
     def _capacity_lookup(self) -> dict[str, float]:
-        path = self.project_root / "file/standardized/plant_registry.csv"
+        path = self.project_root / PLANT_REGISTRY_PATH
         if not path.exists():
             return {}
         frame = read_csv_with_fallback(path)
@@ -906,9 +999,32 @@ class ModelAnalyticsService:
         )
 
     @staticmethod
-    def _normalize_timestamps(values: pd.Series) -> pd.Series:
-        parsed = pd.to_datetime(values, errors="coerce")
-        return parsed.dt.strftime("%Y-%m-%dT%H:%M:%S")
+    def _normalize_timestamps(
+        values: pd.Series, test_period: _TestPeriod
+    ) -> pd.Series:
+        raw = values.astype("string").str.strip()
+        if raw.isna().any() or raw.eq("").any():
+            raise ValueError("Prediction artifact contains missing timestamps")
+        has_timezone = raw.str.contains(
+            r"(?:[zZ]|[+-]\d{2}:?\d{2})$", regex=True, na=False
+        )
+        if has_timezone.ne(test_period.timezone_aware).any():
+            raise ValueError(
+                "Prediction timestamps differ from the Test period timezone contract"
+            )
+        parsed = pd.to_datetime(
+            raw,
+            errors="coerce",
+            format="ISO8601",
+            utc=test_period.timezone_aware,
+        )
+        if parsed.isna().any():
+            raise ValueError("Prediction artifact contains invalid timestamps")
+        if parsed.lt(test_period.start).any() or parsed.gt(test_period.end).any():
+            raise ValueError(
+                "Prediction artifact contains rows outside its Test period"
+            )
+        return parsed.map(lambda value: value.isoformat())
 
     def _full_runs(self) -> list[_ModelRun]:
         runs: list[_ModelRun] = []
@@ -925,7 +1041,9 @@ class ModelAnalyticsService:
                         or not self._is_full_run(details)
                     ):
                         continue
-                    runs.append(_ModelRun(model_id, path, details))
+                    run = _ModelRun(model_id, path, details)
+                    if self._comparison_signature(run) is not None:
+                        runs.append(run)
         return runs
 
     @staticmethod
@@ -1035,7 +1153,7 @@ class ModelAnalyticsService:
         }
 
     def _data_quality_signals(self) -> list[dict[str, Any]]:
-        path = self.project_root / "file/standardized/plant_quality_report.csv"
+        path = self.project_root / PLANT_QUALITY_PATH
         if not path.exists():
             return []
         frame = read_csv_with_fallback(path)

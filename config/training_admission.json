@@ -1,0 +1,74 @@
+{
+  "contract": "solar-training-admission-policy.v2",
+  "version": "2026-09-18-frozen-global-calendar-1",
+  "status": "frozen",
+  "fixed_start_year": null,
+  "selection_basis": [
+    "quality_train_eligible",
+    "generation_weather_overlap",
+    "split_presence",
+    "split_hourly_continuity",
+    "non_train_split_rows_lte_train",
+    "purge_and_sequence_history_loss"
+  ],
+  "recovered_historical_reference": {
+    "source_commit": "2441c7fb51ec2bb1410b1b2f090f32928cbad27e",
+    "actual_preprocessing_split": {
+      "mode": "calendar",
+      "train": "timestamp <= 2021-12-31T23:59:59",
+      "validation": "2022-01-01T00:00:00 <= timestamp <= 2023-12-31T23:59:59",
+      "test": "timestamp >= 2024-01-01T00:00:00",
+      "purge_hours": 24
+    },
+    "plant_selection_rules": {
+      "require_presence_in_train_validation_test": true,
+      "reject_any_split_with_timestamp_gap_gt_hours": 1,
+      "require_validation_rows_lte_train_rows": true,
+      "require_test_rows_lte_train_rows": true
+    },
+    "explicit_fixed_minimum_rows_per_split": null,
+    "minimum_rows_evidence_status": "NOT_FOUND_IN_VERSIONED_PREPROCESSING_CODE_PPT_OR_README",
+    "excluded_bad_plants_evidence": "Historical excluded_bad_plants.csv stores train/val/test counts for 12 plants rejected because validation or test rows exceeded train rows."
+  },
+  "current_experiment_reference": {
+    "source": "config/experiments/optimized.json",
+    "mode": "global_calendar",
+    "train_end": "2024-06-30T23:00:00",
+    "validation_end": "2024-09-30T23:00:00",
+    "calibration_end": "2024-12-31T23:00:00",
+    "test_end": "2025-12-31T23:00:00",
+    "purge_gap_hours": 168,
+    "minimum_common_coverage": 0.95,
+    "same_boundaries_for_all_plants": true,
+    "per_plant_fraction_split_allowed": false,
+    "actual_split_ratios_may_differ_by_plant": true
+  },
+  "current_4way_extension": {
+    "require_all_splits_present": true,
+    "reject_split_timestamp_gap_gt_hours": 1,
+    "require_validation_rows_lte_train_rows": true,
+    "require_calibration_rows_lte_train_rows": true,
+    "require_test_rows_lte_train_rows": true,
+    "fixed_minimum_rows_per_split": null,
+    "rationale": "Calibration is a current selection partition. The recovered non-Train<=Train rule is applied to Validation, Calibration, and Test under one global calendar boundary set; no per-plant cutoff or invented minimum-N threshold is allowed."
+  },
+  "decision_semantics": {
+    "ADMITTED": "Passes the frozen recovered relational rules in eligibility.v2. Model-specific usable sample counts are checked later by forecast readiness.",
+    "REJECT": "Fails one or more frozen structural/relational rules. The source/service population remains preserved.",
+    "HOLD": "Reserved for future policy states requiring explicit human review; frozen relational v2 should normally emit no HOLD decisions."
+  },
+  "population_separation": {
+    "service_inventory_filtered_by_this_policy": false,
+    "model_population_filtered_by_this_policy": true,
+    "documentation": "docs/DATA_POPULATION_AND_MODEL_ELIGIBILITY.md"
+  },
+  "notes": [
+    "No fixed minimum N per split is introduced because no versioned evidence for such a historical rule was found.",
+    "Main benchmark splitting is global-calendar, not per-plant percentage splitting. Every admitted plant receives the same Train/Validation/Calibration/Test timestamp boundaries.",
+    "Different plant history lengths may produce different realized split ratios; this does not change the common classification rule.",
+    "A short-history plant is excluded from the main cohort or reported separately; its Test window must not be moved to manufacture a desired percentage.",
+    "If current local Gold cannot support the canonical boundaries, revise and version one global boundary set before training. Never choose plant-specific boundaries or revise after inspecting Test performance.",
+    "The admission policy filters only the AI model population. EPSIS nationwide service inventory is not filtered by model eligibility.",
+    "After this population gate, forecast_readiness remains responsible for model-specific lookback/horizon and effective sample losses."
+  ]
+}

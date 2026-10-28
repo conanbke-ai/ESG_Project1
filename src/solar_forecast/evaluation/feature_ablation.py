@@ -1,3 +1,4 @@
+"""시간 순서를 지키는 rolling-origin 특징 조합 비교 실험."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,14 +11,14 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from xgboost import XGBRegressor
 
-from solar_forecast.features.engineering import (
+from solar_forecast.features.history_features import (
     HISTORY_OBSERVATION_FEATURES,
     OBSERVATION_MASK_FEATURES,
     SELECTED_V2_MODEL_FEATURES,
     SOLAR_GEOMETRY_FEATURES,
 )
-from solar_forecast.pipeline.dataset import DatasetRepository
-from solar_forecast.pipeline.preprocessing import REQUIRED_MODEL_QUALITY_FILTER
+from solar_forecast.datasets.repository import DatasetRepository
+from solar_forecast.datasets.numeric_preprocessor import REQUIRED_MODEL_QUALITY_FILTER
 
 
 @dataclass(frozen=True)
