@@ -36,3 +36,7 @@ This repository uses the common TORI development-orchestration baseline from `co
 - Professional QA baseline: common `policies/TORI_PROFESSIONAL_QA_STANDARD.md`.
 - Every non-trivial feature/cross-module change starts with QA Lead/Test Architect PRECHECK: risk, acceptance traceability, mandatory QA roles, test cases/states, regression scope, and exit evidence.
 - Behavior/state/validation changes require Functional & Regression QA; user-facing flows require Product Flow QA before implementation and before completion; Accessibility/Compatibility/Visual QA are selected by risk, not skipped because code builds.
+
+## Tori Development Framework v2.0
+
+- 신규 작업 및 다음 관련 checkpoint에서 공통 canonical `conanbke-ai/Tori_Common_Project`의 `policies/DEVELOPMENT_TEAM_OPERATING_POLICY.md` §26을 확인하고 적용한다. 기존 baseline은 역사적 기록으로 유지하며 실제 읽은 최신 SHA를 인계에 기록한다. 기존 제품 계약과 QA gate를 보존한다.
