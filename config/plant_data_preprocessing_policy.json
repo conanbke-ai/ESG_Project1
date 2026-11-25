@@ -1,0 +1,115 @@
+{
+  "contract": "solar-plant-preprocessing-policy.v1",
+  "version": "2026-09-18-final-1",
+  "status": "frozen",
+  "scope": "Solar plant observation preprocessing before model-specific readiness",
+  "service_inventory_separation": {
+    "service_inventory_source": "config/national_solar_inventory.json",
+    "filtered_by_model_preprocessing": false,
+    "rule": "Model preprocessing may filter only the AI model population; nationwide service inventory remains source-complete."
+  },
+  "canonical_pipeline": [
+    {
+      "stage": "source_preservation",
+      "owner": "collectors + file/raw + file/solar_data_file",
+      "rule": "Preserve provider bytes, names, encoding and lineage; never overwrite source facts."
+    },
+    {
+      "stage": "standardization",
+      "owner": "datasets",
+      "rule": "Normalize provider schemas and units into plant-hour generation partitions; quarantine ambiguous identity/granularity."
+    },
+    {
+      "stage": "identity_and_weather_mapping",
+      "owner": "datasets.plant_registry",
+      "rule": "Require auditable plant identity and approved ASOS mapping; legacy mapping is audit-only unless independently reviewed."
+    },
+    {
+      "stage": "gold_join",
+      "owner": "datasets.model_dataset_builder",
+      "rule": "Join only available official weather years; retain missing station-hour reasons; do not fabricate weather."
+    },
+    {
+      "stage": "quality_annotation",
+      "owner": "quality",
+      "rule": "Preserve raw target; exclude impossible target/daily-aggregate labels from training; contextual anomalies are flags, not automatic deletion."
+    },
+    {
+      "stage": "leakage_safe_features",
+      "owner": "features",
+      "rule": "Use only past information; lag/rolling history is shifted; missing history is preserved rather than backfilled from future."
+    },
+    {
+      "stage": "training_eligibility",
+      "owner": "preprocessing.training_eligibility",
+      "rule": "Solar + quality eligible + generation/weather overlap + every global split present + no >1h split gap + Validation/Calibration/Test rows <= Train rows."
+    },
+    {
+      "stage": "training_admission",
+      "owner": "preprocessing.training_admission",
+      "rule": "Freeze STRUCTURALLY_ELIGIBLE plants as ADMITTED; no invented fixed minimum-N threshold."
+    },
+    {
+      "stage": "admitted_dataset",
+      "owner": "scripts/materialize_admitted_training_data.py",
+      "rule": "Materialize only ADMITTED solar, quality-eligible rows; service inventory remains untouched."
+    },
+    {
+      "stage": "model_readiness",
+      "owner": "evaluation.forecast_readiness",
+      "rule": "Apply model-specific horizon/lookback geometry and common coverage checks after preprocessing; this is not a source-data deletion rule."
+    }
+  ],
+  "temporal_split": {
+    "mode": "global_calendar",
+    "same_boundaries_for_all_plants": true,
+    "train_end": "2024-06-30T23:00:00",
+    "validation_end": "2024-09-30T23:00:00",
+    "calibration_end": "2024-12-31T23:00:00",
+    "test_end": "2025-12-31T23:00:00",
+    "purge_gap_hours": 168,
+    "per_plant_percentage_cutoff": false,
+    "realized_ratios_may_differ_by_plant": true,
+    "short_history_rule": "Exclude from main cohort or report separately; never move that plant's Test window.",
+    "change_rule": "Any boundary change requires a new policy/config version before training and before viewing Test performance."
+  },
+  "missing_and_outlier_policy": {
+    "generation_missing": "Preserve missing; not a training label.",
+    "generation_nonfinite": "Invalid training target; preserve flag.",
+    "generation_negative": "Invalid training target; never coerce to zero.",
+    "daily_aggregate_hourly_shape": "Preserve source evidence; exclude whole detected plant from hourly target training.",
+    "capacity_exceeded": "Review flag only unless independent evidence proves invalid target.",
+    "daylight_zero": "Review flag only; may represent outage/curtailment/weather.",
+    "positive_flatline": "Review flag only; do not infer failure.",
+    "invalid_weather": "Mask invalid observation as missing and preserve reason flag.",
+    "missing_weather": "Preserve missing/reason; imputation statistics are fit from Train only inside model preprocessing.",
+    "target_interpolation": "Forbidden by default; no synthetic hourly target reconstruction without explicit physical/source evidence."
+  },
+  "leakage_policy": {
+    "statistics_fit_scope": "Train only",
+    "validation_use": "Model/feature/hyperparameter selection",
+    "calibration_use": "Hybrid/gate post-model selection only",
+    "test_use": "Final report only",
+    "test_performance_may_change_population": false
+  },
+  "historical_evidence": {
+    "historical_split": "Train<=2021; Validation=2022-2023; Test>=2024; purge=24h",
+    "recovered_rules": [
+      "all splits present",
+      "no >1h split gap",
+      "validation rows <= train rows",
+      "test rows <= train rows"
+    ],
+    "fixed_minimum_n_evidence_found": false,
+    "current_extension": "Apply recovered relational non-Train<=Train rule to Validation, Calibration and Test under one global calendar split."
+  },
+  "artifacts": {
+    "gold_manifest": "file/standardized/model_ready_manifest.json",
+    "eligibility_manifest": "artifacts/evaluation/training_data_eligibility.json",
+    "population_manifest": "artifacts/evaluation/training_population.json",
+    "admitted_dataset": "artifacts/datasets/admitted_training.csv.gz",
+    "admitted_dataset_manifest": "artifacts/datasets/admitted_training.csv.gz.manifest.json",
+    "resolved_experiment": "artifacts/evaluation/admitted_experiment.json"
+  },
+  "freeze_rule": "No preprocessing behavior change without updating this policy version, affected contract version, tests, and portfolio documentation."
+}

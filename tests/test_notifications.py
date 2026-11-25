@@ -9,35 +9,32 @@ import sqlite3
 
 import pytest
 
-from solar_forecast.anomalies import (
-    INTERPRETATION_LIMIT,
-    verify_operational_event_batch,
-    write_operational_event_batch,
-)
-from solar_forecast.cli import build_parser, main
-from solar_forecast.notifications import (
-    OPERATIONAL_EVENT_CONTRACT,
-    AmbiguousNotificationError,
-    AnomalyAlert,
-    DeliveryResult,
-    MappingContactDirectory,
-    NotificationAudience,
-    NotificationChannel,
-    NotificationDispatcher,
-    NotificationOutbox,
-    NotificationService,
-    NotificationSettings,
-    NotificationStatus,
-    PermanentNotificationError,
-    ProviderMessage,
-    RecipientRoute,
-    RuntimeRouteDirectory,
-    Severity,
-    SolapiProvider,
-    SolapiSettings,
-    TransientNotificationError,
-    stable_event_id,
-)
+from solar_forecast.anomalies import INTERPRETATION_LIMIT
+from solar_forecast.anomalies import verify_operational_event_batch
+from solar_forecast.anomalies import write_operational_event_batch
+from solar_forecast.cli import build_parser
+from solar_forecast.cli import main
+from solar_forecast.notifications import OPERATIONAL_EVENT_CONTRACT
+from solar_forecast.notifications import AmbiguousNotificationError
+from solar_forecast.notifications import AnomalyAlert
+from solar_forecast.notifications import DeliveryResult
+from solar_forecast.notifications import MappingContactDirectory
+from solar_forecast.notifications import NotificationAudience
+from solar_forecast.notifications import NotificationChannel
+from solar_forecast.notifications import NotificationDispatcher
+from solar_forecast.notifications import NotificationOutbox
+from solar_forecast.notifications import NotificationService
+from solar_forecast.notifications import NotificationSettings
+from solar_forecast.notifications import NotificationStatus
+from solar_forecast.notifications import PermanentNotificationError
+from solar_forecast.notifications import ProviderMessage
+from solar_forecast.notifications import RecipientRoute
+from solar_forecast.notifications import RuntimeRouteDirectory
+from solar_forecast.notifications import Severity
+from solar_forecast.notifications import SolapiProvider
+from solar_forecast.notifications import SolapiSettings
+from solar_forecast.notifications import TransientNotificationError
+from solar_forecast.notifications import stable_event_id
 
 
 NOW = datetime(2026, 8, 31, 1, 0, tzinfo=timezone.utc)
@@ -423,7 +420,7 @@ def _solapi_settings() -> SolapiSettings:
 def _provider_message(channel: NotificationChannel) -> ProviderMessage:
     alert = _alert()
     route = _route(channel)
-    from solar_forecast.notifications.models import NotificationEnvelope
+    from solar_forecast.notifications.contracts import NotificationEnvelope
 
     envelope = NotificationEnvelope.for_anomaly(
         alert, route, template_id="solar-anomaly-v1"
@@ -708,7 +705,7 @@ def test_notify_anomalies_cli_dry_run_validates_manifest_and_uses_separate_outbo
     )
     routes = tmp_path / "routes.json"
     _write_routes(routes)
-    monkeypatch.setattr("solar_forecast.cli.PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr("solar_forecast.cli.notification_commands.PROJECT_ROOT", tmp_path)
     outbox = tmp_path / "artifacts" / "notifications" / "dry_run.sqlite3"
     main(
         [
@@ -746,7 +743,7 @@ def test_notify_anomalies_cli_validates_all_rows_before_mutating_outbox(
     )
     routes = tmp_path / "routes.json"
     _write_routes(routes)
-    monkeypatch.setattr("solar_forecast.cli.PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr("solar_forecast.cli.notification_commands.PROJECT_ROOT", tmp_path)
     outbox = tmp_path / "artifacts" / "notifications" / "dry_run.sqlite3"
 
     with pytest.raises(ValueError, match="must use MWh"):

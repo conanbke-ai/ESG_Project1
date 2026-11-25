@@ -3,17 +3,17 @@ from __future__ import annotations
 from datetime import date
 import json
 
-from solar_forecast.artifacts.manifest import write_manifest
-from solar_forecast.cli import build_parser, main
-from solar_forecast.collectors import CollectionConfig, CollectionService
-from solar_forecast.jobs.contracts import (
-    COLLECTION_MANIFEST_CONTRACT,
-    JOB_CONTRACT_SCHEMA_VERSION,
-    MODEL_READY_MANIFEST_CONTRACT,
-    TRAINING_RUN_MANIFEST_CONTRACT,
-    job_contract_catalog,
-    list_job_contracts,
-)
+from solar_forecast.infrastructure.artifact_store import write_manifest
+from solar_forecast.cli import build_parser
+from solar_forecast.cli import main
+from solar_forecast.collectors import CollectionConfig
+from solar_forecast.collectors import CollectionService
+from solar_forecast.jobs.contracts import COLLECTION_MANIFEST_CONTRACT
+from solar_forecast.jobs.contracts import JOB_CONTRACT_SCHEMA_VERSION
+from solar_forecast.jobs.contracts import MODEL_READY_MANIFEST_CONTRACT
+from solar_forecast.jobs.contracts import TRAINING_RUN_MANIFEST_CONTRACT
+from solar_forecast.jobs.contracts import job_contract_catalog
+from solar_forecast.jobs.contracts import list_job_contracts
 
 
 def test_job_contract_catalog_documents_modular_monolith_decision() -> None:
@@ -46,7 +46,7 @@ def test_jobs_cli_lists_boundaries() -> None:
 
     args = parser.parse_args(["jobs", "--json"])
     assert args.json is True
-    assert args.func.__name__ == "_run_jobs"
+    assert args.func.__name__ == "handle_jobs_command"
 
 
 def test_training_manifest_includes_versioned_contract(tmp_path) -> None:

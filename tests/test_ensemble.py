@@ -1,12 +1,13 @@
 import numpy as np
 import pandas as pd
 
-from solar_forecast.ensemble.dynamic_gate import (
-    fit_dynamic_gate, fit_region_blend, normalize_prediction_columns,
-    predict_dynamic_hybrid, predict_region_blend,
-)
-from solar_forecast.ensemble.metrics import aggregate_metrics
-from solar_forecast.models.xgboost import XGBoostTrainer
+from solar_forecast.models.hybrid.dynamic_gate import fit_dynamic_gate
+from solar_forecast.models.hybrid.dynamic_gate import fit_region_blend
+from solar_forecast.models.hybrid.dynamic_gate import normalize_prediction_columns
+from solar_forecast.models.hybrid.dynamic_gate import predict_dynamic_hybrid
+from solar_forecast.models.hybrid.dynamic_gate import predict_region_blend
+from solar_forecast.evaluation.regression_metrics import aggregate_metrics
+from solar_forecast.models.xgboost.trainer import XGBoostTrainer
 
 
 def _predictions():
