@@ -6,7 +6,7 @@ from solar_forecast.infrastructure.project_paths import BRONZE_ROOT, COLLECTOR_S
 import argparse
 from solar_forecast.jobs.contracts import list_job_contracts
 from solar_forecast.cli.arguments import add_sequence_arguments
-from solar_forecast.cli.dataset_commands import handle_audit_candidate_data_command
+from solar_forecast.cli.dataset_commands import handle_audit_candidate_data_command, handle_audit_gold_command
 from solar_forecast.cli.dashboard_commands import handle_build_dashboard_command
 from solar_forecast.cli.collection_commands import handle_collect_command
 from solar_forecast.cli.training_commands import (
@@ -14,7 +14,7 @@ from solar_forecast.cli.training_commands import (
     handle_evaluate_features_command,
     handle_hybrid_command,
 )
-from solar_forecast.cli.job_commands import handle_job_contract_command, handle_jobs_command
+from solar_forecast.cli.job_commands import handle_job_contract_command, handle_jobs_command, handle_storage_layout_command
 from solar_forecast.cli.notification_commands import handle_notify_anomalies_command
 from solar_forecast.cli.training_commands import handle_pipeline_command
 from solar_forecast.cli.dashboard_commands import handle_prepare_boundaries_command
@@ -217,6 +217,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print the full job contract catalog as JSON",
     )
     jobs.set_defaults(func=handle_jobs_command)
+
+    storage_layout = commands.add_parser(
+        "storage-layout",
+        help="Describe existing Bronze/Silver/Gold/artifact ownership without changing files",
+    )
+    storage_layout.add_argument("--json", action="store_true", help="Print the versioned ownership catalog")
+    storage_layout.add_argument("--path", help="Classify one project-contained path; no records are read")
+    storage_layout.set_defaults(func=handle_storage_layout_command)
+
+    audit_gold = commands.add_parser(
+        "audit-gold", help="Read-only Gold/manifest/schema/checkpoint metadata verification; no training",
+    )
+    audit_gold.add_argument("--manifest", default=str(SILVER_ROOT / "model_ready_manifest.json"))
+    audit_gold.add_argument("--config", action="append", help="Model JSON; repeatable, defaults to both base model configs")
+    audit_gold.add_argument("--json", action="store_true", help="Print full audit evidence instead of a short summary")
+    audit_gold.add_argument("--batch-rows", type=int, default=5000, help="Temporary key-index insert batch size; never a sampling cap")
+    audit_gold.set_defaults(func=handle_audit_gold_command)
 
     job_contract = commands.add_parser(
         "job-contract",

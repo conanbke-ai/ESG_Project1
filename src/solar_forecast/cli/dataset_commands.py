@@ -5,6 +5,43 @@ import argparse
 from pathlib import Path
 
 
+def handle_audit_gold_command(args: argparse.Namespace) -> None:
+    """Inspect existing artifacts; neither prepare-data nor a trainer is called."""
+    import json
+    import csv
+    import sqlite3
+    from solar_forecast.config_loader import PROJECT_ROOT, load_model_config
+    from solar_forecast.datasets.gold_audit import audit_gold_dataset
+    from solar_forecast.models.shared.checkpoint_audit import audit_training_compatibility
+
+    try:
+        report = audit_gold_dataset(Path(args.manifest), project_root=PROJECT_ROOT,
+                                    batch_rows=args.batch_rows)
+        configs = args.config or ["config/models/cnn_bilstm.json", "config/models/xgboost.json"]
+        report["training_compatibility"] = [
+            audit_training_compatibility(load_model_config(Path(path)), report)
+            for path in configs
+        ]
+        if any(item["schema_status"] == "FAIL" for item in report["training_compatibility"]):
+            report["status"] = "FAIL"
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+        else:
+            print(f"Gold/manifest consistency: {report['status']}")
+            print(f"Rows: {report['dataset']['rows']}; plants: {report['plants']}; partitions: {len(report['partitions'])}")
+            print(f"Key/field differences: {report['comparison']}")
+            for item in report["training_compatibility"]:
+                print(f"{item['model']}: schema={item['schema_status']}; checkpoint={item['checkpoint_status']}; "
+                      f"legacy_contracts={item['unsupported_checkpoint_contract_count']}")
+            if report["issues"]:
+                print(json.dumps(report["issues"], ensure_ascii=False))
+            print("No training or resume executed. Matching metadata still requires the trainer's stage signature.")
+    except (ValueError, OSError, KeyError, csv.Error, sqlite3.Error) as exc:
+        raise SystemExit(f"audit-gold: {exc}") from exc
+    if report["status"] != "PASS":
+        raise SystemExit(2)
+
+
 def handle_prepare_data_command(args: argparse.Namespace) -> None:
     from solar_forecast.collectors import KrcYeongamCandidateIntakeService
     from solar_forecast.preprocessing.preparation_service import DataPreparationService

@@ -103,7 +103,7 @@ class DatasetRepository:
 
         source = Path(data_path)
         load_policy = policy or DatasetLoadPolicy()
-        files = self._training_files(source)
+        files = self.training_files(source)
         requested = list(dict.fromkeys(columns))
         filter_columns = list((equals_filters or {}).keys())
         filter_columns.extend((allowed_values_filters or {}).keys())
@@ -198,7 +198,8 @@ class DatasetRepository:
         return source, frame, report
 
     @staticmethod
-    def _training_files(source: Path) -> list[Path]:
+    def training_files(source: Path) -> list[Path]:
+        """Return the ordered CSV inventory used by the training reader."""
         if source.is_file():
             if _data_extension(source) not in {".csv", ".csv.gz"}:
                 raise ValueError("Chunked training loading currently supports CSV and CSV.GZ")
@@ -212,6 +213,9 @@ class DatasetRepository:
             if files:
                 return files
         raise FileNotFoundError(f"Training dataset or partition directory does not exist: {source}")
+
+    # Compatibility for callers on older experiment and diagnostic paths.
+    _training_files = training_files
 
 
 def load_dataset(data_path: Optional[Path], input_dir: Path) -> tuple[Path, pd.DataFrame]:

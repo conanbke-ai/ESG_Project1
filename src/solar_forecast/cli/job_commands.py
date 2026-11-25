@@ -32,3 +32,22 @@ def handle_job_contract_command(args: argparse.Namespace) -> None:
     except KeyError as exc:
         raise SystemExit(str(exc)) from exc
     print(json.dumps(contract.as_dict(), ensure_ascii=False, indent=2))
+
+
+def handle_storage_layout_command(args: argparse.Namespace) -> None:
+    """Print existing storage ownership without invoking any mutating job."""
+
+    from solar_forecast.jobs.storage_layout import build_storage_layout_catalog
+
+    try:
+        catalog = build_storage_layout_catalog(PROJECT_ROOT, args.path)
+    except ValueError as exc:
+        raise SystemExit(f"storage-layout: {exc}") from exc
+    if args.json:
+        print(json.dumps(catalog, ensure_ascii=False, indent=2))
+        return
+    print("Declared storage ownership (read-only; no integrity/admission verification)")
+    for location in catalog["locations"]:
+        print(f"- {location['layer']}: {location['path']} [{location['owner']}]")
+    if catalog["query"] is not None:
+        print(json.dumps(catalog["query"], ensure_ascii=False, indent=2))

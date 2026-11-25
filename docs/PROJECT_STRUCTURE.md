@@ -1,5 +1,29 @@
 # 디렉터리·파일·함수 생성 규칙
 
+## 저장 위치와 Gold 검증
+
+`python app.py storage-layout`은 기존 JobContract의 입출력과 저장 위치별 책임을 조회한다.
+`--path file/standardized/model_ready_parts`를 지정하면 Gold 파티션의 책임을 확인할 수 있다.
+`python app.py audit-gold`는 기존 압축본과 파티션을 스트리밍하면서 manifest의 행 수, 열 순서,
+발전소·시각 키, 품질 적격 집계와 전체 필드를 대조한다. `--json`은 상세 결과를 제공한다.
+비교용 SQLite 인덱스는 임시 경로에 저장된다. 감사 명령은 원본과 manifest를 그대로 둔다.
+
+기본 XGBoost·CNN 설정에 필요한 컬럼과 기존 학습 fingerprint도 검사한다.
+fingerprint가 맞는 sidecar가 있어도 실제 재개에는 stage 서명과 payload 검증이 필요하다.
+기존 manifest에 생성 당시 콘텐츠 해시가 없다면 감사는 현재 파일 간 일치만 검증한다.
+
+## 구조 검사 기준선
+
+`python tools/check_structure.py`는 기존과 같이 위반이 하나라도 있으면 실패한다.
+레거시 체크아웃의 점진 정리에는 그 체크아웃의 검사기로 확인한 진단을
+`{"contract": "solar-structure-baseline.v1", "findings": [...]}`에 기록하고
+`python tools/check_structure.py --baseline <baseline.json>`으로 비교한다.
+동일한 건수라도 항목이 달라지거나 같은 위반이 늘면 실패한다. 해결한 항목은 기준선에서 함께
+제거한다. GitHub의 기존 엄격 검사는 그대로 유지한다.
+
+두 기능은 기존 경로 및 fingerprint 알고리즘을 재사용한다. 데이터 이전과 새로운 저장소·학습
+파이프라인 도입은 기존 파일과 실행 계약을 먼저 검증해야 하므로 이 변경 범위에서 제외했다.
+
 제품은 하나의 Python 패키지와 정적 대시보드로 유지한다. 모델 이름, 파일 역할, 실행 결과 위치를 구분하고 새 구현은 아래 소유 영역에 둔다. 모든 Python 파일의 실제 클래스·메서드·내부 함수는 [코드 색인](CODE_INDEX.md)에서 찾을 수 있다.
 
 ## 프로젝트 루트에서 찾는 법

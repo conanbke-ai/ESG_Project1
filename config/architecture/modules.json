@@ -1,6 +1,18 @@
 {
   "contract": "solar-code-layout.v1",
   "modules": {
+    "jobs/storage_layout.py": {
+      "purpose": "기존 물리 경로와 JobContract를 이동·데이터 읽기 없이 Bronze/Silver/Gold/산출물/보고 소유권으로 투영",
+      "kind": "implementation"
+    },
+    "datasets/gold_audit.py": {
+      "purpose": "기존 Gold와 manifest의 전체 행·키·열 순서를 메모리 한도 내 읽기 전용 대조하며 원본을 변경하지 않음",
+      "kind": "implementation"
+    },
+    "models/shared/checkpoint_audit.py": {
+      "purpose": "기존 fingerprint를 변경하지 않고 Gold 입력 스키마와 체크포인트 메타데이터의 재개 경계를 읽기 전용 검증",
+      "kind": "implementation"
+    },
     "__init__.py": {
       "purpose": "__init__ 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작",
       "kind": "package"

@@ -1,7 +1,9 @@
 """Check module ownership, naming, imports, generated assets, and source/artifact separation."""
 from __future__ import annotations
 
+import argparse
 import ast
+from collections import Counter
 import json
 from pathlib import Path
 import re
@@ -129,8 +131,40 @@ def check_structure(project_root: Path = PROJECT_ROOT) -> list[str]:
     return errors
 
 
+def compare_structure_baseline(findings: list[str], baseline_path: Path) -> tuple[list[str], list[str]]:
+    """Compare full diagnostic identities and multiplicities without masking findings."""
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    if not isinstance(baseline, dict) or baseline.get("contract") != "solar-structure-baseline.v1":
+        raise ValueError("Unsupported structure baseline contract")
+    recorded = baseline.get("findings")
+    if not isinstance(recorded, list) or any(
+        not isinstance(item, str) or not item.strip() or "\n" in item or "\r" in item
+        for item in recorded
+    ):
+        raise ValueError("Structure baseline findings must be nonempty single-line strings")
+    current, previous = Counter(findings), Counter(recorded)
+    return sorted((current - previous).elements()), sorted((previous - current).elements())
+
+
 def main() -> None:
-    errors = check_structure()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--project-root", type=Path, default=PROJECT_ROOT,
+                        help="Project checkout to inspect (defaults to this checkout)")
+    parser.add_argument("--baseline", type=Path,
+                        help="Fail for new findings or entries that should be retired; default is strict zero findings")
+    args = parser.parse_args()
+    errors = check_structure(args.project_root.resolve())
+    if args.baseline is not None:
+        try:
+            new, retired = compare_structure_baseline(errors, args.baseline)
+        except (ValueError, OSError) as exc:
+            raise SystemExit(f"Invalid structure baseline: {exc}") from exc
+        if new or retired:
+            lines = [*(f"New finding: {item}" for item in new),
+                     *(f"Remove resolved baseline entry: {item}" for item in retired)]
+            raise SystemExit("\n".join(lines))
+        print(f"Structure baseline matched: {len(errors)} existing findings, 0 new")
+        return
     if errors:
         raise SystemExit("\n".join(errors))
     print("Structure verified: module purposes, naming, imports, artifact boundaries, and generated files")

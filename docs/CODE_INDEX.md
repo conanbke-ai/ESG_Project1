@@ -3,6 +3,34 @@
 `python tools/update_code_index.py`로 재생성합니다. 파일 역할은 `config/architecture/modules.json`에서 관리합니다.
 클래스·메서드·내부 함수까지 실제 AST에서 추출합니다. 함수 이름 뒤 괄호는 입력 인자이며, 설명이 있는 항목은 함수 docstring을 함께 표시합니다.
 
+## [jobs/storage_layout.py](../src/solar_forecast/jobs/storage_layout.py)
+
+기존 물리 경로와 JobContract를 이동·데이터 읽기 없이 Bronze/Silver/Gold/산출물/보고 소유권으로 투영
+
+- `StorageLayer` — Logical roles; they do not rename existing physical directories.
+- `StorageLocation` — One declared path owner; file roots match exactly, directories by ancestry.
+- `StorageLocation.as_dict(self)`
+- `_location(storage_id: str, path: Path | str, kind: str, layer: StorageLayer, owner: str, policy: str)`
+- `list_storage_locations()` — Return existing default paths without discovering files or loading records.
+- `_find_location(relative_path: Path, locations: tuple[StorageLocation, ...])`
+- `classify_storage_path(project_root: Path, requested_path: str | Path)` — Describe one contained path, resolving symlinks but never reading its content.
+- `build_storage_layout_catalog(project_root: Path, requested_path: str | Path | None=None)` — Build a read-only CLI projection, reusing versioned JobContract definitions.
+
+## [datasets/gold_audit.py](../src/solar_forecast/datasets/gold_audit.py)
+
+기존 Gold와 manifest의 전체 행·키·열 순서를 메모리 한도 내 읽기 전용 대조하며 원본을 변경하지 않음
+
+- `_resolve(root: Path, value: str)`
+- `_scan_file(path, representation, db, features, batch_rows)` — Hash every CSV field, with no numeric rounding, filling or row sampling.
+- `_scan_file.flush()`
+- `audit_gold_dataset(manifest_path: Path, *, project_root: Path, batch_rows: int=5000)` — Compare declared inventory, bytes, rows, schema, unique keys and all fields.
+
+## [models/shared/checkpoint_audit.py](../src/solar_forecast/models/shared/checkpoint_audit.py)
+
+기존 fingerprint를 변경하지 않고 Gold 입력 스키마와 체크포인트 메타데이터의 재개 경계를 읽기 전용 검증
+
+- `audit_training_compatibility(config: ModelJobConfig, gold: dict, *, project_root: Path=PROJECT_ROOT)` — Use the unchanged training fingerprint algorithm and saved sidecars.
+
 ## [__init__.py](../src/solar_forecast/__init__.py)
 
 __init__ 패키지의 공개 import 경계; 실행은 명시적 명령에서 시작
@@ -74,6 +102,7 @@ collect 인자를 수집 설정으로 바꾸고 공급자 수집 실행
 
 prepare-data와 후보 데이터 심사 명령 처리
 
+- `handle_audit_gold_command(args: argparse.Namespace)` — Inspect existing artifacts; neither prepare-data nor a trainer is called.
 - `handle_prepare_data_command(args: argparse.Namespace)`
 - `handle_audit_candidate_data_command(args: argparse.Namespace)`
 - `handle_training_data_eligibility_command(args: argparse.Namespace)` — Audit Gold plant-period continuity/split sufficiency without training.
@@ -85,6 +114,7 @@ prepare-data와 후보 데이터 심사 명령 처리
 - `handle_status_command(_: argparse.Namespace)`
 - `handle_jobs_command(args: argparse.Namespace)`
 - `handle_job_contract_command(args: argparse.Namespace)`
+- `handle_storage_layout_command(args: argparse.Namespace)` — Print existing storage ownership without invoking any mutating job.
 
 ## [cli/notification_commands.py](../src/solar_forecast/cli/notification_commands.py)
 
@@ -462,7 +492,7 @@ CSV·압축 CSV·파티션 학습 자료 탐색과 메모리 제한 분할 로�
 - `DatasetRepository.__init__(self, input_dir: Path)`
 - `DatasetRepository.load(self, data_path: Optional[Path]=None)`
 - `DatasetRepository.load_training_frame(self, data_path: Path, *, columns: Sequence[str], numeric_columns: Sequence[str], equals_filters: dict[str, object] | None=None, allowed_values_filters: dict[str, Sequence[object]] | None=None, truthy_filter: str | None=None, row_limit: int | None=None, policy: DatasetLoadPolicy | None=None)` — Read only model columns and push row filters into bounded CSV chunks.
-- `DatasetRepository._training_files(source: Path)`
+- `DatasetRepository.training_files(source: Path)` — Return the ordered CSV inventory used by the training reader.
 - `load_dataset(data_path: Optional[Path], input_dir: Path)` — Compatibility facade around DatasetRepository.
 
 ## [evaluation/__init__.py](../src/solar_forecast/evaluation/__init__.py)
@@ -1507,7 +1537,7 @@ Build the browser bundle from named view sources, without a Node dependency.
 
 Check module ownership, naming, imports, generated assets, and source/artifact separation.
 
-`is_generated_python_cache_tree`, `module_exports`, `check_structure`, `main`
+`is_generated_python_cache_tree`, `module_exports`, `check_structure`, `compare_structure_baseline`, `main`
 
 ### [tools/collect_future_weather_previous_runs.py](../tools/collect_future_weather_previous_runs.py)
 
@@ -1701,6 +1731,12 @@ Future-weather contracts keep fixed lead time and plant-coordinate provenance.
 
 `_quality_frame`, `test_quality_policy_flags_negative_without_turning_it_into_zero`, `test_quality_profiler_reports_risk_without_claiming_failure`, `test_quality_audit_distinguishes_pipeline_flatline_from_official_raw`, `_single_bucket_solar`, `test_quality_policy_excludes_daily_total_placed_in_one_night_bucket`, `test_quality_policy_does_not_flag_single_daylight_bucket_as_daily_aggregate`, `test_daily_aggregate_gate_does_not_cross_energy_sources_with_same_plant_id`, `test_quality_policy_requires_enough_consistent_active_days_for_aggregate_gate`, `test_quality_manifest_records_daily_aggregate_hard_gate`
 
+### [tests/test_gold_audit.py](../tests/test_gold_audit.py)
+
+Read-only Gold boundary tests; synthetic CSV and metadata, never model fitting.
+
+`_write`, `gold`, `_audit`, `_update_manifest`, `_codes`, `test_all_fields_keys_order_independent_and_original_bytes_untouched`, `test_same_keys_same_rows_but_changed_feature_detected`, `test_duplicate_across_insert_batches_is_not_hidden`, `test_manifest_claims_checked_against_actual`, `test_partition_row_byte_and_label_claims_checked`, `test_unlisted_partition_cannot_silently_enter_training`, `test_declared_energy_population_is_checked_from_actual_keys`, `test_negative_target_cannot_be_marked_training_eligible`, `test_nonfinite_features_are_reported_without_rewriting_frozen_missing_policy`, `test_column_reordering_is_detected`, `test_invalid_aware_and_nonhourly_timestamps_rejected_without_conversion`, `test_bad_column_count_fails_clearly`, `test_partition_path_escape_rejected_before_read`, `test_external_path_rejected_before_filesystem_resolution`, `test_external_path_rejected_before_filesystem_resolution.guarded`, `_config`, `test_no_checkpoint_is_not_a_false_resume_pass`, `test_relative_path_spelling_is_not_rewritten_in_existing_fingerprint`, `test_metadata_matches_but_never_claims_stage_or_payload_resume`, `test_config_missing_feature_and_wrong_data_rejected`, `test_cli_parser_dispatches_audit_without_running_a_job`, `test_actual_cli_handler_reports_without_training`, `test_cli_handler_fails_nonzero_on_real_data_difference`
+
 ### [tests/test_history_features.py](../tests/test_history_features.py)
 
 자동 검증 파일.
@@ -1809,11 +1845,23 @@ Safety and fixture-contract checks independent of ML dependencies.
 
 `_official_boundaries`, `test_official_sgis_boundaries_have_complete_unique_regions_and_island_owners`, `test_boundary_validation_rejects_duplicate_region_ids`, `test_prepare_boundaries_cli_requires_auditable_source_digests`, `test_sgis_source_bundle_verifies_archive_and_every_sidecar`
 
+### [tests/test_storage_layout.py](../tests/test_storage_layout.py)
+
+Synthetic ownership/CLI contracts: no datasets, model training or delivery.
+
+`test_declared_paths_preserve_existing_physical_roles`, `test_catalog_is_deterministic_and_has_unique_location_ids`, `test_job_input_output_references_reuse_exact_existing_contracts`, `test_gold_matching_does_not_use_unsafe_string_prefixes`, `test_unknown_path_is_not_promoted_to_gold`, `test_declared_file_cannot_be_interpreted_as_a_directory`, `test_escape_and_remote_paths_are_rejected`, `test_absolute_contained_path_is_reported_without_host_prefix`, `test_lexically_external_path_is_rejected_before_candidate_resolution`, `test_lexically_external_path_is_rejected_before_candidate_resolution.resolve`, `test_symlink_cannot_claim_ownership_of_an_external_file`, `test_resolved_internal_alias_cannot_escape_even_without_symlink_privilege`, `test_resolved_internal_alias_cannot_escape_even_without_symlink_privilege.resolve`, `test_describing_layout_never_enumerates_or_opens_artifacts`, `test_describing_layout_never_enumerates_or_opens_artifacts.forbidden`, `test_cli_routes_to_read_only_catalog_without_creating_files`, `test_cli_text_output_labels_scope_and_unknown_query`, `test_cli_rejects_escape_without_creating_output`, `test_real_cli_catalog_does_not_import_training_frameworks`, `test_layout_module_preserves_dependency_direction_and_no_eager_model_imports`
+
 ### [tests/test_structure_checker.py](../tests/test_structure_checker.py)
 
 Structure-policy checks for generated caches and real model source folders.
 
 `StructureCheckerTests`, `StructureCheckerTests._errors_for_model_folder`, `StructureCheckerTests.test_generated_bytecode_only_does_not_create_a_model_folder`, `StructureCheckerTests.test_generated_bytecode_only_does_not_create_a_model_folder.populate`, `StructureCheckerTests.test_legacy_python_source_still_requires_a_model_contract`, `StructureCheckerTests.test_legacy_python_source_still_requires_a_model_contract.populate`, `StructureCheckerTests.test_arbitrary_noncache_file_is_not_ignored`, `StructureCheckerTests.test_arbitrary_noncache_file_is_not_ignored.populate`
+
+### [tests/test_structure_ratchet.py](../tests/test_structure_ratchet.py)
+
+Exercise the exact diagnostic ratchet independently of existing debt.
+
+`_run`, `_baseline`, `checkout`, `test_strict_still_fails_and_unchanged_baseline_is_accepted`, `test_same_total_cannot_hide_new_violation`, `test_resolved_debt_must_be_removed_and_cannot_return`, `test_wrong_baseline_contract_fails_closed`
 
 ### [tests/test_temporal_split.py](../tests/test_temporal_split.py)
 
