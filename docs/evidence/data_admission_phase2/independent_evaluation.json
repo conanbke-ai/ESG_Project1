@@ -1,0 +1,306 @@
+{
+  "contract": "solar-independent-evaluation-readiness.v1",
+  "status": "blocked_no_admitted_2026_targets",
+  "development_evaluation": {
+    "run_id": "20260922_132607_286733",
+    "manifest_sha256": "b7021a0502819704e5b3ddca8427bf563b2d04abd6f885d607e71f405903698b",
+    "experiment_sha256": "e17e9bf14f9c42ea9862e5e5017bde71cf4a41df168a627d7d530ab807aa9f48",
+    "dataset_fingerprint": "9386c841d06ca1427be54e77d7277c9c15b72820d762e3e72a2fa3f380093211",
+    "source_code_revision": "187f9322c7467908c45e30df526d88149c7cf5c3",
+    "horizons": [
+      {
+        "horizon_hours": 1,
+        "status": "historical_development_evaluation_not_unseen_confirmation",
+        "period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00",
+          "forecast_origin_start": "2025-01-07T23:00:00",
+          "forecast_origin_end": "2025-12-31T22:00:00",
+          "rows": 105336,
+          "unique_timestamps": 8592,
+          "plants": 19
+        },
+        "information_set": "observed_measurements_through_forecast_origin",
+        "observation_availability_assumption": "hourly_measurement_available_at_timestamp; publication_latency_not_simulated",
+        "pooled_saved_metrics_verified": {
+          "xgboost": {
+            "n_samples": 105336,
+            "mae": 0.2191690309815072,
+            "rmse": 1.4544743402670102,
+            "r2": 0.9047649997622105
+          },
+          "cnn_bilstm": {
+            "n_samples": 105336,
+            "mae": 0.2537745725111875,
+            "rmse": 1.548287860844859,
+            "r2": 0.8920834936889683
+          },
+          "hybrid": {
+            "n_samples": 105336,
+            "mae": 0.21358928038220437,
+            "rmse": 1.3829591413511495,
+            "r2": 0.9138999986651559
+          },
+          "persistence": {
+            "n_samples": 105336,
+            "mae": 0.2786130934848355,
+            "rmse": 1.5781242946026721,
+            "r2": 0.8878841869170481
+          }
+        },
+        "selection_sha256": "67896e0eda4ab0d9fdcf58006099397dbda213e3410c070d74035387543fd3ca",
+        "test_predictions_sha256": "a46a73356e0275829149b5e4fdbe4341dbec403fd9c05c661f3f51adff105bd3",
+        "gate_profiles_integrity": {
+          "status": "crlf_reconstruction_matches",
+          "checkout_sha256": "0f123928c9e55476a0a203bcbf0d1ae1c647b3b1635dec80d38c34f847cefad8",
+          "recorded_sha256": "617949d7b3abcba391496286f8372153374f0ad6e95e63cf1f79a04847b9dce7"
+        }
+      },
+      {
+        "horizon_hours": 24,
+        "status": "historical_development_evaluation_not_unseen_confirmation",
+        "period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00",
+          "forecast_origin_start": "2025-01-07T00:00:00",
+          "forecast_origin_end": "2025-12-30T23:00:00",
+          "rows": 105336,
+          "unique_timestamps": 8592,
+          "plants": 19
+        },
+        "information_set": "observed_measurements_through_forecast_origin",
+        "observation_availability_assumption": "hourly_measurement_available_at_timestamp; publication_latency_not_simulated",
+        "pooled_saved_metrics_verified": {
+          "xgboost": {
+            "n_samples": 105336,
+            "mae": 0.35861035902985744,
+            "rmse": 2.14974515738022,
+            "r2": 0.79195445610759
+          },
+          "cnn_bilstm": {
+            "n_samples": 105336,
+            "mae": 0.3646217796014908,
+            "rmse": 2.0307382123579814,
+            "r2": 0.8143511165852997
+          },
+          "hybrid": {
+            "n_samples": 105336,
+            "mae": 0.36828490948239384,
+            "rmse": 2.129229286263747,
+            "r2": 0.7959064304310526
+          },
+          "persistence": {
+            "n_samples": 105336,
+            "mae": 0.347421441048161,
+            "rmse": 2.468376462999498,
+            "r2": 0.7257117190335229
+          }
+        },
+        "selection_sha256": "290129c63e45de56331183bdba7ec2af411f4b46c8cd760bfa2d068e227e5779",
+        "test_predictions_sha256": "89e02aded01aa4b494d8d14518fb548b1d9c1f4879a2bfcc63824521513417ff",
+        "gate_profiles_integrity": {
+          "status": "crlf_reconstruction_matches",
+          "checkout_sha256": "1d36077cf78b58affb17c53ba83b8338a49bdac16f5233cd352d2ecf2a389a1a",
+          "recorded_sha256": "eca376097037de450a994af676b40af7716bd6c28eec676d6f68c59988e65a28"
+        }
+      },
+      {
+        "horizon_hours": 72,
+        "status": "historical_development_evaluation_not_unseen_confirmation",
+        "period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00",
+          "forecast_origin_start": "2025-01-05T00:00:00",
+          "forecast_origin_end": "2025-12-28T23:00:00",
+          "rows": 105336,
+          "unique_timestamps": 8592,
+          "plants": 19
+        },
+        "information_set": "observed_measurements_through_forecast_origin",
+        "observation_availability_assumption": "hourly_measurement_available_at_timestamp; publication_latency_not_simulated",
+        "pooled_saved_metrics_verified": {
+          "xgboost": {
+            "n_samples": 105336,
+            "mae": 0.3808480974440246,
+            "rmse": 2.198695261633428,
+            "r2": 0.7823721154882708
+          },
+          "cnn_bilstm": {
+            "n_samples": 105336,
+            "mae": 0.5914433665800538,
+            "rmse": 2.578504150176747,
+            "r2": 0.7006907566809703
+          },
+          "hybrid": {
+            "n_samples": 105336,
+            "mae": 0.4628090665087811,
+            "rmse": 2.192109668405503,
+            "r2": 0.7836738532543879
+          },
+          "persistence": {
+            "n_samples": 105336,
+            "mae": 0.3826765581144821,
+            "rmse": 2.6567148018534836,
+            "r2": 0.6822582154541511
+          }
+        },
+        "selection_sha256": "1c2d22b758fbda6aa6e2dcb70d4b351084c4b0e6aaada66f0e95216d02946bd6",
+        "test_predictions_sha256": "5ca7c02ca01bb6d50ff80ae948e2ff631aa79f29971b66bc7e18bed8ef948e02",
+        "gate_profiles_integrity": {
+          "status": "crlf_reconstruction_matches",
+          "checkout_sha256": "433390497e5474101b069896921ba5f8dc484d33317fbbba8d839f2a29af515e",
+          "recorded_sha256": "4649b25cacd4bb31115d096cbd044d283cb636874630a6da03fad6eb83f8e941"
+        }
+      }
+    ]
+  },
+  "holdout": {
+    "candidate_data_version": "gold-2026-phase2-v1",
+    "candidate_manifest_sha256": "923d0da76b57684334ca50b5027e9fb173c104c3fe6b4e50c96f2412bed9a80f",
+    "p1_status": "blocked",
+    "p1_admitted_rows": 0,
+    "p1_eligible_period_count": 0,
+    "exposure_review": null,
+    "verified_candidate_periods": [],
+    "candidate_target_rows": 0,
+    "prediction_cohort_rows": null
+  },
+  "comparison_protocol": {
+    "experiment_config_sha256": "88fecb21c96a6a99dff421d98a8d061a5c9eb32ea4c97f0527702b8a4c3498b1",
+    "frozen_legacy_split": {
+      "train_end": "2024-06-30T23:00:00",
+      "validation_end": "2024-09-30T23:00:00",
+      "calibration_end": "2024-12-31T23:00:00",
+      "test_end": "2025-12-31T23:00:00",
+      "purge_gap_hours": 168
+    },
+    "hybrid_selection_purge_hours": 168,
+    "roles": {
+      "train": "fit_weights_and_preprocessing_scalers_only",
+      "validation": "choose_base_models_and_hyperparameters",
+      "calibration": "fit_hybrid_early_then_select_late_after_purge",
+      "test": "score_frozen_models_once_without_selection"
+    },
+    "preprocessing": {
+      "cnn_bilstm": "reuse_saved_train_only_imputation_scaler_and_feature_order",
+      "xgboost": "reuse_saved_feature_order_and_native_missing_value_policy",
+      "refit_on_holdout": false,
+      "scoring_units": "convert_each_prediction_back_to_MWh_before_alignment"
+    },
+    "target": "one_hour_generation_mwh_at_target_timestamp",
+    "metrics": [
+      "mae_mwh",
+      "rmse_mwh",
+      "r2"
+    ],
+    "metric_scopes": [
+      "pooled_plant_hour",
+      "per_plant",
+      "regional_hourly_sum",
+      "cohort_hourly_sum"
+    ],
+    "base_families_share_information_cutoffs": true,
+    "frozen_origin_policy": {
+      "persistence": "measured_generation_at_exact_target_minus_horizon",
+      "cnn_window_end": "includes_observation_at_exact_forecast_origin",
+      "if_origin_measurement_arrives_late": "exclude_key_from_all_four_families",
+      "reason": "interval-start timestamp does not establish publication by the origin",
+      "switch_to_latest_available_requires_new_input_contract": true
+    },
+    "required_preflight": [
+      "freeze_and_hash_training_artifacts_feature_order_and_calibration_gate",
+      "freeze_prediction_keys_and_same_plant_hour_truth_before_opening_labels",
+      "require_every_input_observation_available_by_origin",
+      "require_actual_forecast_issue_at_or_before_receive_at_or_before_origin_where_enabled",
+      "require_exact_continuous_cnn_lookback_and_available_origin_persistence",
+      "report_common_key_coverage_and_exclusions_per_plant_and_horizon",
+      "report_unseen_plants_as_separate_cold_start_cohort"
+    ],
+    "tasks": [
+      {
+        "horizon_hours": 1,
+        "models": [
+          "xgboost",
+          "cnn_bilstm",
+          "hybrid",
+          "persistence"
+        ],
+        "prediction_key": [
+          "timestamp",
+          "plant_id",
+          "forecast_origin",
+          "horizon_hours"
+        ],
+        "forecast_weather_enabled": false,
+        "forecast_weather_spec": null,
+        "common_coverage_minimum": 0.95,
+        "configured_forecast_archive_found": null,
+        "forecast_weather_coverage_minimum": null,
+        "preflight_status": "blocked_by_holdout_gate",
+        "scoring_status": "pending"
+      },
+      {
+        "horizon_hours": 24,
+        "models": [
+          "xgboost",
+          "cnn_bilstm",
+          "hybrid",
+          "persistence"
+        ],
+        "prediction_key": [
+          "timestamp",
+          "plant_id",
+          "forecast_origin",
+          "horizon_hours"
+        ],
+        "forecast_weather_enabled": true,
+        "forecast_weather_spec": {
+          "source": "file/forecast_weather/open_meteo_jma_msm_24h.csv.gz",
+          "feature_profiles": [
+            "aligned_core",
+            "aligned_core_plus_components"
+          ],
+          "source_model": "jma_msm",
+          "usable_from": "2022-07-03T00:00:00"
+        },
+        "common_coverage_minimum": 0.95,
+        "configured_forecast_archive_found": false,
+        "forecast_weather_coverage_minimum": 0.98,
+        "preflight_status": "blocked_by_holdout_gate",
+        "scoring_status": "pending"
+      },
+      {
+        "horizon_hours": 72,
+        "models": [
+          "xgboost",
+          "cnn_bilstm",
+          "hybrid",
+          "persistence"
+        ],
+        "prediction_key": [
+          "timestamp",
+          "plant_id",
+          "forecast_origin",
+          "horizon_hours"
+        ],
+        "forecast_weather_enabled": true,
+        "forecast_weather_spec": {
+          "source": "file/forecast_weather/open_meteo_jma_gsm_72h.csv.gz",
+          "feature_profiles": [
+            "aligned_meteorology_core"
+          ],
+          "source_model": "jma_gsm",
+          "usable_from": "2018-01-01T00:00:00"
+        },
+        "common_coverage_minimum": 0.95,
+        "configured_forecast_archive_found": false,
+        "forecast_weather_coverage_minimum": 0.98,
+        "preflight_status": "blocked_by_holdout_gate",
+        "scoring_status": "pending"
+      }
+    ]
+  },
+  "holdout_labels_read": false,
+  "new_training_performed": false,
+  "independent_scoring_performed": false
+}

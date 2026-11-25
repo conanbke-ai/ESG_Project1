@@ -91,7 +91,9 @@ def dataset_signature(source: Path) -> str:
     )
 
 
-def training_fingerprint(config: ModelJobConfig) -> str:
+def training_identity_payload(config: ModelJobConfig, dataset_digest: str) -> dict[str, Any]:
+    """Describe the fingerprint inputs, including a separately evidenced dataset digest."""
+
     values = json.loads(json.dumps(config.values, ensure_ascii=False, default=str))
     values.pop("resume", None)
     values.pop("checkpoint", None)
@@ -111,17 +113,19 @@ def training_fingerprint(config: ModelJobConfig) -> str:
             "max_failed_trial_retries",
         ):
             optimizer.pop(operational_key, None)
+    return {
+        "checkpoint_contract": CHECKPOINT_CONTRACT,
+        "model": config.model,
+        "profile": config.profile,
+        "model_values": values,
+        "dataset": dataset_digest,
+    }
+
+
+def training_fingerprint(config: ModelJobConfig) -> str:
     source = Path(str(config.values.get("input_dataset", "")))
     source = source if source.is_absolute() else PROJECT_ROOT / source
-    return stable_signature(
-        {
-            "checkpoint_contract": CHECKPOINT_CONTRACT,
-            "model": config.model,
-            "profile": config.profile,
-            "model_values": values,
-            "dataset": dataset_signature(source),
-        }
-    )
+    return stable_signature(training_identity_payload(config, dataset_signature(source)))
 
 
 def capture_rng_state() -> dict[str, Any]:

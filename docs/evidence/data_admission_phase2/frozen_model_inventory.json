@@ -1,0 +1,12 @@
+{
+  "contract": "solar-frozen-benchmark-reuse-inventory.v1",
+  "benchmark": "/workspace/ESG_Project1/artifacts/benchmarks/frozen_policy_regression_2025/formal_2025_comparison_gpu_io_recovery_20261101_v1",
+  "project_root": "/workspace/ESG_Project1",
+  "manifest_present": false,
+  "standard_checkpoint_root_present": false,
+  "standard_optuna_db_present": false,
+  "models": [],
+  "sqlite_studies": {},
+  "checkpoint_payloads_loaded": false,
+  "resume_executed": false
+}

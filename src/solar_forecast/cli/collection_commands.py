@@ -27,5 +27,5 @@ def handle_collect_command(args: argparse.Namespace) -> None:
     results = CollectionService(config).run()
     for result in results:
         print(f"{result.source}: {result.status} ({len(result.files)} files, {result.rows} rows) {result.message}")
-    if any(result.status in {"failed", "configuration_required", "unsupported"} for result in results):
+    if any(result.status in {"failed", "partial", "configuration_required", "unsupported"} for result in results):
         raise SystemExit(1)

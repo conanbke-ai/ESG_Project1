@@ -207,18 +207,14 @@ class KoenHomepageCollector:
         from solar_forecast.collectors.koen_browser import KoenBrowserDownloader
         from solar_forecast.collectors.generation_normalizers import KoenGenerationNormalizer
 
-        years = range(self.config.start_date.year, self.config.end_date.year + 1)
         base = self.config.output_dir / "koen"
         downloader = KoenBrowserDownloader(
             base,
             downloaded_on=self.config.download_date,
             overwrite=self.config.overwrite,
         )
-        files: list[Path] = []
-        for year in years:
-            start_month = self.config.start_date.month if year == self.config.start_date.year else 1
-            end_month = self.config.end_date.month if year == self.config.end_date.year else 12
-            files.extend(downloader.download_year(year, start_month=start_month, end_month=end_month))
+        windows = downloader.download_range(self.config.start_date, self.config.end_date)
+        files = [window.path for window in windows if window.path is not None]
         normalized_files: list[Path] = []
         normalizer = KoenGenerationNormalizer()
         for source in files:
@@ -228,9 +224,18 @@ class KoenHomepageCollector:
                 / f"{source.stem}_표준화.csv"
             )
             normalized_files.append(normalizer.write(source, destination))
+        missing_windows = len(windows) - len(files)
+        if not files:
+            status = "failed"
+        elif missing_windows:
+            status = "partial"
+        else:
+            status = "cached" if all(window.status == "cached" for window in windows) else "downloaded"
         return CollectionResult(
             self.name,
-            "downloaded",
+            status,
             [*files, *normalized_files],
             rows=sum(_csv_data_rows(path) for path in normalized_files),
+            message=f"KOEN returned CSV data for {len(files)}/{len(windows)} requested windows",
+            windows=[window.evidence() for window in windows],
         )

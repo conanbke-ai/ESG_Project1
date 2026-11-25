@@ -13,6 +13,7 @@ class CollectionResult:
     files: list[Path] = field(default_factory=list)
     rows: int = 0
     message: str = ""
+    windows: list[dict[str, object]] = field(default_factory=list)
 
 
 class Collector(Protocol):

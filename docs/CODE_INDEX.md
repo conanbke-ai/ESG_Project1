@@ -25,6 +25,57 @@
 - `_scan_file.flush()`
 - `audit_gold_dataset(manifest_path: Path, *, project_root: Path, batch_rows: int=5000)` — Compare declared inventory, bytes, rows, schema, unique keys and all fields.
 
+## [datasets/phase2_admission.py](../src/solar_forecast/datasets/phase2_admission.py)
+
+2026 발전소별 원천·시간·기상 근거를 검증하고 별도 Gold 데이터 버전의 편입 판정을 생성
+
+- `GenerationSource`
+- `retained_generation_sources()`
+- `_indexed_generation(root: Path, audit_path: Path)`
+- `_artifact(root: Path, path: Path)`
+- `_reuse_verified_gold(root: Path, manifest: Path, verification: Path)`
+- `_baseline(root: Path, manifest: Path, verification: Path)`
+- `_artifact_label(root: Path, path: Path)`
+- `_text_present(values: pd.Series)`
+- `_kst_local(values: pd.Series)`
+- `_actual_time(values: pd.Series)`
+- `_columns(path: Path, required: tuple[str, ...])`
+- `_review_evidence(root: Path, review: dict)` — Resolve retained evidence IDs against their source bytes, without remote fetching.
+- `_daily_totals(raw: pd.DataFrame)`
+- `_read_generation(root: Path, source: GenerationSource, standardizer: HistoricalGenerationStandardizationService)`
+- `_forecast_columns(profile: str)`
+- `_read_forecast(path: Path, profile: str)`
+- `_forecast(path: Path | None, expected: pd.DatetimeIndex, plant_id: str, horizon: int, feature_profile: str, minimum_coverage: float, *, archive: pd.DataFrame | None=None)`
+- `_observation_coverage(availability: pd.DataFrame, plant_id: str, expected: pd.DatetimeIndex, evidence_ids: set[str])`
+- `_plant_report(group: pd.DataFrame, plant_id: str, stations: KmaStationCatalog, mappings: ReviewedStationMappingCatalog, observed: pd.DataFrame, availability: pd.DataFrame, forecasts: dict[int, tuple[Path | None, str]], forecast_coverage: float, archives: dict[int, pd.DataFrame], review: dict, evidence_ids: set[str])`
+- `_read_gold_rows(path: Path)`
+- `_materialized_candidate(root: Path, candidate_manifest: Path | None, baseline: dict, expected: pd.DataFrame, reports: list[dict])`
+- `audit_2026_gold_candidate(root: Path, *, generation_sources: tuple[GenerationSource, ...]=(), availability_path: Path | None=None, review_path: Path | None=None, forecast_paths: dict[int, Path] | None=None, weather_csv: Path | None=None, weather_staging_manifest: Path=WEATHER_STAGING, baseline_manifest: Path=BASELINE_MANIFEST, verification: Path=BASELINE_VERIFICATION, candidate_manifest: Path | None=None, source_audit: Path | None=None)` — Read evidence and emit an admission decision, without rerunning Gold or training.
+
+## [datasets/source_completeness.py](../src/solar_forecast/datasets/source_completeness.py)
+
+보존 원본과 수집 인덱스를 대조하고 발전소·호기별 시간축, 누락, 중복, 정정 후보를 집계
+
+- `_read_source(provider: str, path: Path)`
+- `_hour_gaps(expected: pd.DatetimeIndex, actual: pd.DatetimeIndex)`
+- `_timeline(hours: pd.DataFrame, start: date, end: date, *, calendar_months: bool)`
+- `_read_indexes(raw_root: Path, extra_indexes: tuple[Path, ...])`
+- `audit_source_completeness(archive_root: Path, raw_root: Path, as_of: date, *, collection_indexes: tuple[Path, ...]=())` — Compare provider evidence without interpreting an audit gap as missing published data.
+
+## [evaluation/independent_evaluation.py](../src/solar_forecast/evaluation/independent_evaluation.py)
+
+개발 벤치마크 근거와 2026 미노출 평가 후보의 사전 조건 및 비교 계약을 검증
+
+- `_json(path: Path)`
+- `_window(record: dict)`
+- `_check_hash(path: Path, expected: str)`
+- `_saved_gate_integrity(path: Path, expected: str)`
+- `_split(config: dict)`
+- `_saved_evaluation(directory: Path, current_split: dict)`
+- `_admitted_periods(candidate: dict)`
+- `_unseen_periods(periods: list, exposure_path: Path, data_version: str, admission_digest: str, development_end: pd.Timestamp)`
+- `run_independent_evaluation_audit(*, config_path: Path, development_run: Path, admission_path: Path, exposure_path: Path | None=None, output_path: Path | None=None, project_root: Path=PROJECT_ROOT)` — Review metadata and saved development outputs without opening holdout labels or fitting anything.
+
 ## [models/shared/checkpoint_audit.py](../src/solar_forecast/models/shared/checkpoint_audit.py)
 
 기존 fingerprint를 변경하지 않고 Gold 입력 스키마와 체크포인트 메타데이터의 재개 경계를 읽기 전용 검증
@@ -292,13 +343,20 @@ ASOS 인증키를 사용하는 HTTP 요청·페이지 검증·호출 예산 관�
 
 남동발전 홈페이지 화면 조작과 공식 첨부파일 다운로드
 
+- `KoenDownloadWindow` — Outcome for one inclusive provider query in KST.
+- `KoenDownloadWindow.evidence(self)`
 - `KoenBrowserDownloader` — Selenium adapter for KOEN's monthly generation download screen.
 - `KoenBrowserDownloader.__init__(self, output_root: Path, *, downloaded_on: date | None=None, overwrite: bool=False)`
 - `KoenBrowserDownloader.download_year(self, year: int, *, start_month: int=1, end_month: int=12, max_retry: int=3)`
-- `KoenBrowserDownloader._build_driver(self)`
+- `KoenBrowserDownloader.download_range(self, start: date, end: date, *, max_retry: int=3)` — Request the exact range in calendar-month chunks and report each outcome.
+- `KoenBrowserDownloader._month_windows(start: date, end: date)`
+- `KoenBrowserDownloader._destination(self, start: date, end: date)`
+- `KoenBrowserDownloader._build_driver(self, download_dir: Path)`
 - `KoenBrowserDownloader._open(self, driver)`
-- `KoenBrowserDownloader._download_month(self, driver, year_dir: Path, year: int, month: int, max_retry: int)`
-- `KoenBrowserDownloader._wait_for_csv(self, before: set[Path], timeout: int=30)`
+- `KoenBrowserDownloader.submit_query(driver, start: date, end: date)` — Submit the date form without invoking the separate CSV download action.
+- `KoenBrowserDownloader._download_window(self, driver, download_dir, start, end, destination, max_retry)`
+- `KoenBrowserDownloader._inspect_window(start: date, end: date, path: Path, status: str)`
+- `KoenBrowserDownloader._wait_for_csv(self, download_dir: Path, before: set[Path], timeout: int=30)`
 - `KoenBrowserDownloader._move_original(self, source: Path, destination: Path)` — Move provider bytes unchanged; encoding conversion belongs to Silver.
 - `download_solar_data(base_path: str, year: int, max_retry: int=3, start_month: int=1, end_month: int=12)` — Compatibility facade for the former root-level automation function.
 
@@ -367,7 +425,7 @@ datasets 패키지의 공개 import 경계; 실행은 명시적 명령에서 시
 - `HistoricalGenerationStandardizationService` — Convert every retained generation export into partitioned common-schema data.
 - `HistoricalGenerationStandardizationService.__init__(self, input_root: Path, output_dir: Path, registry: GenerationSchemaRegistry | None=None, metadata: PlantMetadataCatalog | None=None)`
 - `HistoricalGenerationStandardizationService.run(self)`
-- `HistoricalGenerationStandardizationService._normalize(self, company: str, source: Path)`
+- `HistoricalGenerationStandardizationService.normalize_source(self, company: str, source: Path)` — Normalize a single retained export without writing Silver data.
 - `HistoricalGenerationStandardizationService._audit(company: str, source: Path, destination: Path, frame: pd.DataFrame)`
 
 ## [datasets/asos_weather_store.py](../src/solar_forecast/datasets/asos_weather_store.py)
@@ -846,6 +904,7 @@ CNN-BiLSTM 신경망 구조·층 구성·forward와 네트워크 설정
 
 CNN epoch 학습·검증 루프, Optuna 탐색과 최적 설정 재학습
 
+- `scope_cnn_readout_study(settings: OptimizationSettings, search_space: dict[str, object])` — Bind persistent trial scores to the network readout and preprocessing.
 - `_move_inputs(inputs, device: torch.device)`
 - `_forward(model: CNNBiLSTM, inputs)`
 - `train_cnn_bilstm_epoch(model: CNNBiLSTM, loader: DataLoader, criterion: nn.Module, optimizer: torch.optim.Optimizer, device: torch.device)`
@@ -960,6 +1019,7 @@ models/shared 패키지의 공개 import 경계; 실행은 명시적 명령에�
 - `stable_signature(payload: Mapping[str, Any] | list[Any] | tuple[Any, ...])`
 - `dataframe_signature(frame: pd.DataFrame, columns: list[str])` — Hash selected frame values without serializing a second tabular copy.
 - `dataset_signature(source: Path)` — Hash input bytes; directory copies/timestamps must not change identity.
+- `training_identity_payload(config: ModelJobConfig, dataset_digest: str)` — Describe the fingerprint inputs, including a separately evidenced dataset digest.
 - `training_fingerprint(config: ModelJobConfig)`
 - `capture_rng_state()`
 - `restore_rng_state(state: Mapping[str, Any] | None)`
@@ -1515,9 +1575,33 @@ preprocessing/training_admission.py로 연결하는 compatibility shim
 
 ## 개발 도구와 검증 파일
 
+### [tools/audit_2026_gold_candidate.py](../tools/audit_2026_gold_candidate.py)
+
+Audit retained 2026 plant evidence and write a separate Gold candidate manifest.
+
+`_assignment`, `main`
+
+### [tools/audit_benchmark_model_reuse.py](../tools/audit_benchmark_model_reuse.py)
+
+Compare a saved benchmark with current training contracts without fitting models.
+
+`read_json`, `artifact_path`, `stable_diff`, `tracked_blob`, `study_identity`, `historical_xgboost_stage`, `fitted_evidence`, `read_only_studies`, `historical_trial_evidence`, `current_comparisons`, `audit`, `local_evidence_path`, `inventory_frozen_run`, `main`
+
 ### [tools/audit_forecast_readiness.py](../tools/audit_forecast_readiness.py)
 
 학습 없이 실제 예측 표본·연속 입력창·Train 피처를 점검.
+
+`main`
+
+### [tools/audit_independent_evaluation.py](../tools/audit_independent_evaluation.py)
+
+Audit the 2026 holdout gate and verify the saved development comparison.
+
+`main`
+
+### [tools/audit_source_completeness.py](../tools/audit_source_completeness.py)
+
+Audit retained KOEN, EWP, and KOSPO source coverage without fetching or rewriting files.
 
 `main`
 
@@ -1550,6 +1634,12 @@ Collect leakage-safe fixed-lead weather forecasts for 24h/72h benchmarks.
 자동 검증 파일.
 
 `CandidateSpec`, `TrialStatus`, `LockStatus`, `_load_json`, `_resolve`, `_model_progress_contract`, `build_candidate_specs`, `_pid_running_posix`, `_pid_running_windows`, `pid_running`, `read_lock`, `latest_benchmark_run`, `candidate_manifest_status`, `candidate_phase_statuses`, `latest_final_fit_checkpoint`, `_connect_readonly`, `_study_rows`, `_latest_heartbeat`, `_external_trial_params`, `_trial_user_attr`, `_trial_status_for_study`, `study_status`, `summarize`, `_fmt_value`, `print_human`, `_clear_screen`, `_progress_bar`, `_compact_candidate_label`, `_parse_time`, `_duration_text`, `_gpu_status`, `_box_line`, `_section`, `_paint`, `_state_text`, `_pct`, `_state_korean`, `_progress_label`, `_feature_description`, `_compact_params`, `_metric_value`, `print_active_monitor`, `_age_seconds`, `_age_text`, `_monitor_signature`, `_same_trial_line`, `_clear_keepalive_line`, `parse_args`, `main`
+
+### [tools/probe_koen_availability.py](../tools/probe_koen_availability.py)
+
+Query the public KOEN date form and record visible results without downloading CSVs.
+
+`_window`, `_days`, `_result`, `_probe`, `_probe.read_result`, `main`
 
 ### [tools/run_local_benchmark.py](../tools/run_local_benchmark.py)
 
@@ -1622,6 +1712,12 @@ Projection integrity tests; fixture scores are not PV accuracy evidence.
 Benchmark orchestration tests use labelled fixtures, never accuracy evidence.
 
 `_predictions`, `_FixtureTrainingService`, `_FixtureTrainingService.run`, `BenchmarkJobTests`, `BenchmarkJobTests.test_base_selection_ignores_reversed_test_ranking`, `BenchmarkJobTests.test_alignment_rejects_truth_change_and_low_common_coverage`, `BenchmarkJobTests.test_alignment_accepts_float32_csv_roundtrip_equivalent_truth`, `BenchmarkJobTests.test_alignment_rejects_one_float32_step_in_truth_or_persistence`, `BenchmarkJobTests.test_alignment_still_rejects_real_float32_truth_change`, `BenchmarkJobTests.test_alignment_reports_every_dropped_row`, `BenchmarkJobTests.test_search_candidate_cohorts_must_be_identical`, `BenchmarkJobTests.test_search_candidate_cohort_cannot_be_missing`, `BenchmarkJobTests.test_legacy_experiment_schema_is_not_silently_executed`, `BenchmarkJobTests.test_gzip_partition_directory_reaches_training_but_parquet_does_not`
+
+### [tests/test_benchmark_model_reuse_audit.py](../tests/test_benchmark_model_reuse_audit.py)
+
+Ensure frozen-run inventory preserves local evidence and detects identity changes.
+
+`write_json`, `test_frozen_inventory_checks_gold_and_legacy_study_without_opening_checkpoint`, `test_archived_windows_references_require_a_contained_artifact`
 
 ### [tests/test_benchmark_model_selection.py](../tests/test_benchmark_model_selection.py)
 
@@ -1723,7 +1819,7 @@ Future-weather contracts keep fixed lead time and plant-coordinate provenance.
 
 자동 검증 파일.
 
-`test_collection_config_rejects_reverse_date_range`, `test_source_catalog_uses_the_four_given_official_homepages`, `test_download_filename_uses_canonical_korean_rule`, `test_download_filename_sanitizes_path_characters`, `test_standardized_csv_is_atomic_utf8_sig`, `test_koen_bronze_move_preserves_provider_bytes`, `test_kma_hourly_chunks_never_exceed_one_year`, `test_kma_chunks_support_leap_day`, `test_koen_rejects_invalid_month_range`, `test_koen_normalizer_converts_24_hour_columns_to_rows`, `test_koen_normalizer_converts_downloaded_kwh_unit_to_mwh`, `test_koen_normalizer_corrects_legacy_mislabeled_mwh_values`, `test_ewp_normalizer_keeps_latest_duplicate_and_builds_time_features`, `test_daily_wide_normalizer_converts_source_units`, `test_daily_wide_normalizer_keeps_static_capacity_and_global_plant_id`, `test_kospo_interval_normalizer_corrects_decisive_wh_scale_header_defect`, `test_kospo_interval_normalizer_preserves_physically_plausible_kwh_values`, `test_daily_total_reconciliation_fails_closed_on_incomplete_source_row`, `test_actual_dasong_export_reconciles_both_daily_total_unit_segments`, `test_generation_manifest_records_capacity_based_unit_resolution`, `test_iwest_renewable_standardization_retains_wind_with_energy_source`, `test_public_coordinate_columns_are_corrected_only_for_korea_range_inversion`, `_XmlResponse`, `_XmlResponse.__init__`, `_XmlResponse.raise_for_status`, `_KomipoSession`, `_KomipoSession.__init__`, `_KomipoSession.get`, `test_komipo_collector_writes_resumable_bounded_bronze_partition`, `test_komipo_collector_preflights_daily_call_budget`
+`test_collection_config_rejects_reverse_date_range`, `test_source_catalog_uses_the_four_given_official_homepages`, `test_download_filename_uses_canonical_korean_rule`, `test_download_filename_sanitizes_path_characters`, `test_standardized_csv_is_atomic_utf8_sig`, `test_koen_bronze_move_preserves_provider_bytes`, `test_kma_hourly_chunks_never_exceed_one_year`, `test_kma_chunks_support_leap_day`, `test_koen_rejects_invalid_month_range`, `test_koen_passthrough_reuses_full_month_and_requests_exact_boundary_days`, `test_koen_does_not_label_empty_or_wrong_window_csv_as_collected`, `test_koen_records_browser_failure_without_claiming_no_provider_data`, `test_koen_normalizer_converts_24_hour_columns_to_rows`, `test_koen_normalizer_converts_downloaded_kwh_unit_to_mwh`, `test_koen_normalizer_corrects_legacy_mislabeled_mwh_values`, `test_ewp_normalizer_keeps_latest_duplicate_and_builds_time_features`, `test_daily_wide_normalizer_converts_source_units`, `test_daily_wide_normalizer_keeps_static_capacity_and_global_plant_id`, `test_kospo_interval_normalizer_corrects_decisive_wh_scale_header_defect`, `test_kospo_interval_normalizer_preserves_physically_plausible_kwh_values`, `test_daily_total_reconciliation_fails_closed_on_incomplete_source_row`, `test_actual_dasong_export_reconciles_both_daily_total_unit_segments`, `test_generation_manifest_records_capacity_based_unit_resolution`, `test_iwest_renewable_standardization_retains_wind_with_energy_source`, `test_public_coordinate_columns_are_corrected_only_for_korea_range_inversion`, `_XmlResponse`, `_XmlResponse.__init__`, `_XmlResponse.raise_for_status`, `_KomipoSession`, `_KomipoSession.__init__`, `_KomipoSession.get`, `test_komipo_collector_writes_resumable_bounded_bronze_partition`, `test_komipo_collector_preflights_daily_call_budget`
 
 ### [tests/test_generation_quality.py](../tests/test_generation_quality.py)
 
@@ -1743,6 +1839,12 @@ Read-only Gold boundary tests; synthetic CSV and metadata, never model fitting.
 
 `_hourly_frame`, `test_history_features_use_only_values_available_24_hours_before_issue_time`, `test_lag_is_timestamp_based_when_an_hour_is_missing`, `test_history_engineering_rejects_duplicate_entity_timestamps`, `test_model_configs_match_the_selected_generated_columns`, `test_controlled_experiment_forbids_unavailable_subday_lags`
 
+### [tests/test_independent_evaluation.py](../tests/test_independent_evaluation.py)
+
+자동 검증 파일.
+
+`write`, `development_run`, `admission`, `audit`, `test_blocked_holdout_keeps_twelve_comparisons_and_verified_development_evidence`, `test_admitted_2026_requires_a_candidate_bound_exposure_review_and_168_hour_purge`, `test_rejects_overlapping_admission_and_modified_saved_predictions`, `test_audit_output_cannot_replace_or_extend_input_artifacts`
+
 ### [tests/test_job_contracts.py](../tests/test_job_contracts.py)
 
 자동 검증 파일.
@@ -1754,6 +1856,12 @@ Read-only Gold boundary tests; synthetic CSV and metadata, never model fitting.
 Offline ASOS boundary tests; synthetic observations never represent live coverage.
 
 `observation`, `response_bytes`, `AsosApiTests`, `AsosApiTests.setUp`, `AsosApiTests.client`, `AsosApiTests.client.transport`, `AsosApiTests.test_decoding_key_is_url_encoded_once_and_query_is_explicit`, `AsosApiTests.test_paginated_collection_reuses_complete_hash_checked_partition`, `AsosApiTests.test_partial_observation_coverage_is_queried_again`, `AsosApiTests.test_budget_failure_does_not_publish_partial_weather_or_complete_manifest`, `AsosApiTests.test_cache_tampering_is_rejected_without_network_or_csv_changes`, `AsosApiTests.test_no_data_does_not_create_complete_manifest`, `AsosApiTests.test_wrong_station_duplicate_timestamp_and_changing_total_are_rejected`, `AsosApiTests.test_out_of_range_and_non_hourly_timestamps_are_rejected`, `AsosApiTests.test_invalid_provider_payloads_are_rejected`, `AsosApiTests.test_transport_traceback_does_not_expose_key_or_query`, `AsosApiTests.test_transport_traceback_does_not_expose_key_or_query.transport`, `AsosApiTests.test_annual_merge_preserves_other_stations_unknown_columns_and_qc`, `AsosApiTests.test_missing_api_fields_do_not_erase_existing_values`, `AsosApiTests.test_api_and_browser_use_same_column_aware_merge`, `AsosApiTests.test_concurrent_weather_writer_is_rejected`, `AsosApiTests.test_mode_selection_and_missing_key_have_no_implicit_fallback`, `AsosApiTests.test_cli_collect_and_verification_expose_the_same_station_and_mode_options`, `AsosApiTests.test_collection_manifest_marks_annual_weather_as_silver`, `AsosApiTests.test_month_chunks_handle_leap_year_and_cross_year`, `AsosApiTests.test_asos_response_to_admission_and_gold_retains_observation_values`
+
+### [tests/test_koen_availability_probe.py](../tests/test_koen_availability_probe.py)
+
+자동 검증 파일.
+
+`test_query_outcome_needs_fresh_matching_visible_evidence`, `test_navigation_error_and_form_alert_do_not_mean_empty_month`
 
 ### [tests/test_kospo_identity.py](../tests/test_kospo_identity.py)
 
@@ -1815,6 +1923,12 @@ Dataset identity/replay plumbing tests; no model accuracy is simulated.
 
 `PartitionReplayTests`, `PartitionReplayTests.setUp`, `PartitionReplayTests.test_partition_identity_survives_copy_and_timestamp_changes`, `PartitionReplayTests.test_same_size_same_mtime_content_change_is_detected`, `PartitionReplayTests.test_file_fingerprint_remains_plain_sha256`, `PartitionReplayTests.test_manifest_or_partition_inventory_change_invalidates_identity`, `PartitionReplayTests.test_missing_and_empty_sources_are_rejected`, `PartitionReplayTests.test_replay_accepts_partition_source_but_no_models_never_passes`
 
+### [tests/test_phase2_admission.py](../tests/test_phase2_admission.py)
+
+자동 검증 파일.
+
+`test_retained_kospo_2026_source_hours_and_daily_totals`, `test_p0_source_inventory_requires_full_bytes_to_match`, `test_forecast_nominal_origin_does_not_certify_issue_or_receipt`, `test_actual_availability_needs_reconciled_evidence_and_offset`, `_write_gold`, `test_versioned_candidate_preserves_baseline_and_joins_source`, `test_stored_gold_receipt_stops_reuse_on_changed_bytes`
+
 ### [tests/test_plant_registry.py](../tests/test_plant_registry.py)
 
 자동 검증 파일.
@@ -1844,6 +1958,12 @@ Safety and fixture-contract checks independent of ML dependencies.
 자동 검증 파일.
 
 `_official_boundaries`, `test_official_sgis_boundaries_have_complete_unique_regions_and_island_owners`, `test_boundary_validation_rejects_duplicate_region_ids`, `test_prepare_boundaries_cli_requires_auditable_source_digests`, `test_sgis_source_bundle_verifies_archive_and_every_sidecar`
+
+### [tests/test_source_completeness.py](../tests/test_source_completeness.py)
+
+자동 검증 파일.
+
+`test_koen_source_audit_keeps_gaps_conflicts_and_replay_provenance`, `test_kospo_same_bytes_with_distinct_filename_plant_are_distinct_entities`, `test_ewp_nationwide_revisions_stay_at_region_scope`
 
 ### [tests/test_storage_layout.py](../tests/test_storage_layout.py)
 

@@ -1,0 +1,4263 @@
+{
+  "contract": "solar-source-completeness.v1",
+  "as_of_kst": "2026-11-25",
+  "timestamp_basis": "source hourly labels on the repository's KST axis",
+  "gap_policy": "Observed bounds and calendar comparisons are diagnostic. An absent hour does not establish publication or asset operation.",
+  "revision_policy": "Conflicting values are review candidates. Authority and publication order are required before applying a correction.",
+  "archive_root": "file/solar_data_file",
+  "archive_root_exists": true,
+  "bronze_root": "file/raw",
+  "bronze_root_exists": false,
+  "collection_indexes": [],
+  "providers": {
+    "koen": {
+      "files": [
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_01.csv",
+          "sha256": "a024e5ebffbabe3be54c1914604e71ffd006227eb5533f954d0635a8ed663e5f",
+          "bytes": 141756,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2022-01-01T00:00:00",
+          "last_observed_hour": "2022-01-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_02.csv",
+          "sha256": "f374f8b0e4112f9015726f1b3912e0e46e3f6ec5d2f97e2cdd3aa31c37627dd5",
+          "bytes": 131463,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 616,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 14784,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 28,
+          "first_observed_hour": "2022-02-01T00:00:00",
+          "last_observed_hour": "2022-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_03.csv",
+          "sha256": "d353d033d9810de5d0421a2759c1c57f114f94d38b6724b46fc99403081a9078",
+          "bytes": 145162,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2022-03-01T00:00:00",
+          "last_observed_hour": "2022-03-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_04.csv",
+          "sha256": "c65d3068317510107d20a18cc32b510ee963b99c733cea3ba9c7d7fb99d5b154",
+          "bytes": 145182,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 660,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15840,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2022-04-01T00:00:00",
+          "last_observed_hour": "2022-04-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_05.csv",
+          "sha256": "966453b524426dec970d02b6f19cdfe6e3b17b3ce0958504fbe7356fc1aba5ff",
+          "bytes": 152985,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2022-05-01T00:00:00",
+          "last_observed_hour": "2022-05-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_06.csv",
+          "sha256": "43962db6d2bae61d34f69876d9aa5414068989be425b6c022be485ebc4e9f507",
+          "bytes": 144346,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 660,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15840,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2022-06-01T00:00:00",
+          "last_observed_hour": "2022-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_07.csv",
+          "sha256": "37e3776fa83cf1eca8b383fb211474efa6c27a192243b0045dac62d10268aee8",
+          "bytes": 146412,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2022-07-01T00:00:00",
+          "last_observed_hour": "2022-07-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_08.csv",
+          "sha256": "1f42f741049fb95a4158e7a4ceb8a92d229d931b33879b6e4cb09fd574a03226",
+          "bytes": 145195,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2022-08-01T00:00:00",
+          "last_observed_hour": "2022-08-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_09.csv",
+          "sha256": "6102b8a0363a902c322770162ca72f9257109daa48f1ba8224d350664c4130c4",
+          "bytes": 140243,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 660,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15840,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2022-09-01T00:00:00",
+          "last_observed_hour": "2022-09-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_10.csv",
+          "sha256": "18e7f9e0c3dc7fef0739d9c3eb550d1fcd86f05692ea7b37a81cd713e1aed40f",
+          "bytes": 143786,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2022-10-01T00:00:00",
+          "last_observed_hour": "2022-10-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_11.csv",
+          "sha256": "caa1d54b9cb1191678426ca9e8bacdfef4a0940b9e31c87ac775a732108dc5b1",
+          "bytes": 135520,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 660,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15840,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2022-11-01T00:00:00",
+          "last_observed_hour": "2022-11-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2022/남동발전량_2022_12.csv",
+          "sha256": "f6886664e6bf55362fd66023eec1bef8b8855c6e066ab0ef1e0160005570cf7b",
+          "bytes": 138295,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2022-12-01T00:00:00",
+          "last_observed_hour": "2022-12-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_01.csv",
+          "sha256": "3c12090dec9fa1c8864dd095f30084d707590c3c4c928dde91af5f2f18c580b9",
+          "bytes": 138751,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2023-01-01T00:00:00",
+          "last_observed_hour": "2023-01-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_02.csv",
+          "sha256": "2ad68cd8e86b92fc21bf8918ad718607c967cfdab3dc098830ea15281c8e189a",
+          "bytes": 129169,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 616,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 14784,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 28,
+          "first_observed_hour": "2023-02-01T00:00:00",
+          "last_observed_hour": "2023-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_03.csv",
+          "sha256": "b0dde4c6ef3519d0be5443779cff319cb03ee962b8c353f1974f7b6aa61c4a28",
+          "bytes": 146207,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2023-03-01T00:00:00",
+          "last_observed_hour": "2023-03-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_04.csv",
+          "sha256": "a5d31650995e82fafc9975d74a2d23256a82cbbeba980c0a3580399066edc8bd",
+          "bytes": 136651,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 660,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15840,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2023-04-01T00:00:00",
+          "last_observed_hour": "2023-04-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_05.csv",
+          "sha256": "4586391c17301d104fbd17d65fcacec2705d630beac2f73c28832f4eace2579c",
+          "bytes": 141063,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2023-05-01T00:00:00",
+          "last_observed_hour": "2023-05-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_06.csv",
+          "sha256": "1d0325dd4f2c4f4c70b3d3986b7ffbe41d6f8a07c760b6e025927a4a140a8a5f",
+          "bytes": 143544,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 660,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15840,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2023-06-01T00:00:00",
+          "last_observed_hour": "2023-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_07.csv",
+          "sha256": "1892572e7d774084f2da51feba86f154ae5682fa5db9a08ded4be584c9431e9c",
+          "bytes": 144853,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2023-07-01T00:00:00",
+          "last_observed_hour": "2023-07-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_08.csv",
+          "sha256": "2ed3cb1d3400232d377c27975b161252f533e8287d689277cf69e9d15e06a7ec",
+          "bytes": 143194,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2023-08-01T00:00:00",
+          "last_observed_hour": "2023-08-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_09.csv",
+          "sha256": "0ef5a7fca378716dda81d0ce4ab4dc5388c654810155546579bbb2fbb480b927",
+          "bytes": 137320,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 690,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2023-09-01T00:00:00",
+          "last_observed_hour": "2023-09-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_10.csv",
+          "sha256": "0c7a481426f0d55761647fb8fbb3f0a025d5e8f24e38b973744635325367ff6b",
+          "bytes": 141007,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2023-10-01T00:00:00",
+          "last_observed_hour": "2023-10-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_11.csv",
+          "sha256": "62f1741a470623903988ae1214df182f44615d5faf53d1f09c9ad534ec25ae14",
+          "bytes": 142196,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 690,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2023-11-01T00:00:00",
+          "last_observed_hour": "2023-11-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2023/남동발전량_2023_12.csv",
+          "sha256": "b351fc291984450f33fcceb4b03c041188c72481285fcacb26c934a2bb1899fb",
+          "bytes": 143227,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2023-12-01T00:00:00",
+          "last_observed_hour": "2023-12-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_01.csv",
+          "sha256": "de96cedee4ca4d9a7cee45a8d9089c4ee838379ae3d2dd28d7f55464f6d7373f",
+          "bytes": 144146,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2024-01-01T00:00:00",
+          "last_observed_hour": "2024-01-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_02.csv",
+          "sha256": "f6a23565aeec662627604597d517bdc7d66051489c4aaa3d6877f7860c967d67",
+          "bytes": 134304,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 667,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16008,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 29,
+          "first_observed_hour": "2024-02-01T00:00:00",
+          "last_observed_hour": "2024-02-29T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_03.csv",
+          "sha256": "a204b2d6a5e9ac0aa37468d494b8e0a3a68bd87fb01923e0344fb00dd1394bb1",
+          "bytes": 152255,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2024-03-01T00:00:00",
+          "last_observed_hour": "2024-03-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_04.csv",
+          "sha256": "b92b1757c6c7857fad287e9882bdb083a797b3d6eae3d560e52252843aec28eb",
+          "bytes": 148528,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 690,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2024-04-01T00:00:00",
+          "last_observed_hour": "2024-04-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_05.csv",
+          "sha256": "7ed6bc68343b0e958db8e8103313bf3e0f64b27d52e9ffb920b102d41ed1ce05",
+          "bytes": 155602,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 705,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16920,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2024-05-01T00:00:00",
+          "last_observed_hour": "2024-05-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_06.csv",
+          "sha256": "020fe7fbf0e5d22c207ed12f0dd3b6e9d1352574ca339ddc4b0546a2df17c925",
+          "bytes": 148477,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 660,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15840,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2024-06-01T00:00:00",
+          "last_observed_hour": "2024-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_07.csv",
+          "sha256": "13a596a61d483514cc272dce759dbf5cc7577cef6dcb40923c5639bee1603a9c",
+          "bytes": 149432,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2024-07-01T00:00:00",
+          "last_observed_hour": "2024-07-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_08.csv",
+          "sha256": "66862a0a361ca1b64267dcf5baeb9e69d69bcf1bce3dbd8481f92aba569a438b",
+          "bytes": 148857,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 682,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2024-08-01T00:00:00",
+          "last_observed_hour": "2024-08-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_09.csv",
+          "sha256": "7413afc75ac30ac085ca9505467e7302561f19fb5239c319708d2cd60b01db95",
+          "bytes": 140439,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 659,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15816,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2024-09-01T00:00:00",
+          "last_observed_hour": "2024-09-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_10.csv",
+          "sha256": "c523d09545fafac85256e7f7da5551d2d85e1bc0b05849d215a6d050ff953648",
+          "bytes": 145352,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 694,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16656,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2024-10-01T00:00:00",
+          "last_observed_hour": "2024-10-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_11.csv",
+          "sha256": "0df4ca4c7544d86fda1401d8372bbf007a2ed49765d90cac03c82e5e6477f776",
+          "bytes": 142338,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 690,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2024-11-01T00:00:00",
+          "last_observed_hour": "2024-11-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2024/남동발전량_2024_12.csv",
+          "sha256": "c9f8b146ced4f755bc3d4fda69287e7e3647a46c1e7eb437ff47bc9f16cc5043",
+          "bytes": 145395,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2024-12-01T00:00:00",
+          "last_observed_hour": "2024-12-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_01.csv",
+          "sha256": "5ffbc4c73f9168ff8166054b3dedf5e8123e758defea0c205c1a6a0618c07caa",
+          "bytes": 146750,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2025-01-01T00:00:00",
+          "last_observed_hour": "2025-01-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_02.csv",
+          "sha256": "a0070e76bec74a8993018ae4465ee1e44f13910dc9895e3b00e0a9824d5e68e4",
+          "bytes": 135729,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 644,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 15456,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 28,
+          "first_observed_hour": "2025-02-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_03.csv",
+          "sha256": "4c2aed80dbec332157649edc7a28b81c73d0ca2357a90a88d1b4b96897c4e1d4",
+          "bytes": 152433,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2025-03-01T00:00:00",
+          "last_observed_hour": "2025-03-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_04.csv",
+          "sha256": "4085a887f6ae4020de74bc4d1575351c2f36e3ed01ff1a9a39e6b71839c93e5c",
+          "bytes": 149235,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 690,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2025-04-01T00:00:00",
+          "last_observed_hour": "2025-04-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_05.csv",
+          "sha256": "fb2283f2c49a7499cc567ae27cb89b6d6523ca82cb3c928ba130d68664643aa8",
+          "bytes": 154732,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2025-05-01T00:00:00",
+          "last_observed_hour": "2025-05-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_06.csv",
+          "sha256": "39f224520814efab5c69f62206a323422c4e82853a6cff7d84b2d027556359e8",
+          "bytes": 151763,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 690,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2025-06-01T00:00:00",
+          "last_observed_hour": "2025-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_07.csv",
+          "sha256": "c6c2562d569c207b985d510602e124c86c30f226ae41b523f1659557709d614b",
+          "bytes": 155874,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2025-07-01T00:00:00",
+          "last_observed_hour": "2025-07-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_08.csv",
+          "sha256": "57c8baba42976f0e25a07376bcba746e3a47b322e75e8e5bc9110b27e2e3b0f0",
+          "bytes": 153751,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 713,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 17112,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 31,
+          "first_observed_hour": "2025-08-01T00:00:00",
+          "last_observed_hour": "2025-08-31T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남동발전/2025/남동발전량_2025_09.csv",
+          "sha256": "3f9bc194403ff87c7de7de0f41b31b426035e5d68592235cecf5990c8075e913",
+          "bytes": 144040,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 690,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 16560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 30,
+          "first_observed_hour": "2025-09-01T00:00:00",
+          "last_observed_hour": "2025-09-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        }
+      ],
+      "coverage_by_layout": {
+        "plant_meter_hour": {
+          "2024": {
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "observed_rows": 198432,
+            "unique_hour_keys": 198432,
+            "same_value_repeat_rows": 0,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": [
+              {
+                "entity": "경상대태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "고흥만 수상태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "광양항세방태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "구미태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "두산엔진MG태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "삼천포태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "삼천포태양광#2",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "삼천포태양광#3",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "삼천포태양광#4",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "삼천포태양광#5#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "삼천포태양광#5#2",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "삼천포태양광#6#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "여수태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 5208,
+                "missing_hours_within_observed_bounds": 3576,
+                "gaps": [
+                  {
+                    "first": "2024-05-03T00:00:00",
+                    "last": "2024-05-03T23:00:00",
+                    "hours": 24
+                  },
+                  {
+                    "first": "2024-05-10T00:00:00",
+                    "last": "2024-05-10T23:00:00",
+                    "hours": 24
+                  },
+                  {
+                    "first": "2024-05-13T00:00:00",
+                    "last": "2024-05-16T23:00:00",
+                    "hours": 96
+                  },
+                  {
+                    "first": "2024-05-18T00:00:00",
+                    "last": "2024-05-18T23:00:00",
+                    "hours": 24
+                  },
+                  {
+                    "first": "2024-05-20T00:00:00",
+                    "last": "2024-05-20T23:00:00",
+                    "hours": 24
+                  },
+                  {
+                    "first": "2024-06-01T00:00:00",
+                    "last": "2024-10-09T23:00:00",
+                    "hours": 3144
+                  },
+                  {
+                    "first": "2024-10-11T00:00:00",
+                    "last": "2024-10-14T23:00:00",
+                    "hours": 96
+                  },
+                  {
+                    "first": "2024-10-16T00:00:00",
+                    "last": "2024-10-21T23:00:00",
+                    "hours": 144
+                  }
+                ],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 552,
+                    "gaps": [
+                      {
+                        "first": "2024-05-03T00:00:00",
+                        "last": "2024-05-03T23:00:00",
+                        "hours": 24
+                      },
+                      {
+                        "first": "2024-05-10T00:00:00",
+                        "last": "2024-05-10T23:00:00",
+                        "hours": 24
+                      },
+                      {
+                        "first": "2024-05-13T00:00:00",
+                        "last": "2024-05-16T23:00:00",
+                        "hours": 96
+                      },
+                      {
+                        "first": "2024-05-18T00:00:00",
+                        "last": "2024-05-18T23:00:00",
+                        "hours": 24
+                      },
+                      {
+                        "first": "2024-05-20T00:00:00",
+                        "last": "2024-05-20T23:00:00",
+                        "hours": 24
+                      }
+                    ]
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 288,
+                    "gaps": [
+                      {
+                        "first": "2024-10-01T00:00:00",
+                        "last": "2024-10-09T23:00:00",
+                        "hours": 216
+                      },
+                      {
+                        "first": "2024-10-11T00:00:00",
+                        "last": "2024-10-14T23:00:00",
+                        "hours": 96
+                      },
+                      {
+                        "first": "2024-10-16T00:00:00",
+                        "last": "2024-10-21T23:00:00",
+                        "hours": 144
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "entity": "영동태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "영흥태양광 #3#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "영흥태양광 #3#2",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "영흥태양광 #3#3",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "영흥태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "영흥태양광#2",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "영흥태양광#5#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "예천태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8760,
+                "missing_hours_within_observed_bounds": 24,
+                "gaps": [
+                  {
+                    "first": "2024-09-05T00:00:00",
+                    "last": "2024-09-05T23:00:00",
+                    "hours": 24
+                  }
+                ],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 696,
+                    "gaps": [
+                      {
+                        "first": "2024-09-05T00:00:00",
+                        "last": "2024-09-05T23:00:00",
+                        "hours": 24
+                      }
+                    ]
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "탑선태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              },
+              {
+                "entity": "탑선태양광#3",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0,
+                "observed_calendar_months": [
+                  {
+                    "month": "2024-05",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-09",
+                    "calendar_hours": 720,
+                    "observed_hours": 720,
+                    "gaps": []
+                  },
+                  {
+                    "month": "2024-10",
+                    "calendar_hours": 744,
+                    "observed_hours": 744,
+                    "gaps": []
+                  }
+                ]
+              }
+            ]
+          },
+          "2025": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "observed_rows": 150696,
+            "unique_hour_keys": 150696,
+            "same_value_repeat_rows": 0,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": [
+              {
+                "entity": "경상대태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "고흥만 수상태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "광양항세방태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "구미태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "두산엔진MG태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼천포태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼천포태양광#2",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼천포태양광#3",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼천포태양광#4",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼천포태양광#5#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼천포태양광#5#2",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼천포태양광#6#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "여수태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영동태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영흥태양광 #3#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영흥태양광 #3#2",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영흥태양광 #3#3",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영흥태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영흥태양광#2",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영흥태양광#5#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "예천태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "탑선태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "탑선태양광#3",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-09-30T23:00:00",
+                "expected_hours_within_observed_bounds": 6552,
+                "observed_hours": 6552,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              }
+            ]
+          },
+          "2026": {
+            "start_date": "2026-01-01",
+            "end_date": "2026-11-25",
+            "observed_rows": 0,
+            "unique_hour_keys": 0,
+            "same_value_repeat_rows": 0,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": []
+          }
+        }
+      }
+    },
+    "ewp": {
+      "files": [
+        {
+          "path": "file/solar_data_file/한국동서발전/한국동서발전(주)_광양항광양냉장 태양광 발전량_20250630.csv",
+          "sha256": "20728d6c6e156dd7a02ef2dbd6db346797a43f54ad4b4c97b4ae4686d8d00000",
+          "bytes": 156398,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1126,
+          "comparison_source_unit": "wh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 27024,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1126,
+          "first_observed_hour": "2022-06-01T00:00:00",
+          "last_observed_hour": "2025-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국동서발전/한국동서발전(주)_동해바이오연료저장고지붕태양광 발전 시간대별 발전량_20250630.csv",
+          "sha256": "9ca8b46f7767e5654844923a67fc517b2ec7d08a0eddb18d822027350db7cb54",
+          "bytes": 81884,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 547,
+          "comparison_source_unit": "wh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 13128,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 547,
+          "first_observed_hour": "2024-01-01T00:00:00",
+          "last_observed_hour": "2025-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국동서발전/한국동서발전(주)_일자별지점별 태양광 발전량 데이터_20250630.csv",
+          "sha256": "c4fc7ce71348267f176b8a9c3f34d39868d2c524911f50499b0113732be7962a",
+          "bytes": 887566,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 5927,
+          "comparison_source_unit": "wh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 142248,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1187,
+          "first_observed_hour": "2022-04-01T00:00:00",
+          "last_observed_hour": "2025-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        }
+      ],
+      "coverage_by_layout": {
+        "plant_meter_hour": {
+          "2024": {
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "observed_rows": 61416,
+            "unique_hour_keys": 61416,
+            "same_value_repeat_rows": 0,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": [
+              {
+                "entity": "광양항광양냉장태양광",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "당진자재창고태양광",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "당진태양광",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "당진화력수상태양광",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "동해 바이오 연료저장고 지붕태양광",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "동해바이오화력본부 태양광",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "울산태양광#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8712,
+                "missing_hours_within_observed_bounds": 72,
+                "gaps": [
+                  {
+                    "first": "2024-11-20T00:00:00",
+                    "last": "2024-11-22T23:00:00",
+                    "hours": 72
+                  }
+                ],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              }
+            ]
+          },
+          "2025": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "observed_rows": 30408,
+            "unique_hour_keys": 30408,
+            "same_value_repeat_rows": 0,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": [
+              {
+                "entity": "광양항광양냉장태양광",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "당진자재창고태양광",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "당진태양광",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "당진화력수상태양광",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "동해 바이오 연료저장고 지붕태양광",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "동해바이오화력본부 태양광",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "울산태양광#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              }
+            ]
+          },
+          "2026": {
+            "start_date": "2026-01-01",
+            "end_date": "2026-11-25",
+            "observed_rows": 0,
+            "unique_hour_keys": 0,
+            "same_value_repeat_rows": 0,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": []
+          }
+        }
+      }
+    },
+    "kospo": {
+      "files": [
+        {
+          "path": "file/solar_data_file/한국남부발전/최신공공데이터/[신풍리]태양광발전실적_20260228.csv",
+          "sha256": "7bc00ba28be17a62291065b9ae36bacf69e36c31cae6590d7b189b9f0e32b650",
+          "bytes": 256303,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1765,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 42360,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1765,
+          "first_observed_hour": "2021-05-01T00:00:00",
+          "last_observed_hour": "2026-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/최신공공데이터/[용수리]태양광발전실적_20260228.csv",
+          "sha256": "a2c990900a7a63cb587b815665f16ad606a1187e321060a0f1b13bb5695c3b6a",
+          "bytes": 312923,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1977,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 47448,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1977,
+          "first_observed_hour": "2020-10-01T00:00:00",
+          "last_observed_hour": "2026-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[감우리] 태양광 발전실적_20250228.csv",
+          "sha256": "6b1874430ca6e802ba08be6a877da98739d51511e9063068032e6250d69bc8b0",
+          "bytes": 187902,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1304,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 31296,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1304,
+          "first_observed_hour": "2021-08-05T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[남제주소내] 태양광발전실적_20250228.csv",
+          "sha256": "df3af9c3df81894f761a87af3d10bb1581fe3e0031e384b869cb53be9021bd4b",
+          "bytes": 659400,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[무릉리] 태양광발전실적_20250228.csv",
+          "sha256": "5682fae0a5e3bcf85b0b2d57d5bb6ee657e2df251db37b63218879015167655d",
+          "bytes": 227809,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1400,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 33600,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1400,
+          "first_observed_hour": "2021-05-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[부산복합자재창고] 태양광발전실적_20250228.csv",
+          "sha256": "82bd83a6ce612faf7650c4e8020e915bf0407183d0a9d0ea5d86e9dc33f80523",
+          "bytes": 592941,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[부산본부] 태양광발전실적_20250228.csv",
+          "sha256": "91d988039b8a4a02dc81001819cf5267554c63889f241fe943e9a696cc6acd22",
+          "bytes": 973278,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 6695,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 2,
+          "repeated_source_key_rows": 2,
+          "valid_hour_rows": 160680,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[부산수처리장] 태양광발전실적_20250228.csv",
+          "sha256": "fded6583c81b0e2e3c3ebd67b2ea213d668650334df6e4bd1a4d63c4fc32b6e5",
+          "bytes": 339088,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 2616,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 62784,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 2616,
+          "first_observed_hour": "2018-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[부산신항] 태양광발전실적_20250228.csv",
+          "sha256": "0c3fd90f367eff8f365259cb6297b4ecab567060834f4fa51811b46337a34954",
+          "bytes": 592611,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[부산역선상주차장] 태양광발전실적_20250228.csv",
+          "sha256": "6ce56303287d3c1f0440d94f0c1808172c731e3a1928d8d8e0ccf679cb16cdbb",
+          "bytes": 239523,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1659,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 39816,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1659,
+          "first_observed_hour": "2020-08-15T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[부산운동장] 태양광발전실적_20250228.csv",
+          "sha256": "5fcc97207dfd3a3adb0d5ca0c802ac6a00c600f8d93be09d932f931f27a14412",
+          "bytes": 343920,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 2616,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 62784,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 2616,
+          "first_observed_hour": "2018-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[삼척소내] 태양광발전실적_20250228.csv",
+          "sha256": "97a75594524176e7973ed99b028c852a997c42c24dff8ea7aa59b99ab73f44c6",
+          "bytes": 1343370,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 9454,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 226804,
+          "invalid_hour_slots": 92,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 92
+          },
+          "observed_dates": 2616,
+          "first_observed_hour": "2018-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[세화리] 태양광발전실적_20250630.csv",
+          "sha256": "acd8bba8f85034f1705256ca5918bcebb0d96fff9dea70294cb5fdf47218c0c4",
+          "bytes": 220901,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1307,
+          "comparison_source_unit": "requires_unit_resolution",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 31368,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1307,
+          "first_observed_hour": "2021-12-02T00:00:00",
+          "last_observed_hour": "2025-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[송당리] 태양광발전실적_20250228.csv",
+          "sha256": "6266cff70b9247ca72c91ead828c81c11443f881347daf2915359c542483b8dc",
+          "bytes": 301322,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1915,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 45960,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1915,
+          "first_observed_hour": "2019-12-03T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[신인천 1_2단계 주차장] 태양광발전실적_20250228.csv",
+          "sha256": "2469fa792f290e7636a0fafd9c26fd30830e427e0de8ddc64bc7119846c1bf27",
+          "bytes": 209084,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1547,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 37128,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1547,
+          "first_observed_hour": "2020-12-05T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[신인천 북측부지] 태양광발전실적_20250228.csv",
+          "sha256": "4d380631d9d18e9a148c7985119dcaee2167e36a57dfcf755aea8a7af4d61e89",
+          "bytes": 195792,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1547,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 37128,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1547,
+          "first_observed_hour": "2020-12-05T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[신인천 주차장] 태양광발전실적_20250228.csv",
+          "sha256": "daf540311c35bff25baf423011e15a985f3ac09b07546a0a38eaeddb59a09420",
+          "bytes": 313030,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1893,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 45432,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1893,
+          "first_observed_hour": "2019-12-25T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[신인천본관주차장] 태양광발전실적_20250630.csv",
+          "sha256": "3687f0d5f9361623c50ab283c6e08180621052bd05466715ea0d263c81f4df32",
+          "bytes": 188566,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1282,
+          "comparison_source_unit": "requires_unit_resolution",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 30768,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1282,
+          "first_observed_hour": "2021-12-27T00:00:00",
+          "last_observed_hour": "2025-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[신인천소내] 태양광발전실적_20250228.csv",
+          "sha256": "eea54c6bfabecb5a9b5a42ef2c4b1b6fea625a246657134141b5509cb39ed08a",
+          "bytes": 681380,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4440,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4440,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[신인천전망대] 태양광발전실적_20250228.csv",
+          "sha256": "7fd30daf38b4f38cf5e370bd71ecb04102c555808c93a7b8e072d92c1d30a2a2",
+          "bytes": 354428,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 2616,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 62784,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 2616,
+          "first_observed_hour": "2018-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[신인천해수구취수구] 태양광발전실적_20250228.csv",
+          "sha256": "417c0d68e403c2df1ab47f931e454743fb8128f408ddb5b9e3365cd85c9b1ef6",
+          "bytes": 329354,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 2254,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 45336,
+          "invalid_hour_slots": 8760,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 8760,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1889,
+          "first_observed_hour": "2018-12-29T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[신풍리] 태양광 발전실적_20250228.csv",
+          "sha256": "8f414e3f57f8753ad756ccd3e76202d6697b6f68f260f48c3c0cf58f7f590a68",
+          "bytes": 202468,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1400,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 33600,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1400,
+          "first_observed_hour": "2021-05-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[영월본부] 태양광발전실적_20250228.csv",
+          "sha256": "27dc4f9fa4327b49aac302373cad5d198394c5e6a761865cac904f56b9f7c78e",
+          "bytes": 641964,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4441,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106584,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4441,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[영월철도부지] 태양광발전실적_20250228.csv",
+          "sha256": "bc8dbb0ac12becc88d7911c4c22a0ef9a1742608350af05e81298ce7b963be27",
+          "bytes": 375997,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 2526,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 60624,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 2526,
+          "first_observed_hour": "2018-04-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[와산리] 태양광발전실적_20250630.csv",
+          "sha256": "a038b9c7b8c523313a62a8f399b7dbadfc47912390881d988618be71614b6b87",
+          "bytes": 147641,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1020,
+          "comparison_source_unit": "requires_unit_resolution",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 24480,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1020,
+          "first_observed_hour": "2022-09-15T00:00:00",
+          "last_observed_hour": "2025-06-30T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[용수리] 태양광발전실적_20250228.csv",
+          "sha256": "aba3135e6e020011b02cd209b12fb9e86c37a152b2c09fdcdb37b91017e66aed",
+          "bytes": 254788,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1612,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 38688,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1612,
+          "first_observed_hour": "2020-10-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[위미2리] 태양광발전실적_20250228.csv",
+          "sha256": "4e639ec35de721a7fb6cd07fd7a69a5af3108cea14d8b8f1fc8ad92cef2ca0fd",
+          "bytes": 288648,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1788,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 42912,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1788,
+          "first_observed_hour": "2020-04-08T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[이천D(백사면B)] 태양광발전실적_20250228.csv",
+          "sha256": "1d743d681edce64dbf88e7dcd3dfe9bf95cb1fad2fb0e3a452645b5d507af8d4",
+          "bytes": 245334,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1481,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 35544,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1481,
+          "first_observed_hour": "2021-02-09T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[익산 다송리] 태양광발전실적_20250808.csv",
+          "sha256": "8a120c14dbf64958f009e7cdbeb2999ee25748d9616c22c35dbe3e359b320e97",
+          "bytes": 95861,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 586,
+          "comparison_source_unit": "requires_unit_resolution",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 14064,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 586,
+          "first_observed_hour": "2024-01-01T00:00:00",
+          "last_observed_hour": "2025-08-08T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[인천수산정수장] 태양광발전실적_20250228.csv",
+          "sha256": "480d2e8122b7f939ec67e47f9c2d4e59aec243c7da38f283c007c13f0eb32e7e",
+          "bytes": 722543,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4440,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106560,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4440,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[하동공설운동장] 태양광발전실적_20250228.csv",
+          "sha256": "6f8eb3e6c2e919adaf2f52791b1babfc2fec416928ccf8ae14656376c1d63700",
+          "bytes": 691963,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[하동변전소] 태양광발전실적_20250228.csv",
+          "sha256": "b1c0d67cd83046ad52c9be412510b220b627f35fa7d97e04f19f9191385e8c0c",
+          "bytes": 637673,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[하동보건소] 태양광발전실적_20250228.csv",
+          "sha256": "9602291e86290d0c95004a1c1d94daae480344b66f386f5ef5f2ab4d45b3079e",
+          "bytes": 637133,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[하동본부] 태양광발전실적_20250228.csv",
+          "sha256": "bb04b4456aa97c2dcdcc4287e6166cb6500c08bdbea1b21154c7f880ef01d8ef",
+          "bytes": 3091511,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 19949,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 478776,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[하동정수장] 태양광발전실적_20250228.csv",
+          "sha256": "a31f566b600dedbd2db915c4485b46e53767539aaf61eb694f1b9d9bb3259f72",
+          "bytes": 646496,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[하동하수처리장] 태양광발전실적_20250228.csv",
+          "sha256": "6c383f791c969699dd292d620d6a1af19823cf9855cf211a2abb520ac085b1db",
+          "bytes": 652612,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[행원소수력] 태양광발전실적_20250228.csv",
+          "sha256": "9148432b8fd2fe81fc334bbd28304e24d3d4da7f33c967e7f11379629f3b7cff",
+          "bytes": 472646,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 4442,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 106608,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 4442,
+          "first_observed_hour": "2013-01-01T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        },
+        {
+          "path": "file/solar_data_file/한국남부발전/한국남부발전(주)_[화촌주민참여형] 태양광발전실적_20250228.csv",
+          "sha256": "acad4c52acfc8ab2ffea1413bbaa5c94fe816a9ddff62a8ac005bc0e04ad76d8",
+          "bytes": 235307,
+          "indexed_by_collection_manifest": false,
+          "source_rows": 1397,
+          "comparison_source_unit": "kwh",
+          "identical_source_rows": 0,
+          "repeated_source_key_rows": 0,
+          "valid_hour_rows": 33528,
+          "invalid_hour_slots": 0,
+          "invalid_hour_reasons": {
+            "missing_source_identity": 0,
+            "invalid_timestamp_or_off_hour": 0,
+            "missing_or_nonfinite_value": 0
+          },
+          "observed_dates": 1397,
+          "first_observed_hour": "2021-05-04T00:00:00",
+          "last_observed_hour": "2025-02-28T23:00:00",
+          "layout": "plant_meter_hour",
+          "status": "read"
+        }
+      ],
+      "coverage_by_layout": {
+        "plant_meter_hour": {
+          "2024": {
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "observed_rows": 412848,
+            "unique_hour_keys": 395280,
+            "same_value_repeat_rows": 17568,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": [
+              {
+                "entity": "감우리#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "남제주소내#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "무릉리#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산복합자재창고#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산본부#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산본부#2",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산수처리장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산신항#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산역선상주차장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산운동장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼척소내#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼척소내#2",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼척소내#3",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼척소내#4",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "세화리#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "송당리#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천 1_2단계 주차장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천 북측부지#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천 주차장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천본관주차장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천소내#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천전망대#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천해수구취수구#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신풍리#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 8784,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영월본부#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영월철도부지#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "와산리#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "용수리#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 8784,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "위미2리#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "이천D(백사면B)#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "익산 다송리#(신재생) (하동) 익산 다송리 태양광",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "인천수산정수장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동공설운동장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동변전소#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동보건소#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#2",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#3",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#4",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#5",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#6",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동정수장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동하수처리장#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "행원소수력#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "화촌주민참여형#1",
+                "first_observed_hour": "2024-01-01T00:00:00",
+                "last_observed_hour": "2024-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8784,
+                "observed_hours": 8784,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              }
+            ]
+          },
+          "2025": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "observed_rows": 93888,
+            "unique_hour_keys": 91056,
+            "same_value_repeat_rows": 2832,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": [
+              {
+                "entity": "감우리#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "남제주소내#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "무릉리#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산복합자재창고#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산본부#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산본부#2",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산수처리장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산신항#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산역선상주차장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "부산운동장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼척소내#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼척소내#2",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼척소내#3",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "삼척소내#4",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "세화리#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "송당리#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천 1_2단계 주차장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천 북측부지#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천 주차장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천본관주차장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천소내#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천전망대#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신인천해수구취수구#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "신풍리#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8760,
+                "observed_hours": 8760,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 1416,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영월본부#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "영월철도부지#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "와산리#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-06-30T23:00:00",
+                "expected_hours_within_observed_bounds": 4344,
+                "observed_hours": 4344,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "용수리#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-12-31T23:00:00",
+                "expected_hours_within_observed_bounds": 8760,
+                "observed_hours": 8760,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 1416,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "위미2리#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "이천D(백사면B)#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "익산 다송리#(신재생) (하동) 익산 다송리 태양광",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-08-08T23:00:00",
+                "expected_hours_within_observed_bounds": 5280,
+                "observed_hours": 5280,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "인천수산정수장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동공설운동장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동변전소#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동보건소#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#2",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#3",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#4",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#5",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동본부#6",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동정수장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "하동하수처리장#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "행원소수력#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "화촌주민참여형#1",
+                "first_observed_hour": "2025-01-01T00:00:00",
+                "last_observed_hour": "2025-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              }
+            ]
+          },
+          "2026": {
+            "start_date": "2026-01-01",
+            "end_date": "2026-11-25",
+            "observed_rows": 2832,
+            "unique_hour_keys": 2832,
+            "same_value_repeat_rows": 0,
+            "conflicting_value_hour_keys": 0,
+            "conflict_sample": [],
+            "non_comparable_unit_hour_keys": 0,
+            "entities": [
+              {
+                "entity": "신풍리#1",
+                "first_observed_hour": "2026-01-01T00:00:00",
+                "last_observed_hour": "2026-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              },
+              {
+                "entity": "용수리#1",
+                "first_observed_hour": "2026-01-01T00:00:00",
+                "last_observed_hour": "2026-02-28T23:00:00",
+                "expected_hours_within_observed_bounds": 1416,
+                "observed_hours": 1416,
+                "missing_hours_within_observed_bounds": 0,
+                "gaps": [],
+                "same_value_repeat_rows": 0,
+                "conflicting_value_hours": 0
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -8,6 +9,8 @@ from solar_forecast.collectors.collection_config import load_source_catalog
 from solar_forecast.datasets.archive_standardizer import HistoricalGenerationStandardizationService
 from solar_forecast.collectors.kma_browser import KmaAsosBrowserCollector
 from solar_forecast.collectors.koen_browser import KoenBrowserDownloader
+from solar_forecast.collectors.koen_browser import KoenDownloadWindow
+from solar_forecast.collectors.generation_collectors import KoenHomepageCollector
 from solar_forecast.infrastructure.csv_storage import inspect_csv_artifact
 from solar_forecast.infrastructure.csv_storage import write_standardized_csv
 from solar_forecast.collectors.download_naming import build_solar_download_filename
@@ -99,6 +102,50 @@ def test_koen_rejects_invalid_month_range(tmp_path):
     downloader = KoenBrowserDownloader(tmp_path)
     with pytest.raises(ValueError):
         downloader.download_year(2025, start_month=8, end_month=7)
+
+
+def test_koen_passthrough_reuses_full_month_and_requests_exact_boundary_days(tmp_path, monkeypatch):
+    downloader = KoenBrowserDownloader(tmp_path, downloaded_on=date(2026, 11, 25))
+    october = downloader._destination(date(2026, 10, 1), date(2026, 10, 31))
+    october.parent.mkdir(parents=True)
+    october.write_bytes("발전구분, 호기, 일자\n해창만, 1, 2026-10-31 00:00:00, \n".encode("cp949"))
+    driver = Mock()
+    monkeypatch.setattr(downloader, "_build_driver", lambda _path: driver)
+    monkeypatch.setattr(downloader, "_open", lambda _driver: None)
+    request = Mock(side_effect=lambda _driver, _dir, start, end, _dest, _retry: KoenDownloadWindow(
+        start, end, "no_csv_downloaded",
+    ))
+    monkeypatch.setattr(downloader, "_download_window", request)
+
+    results = downloader.download_range(date(2026, 10, 1), date(2026, 11, 25))
+
+    assert [result.status for result in results] == ["cached", "no_csv_downloaded"]
+    assert results[0].source_rows == 1
+    assert request.call_args.args[2:4] == (date(2026, 11, 1), date(2026, 11, 25))
+    assert "기간통합_20261101_20261125" in request.call_args.args[4].name
+    driver.quit.assert_called_once()
+
+
+def test_koen_does_not_label_empty_or_wrong_window_csv_as_collected(tmp_path):
+    attachment = tmp_path / "provider.csv"
+    start, end = date(2026, 11, 1), date(2026, 11, 25)
+    attachment.write_text("발전구분, 호기, 일자\n", encoding="utf-8-sig")
+    assert KoenBrowserDownloader._inspect_window(start, end, attachment, "downloaded").status == "empty_csv"
+    attachment.write_text("발전구분, 호기, 일자\n해창만,1,2026-10-31\n", encoding="utf-8")
+    assert KoenBrowserDownloader._inspect_window(start, end, attachment, "downloaded").status == "unexpected_csv"
+
+
+def test_koen_records_browser_failure_without_claiming_no_provider_data(tmp_path, monkeypatch):
+    first, last = date(2026, 11, 1), date(2026, 11, 25)
+    open_browser = Mock(side_effect=RuntimeError("browser connection detail"))
+    monkeypatch.setattr(KoenBrowserDownloader, "_build_driver", open_browser)
+    result = KoenHomepageCollector(CollectionConfig(first, last, output_dir=tmp_path)).collect()
+
+    assert result.status == "failed"
+    assert result.rows == 0
+    assert result.windows == [{"start_date": "2026-11-01", "end_date": "2026-11-25",
+                              "status": "browser_open_failed", "source_rows": 0,
+                              "detail": "RuntimeError", "path": None}]
 
 
 def test_koen_normalizer_converts_24_hour_columns_to_rows():

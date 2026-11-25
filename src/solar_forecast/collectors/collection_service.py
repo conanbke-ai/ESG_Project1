@@ -41,7 +41,8 @@ class CollectionService:
             "start_date": self.config.start_date.isoformat(),
             "end_date": self.config.end_date.isoformat(),
             "results": [
-                {"source": r.source, "status": r.status, "rows": r.rows, "files": [str(p) for p in r.files], "message": r.message}
+                {"source": r.source, "status": r.status, "rows": r.rows, "files": [str(p) for p in r.files],
+                 "message": r.message, **({"windows": r.windows} if r.windows else {})}
                 for r in results
             ],
             "file_artifacts": [

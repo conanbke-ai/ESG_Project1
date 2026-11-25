@@ -1,0 +1,471 @@
+{
+  "contract": "solar-gold-candidate-admission.v1",
+  "data_version": "gold-2026-phase2-v1",
+  "year": 2026,
+  "time_zone": "Asia/Seoul",
+  "horizons_hours": [
+    1,
+    24,
+    72
+  ],
+  "baseline_gold": {
+    "documented_rows": 718531,
+    "expected_columns": 96,
+    "expected_partitions": 27,
+    "published_reference": {
+      "path": "docs/DATA_COLLECTION_AUDIT.md",
+      "status": "present",
+      "bytes": 19107,
+      "sha256": "fd95dde0efd9ca5a4f5c1562ade37b100525e8eaee6f33e6fa97530b1f5effe0"
+    },
+    "manifest": {
+      "path": "file/standardized/model_ready_manifest.json",
+      "status": "missing",
+      "bytes": null,
+      "sha256": null
+    },
+    "stored_verification": {
+      "path": "artifacts/verification/architecture_convergence/20261125/actual_gold_candidate.json",
+      "status": "missing",
+      "bytes": null,
+      "sha256": null
+    },
+    "combined_file": {
+      "path": "file/standardized/model_ready.csv.gz",
+      "status": "missing",
+      "bytes": null,
+      "sha256": null
+    },
+    "partition_files_present": 0,
+    "verified_rows": null,
+    "status": "physical_manifest_missing"
+  },
+  "inputs": {
+    "generation_sources": [
+      {
+        "path": "file/solar_data_file/한국남부발전/최신공공데이터/[용수리]태양광발전실적_20260228.csv",
+        "status": "parsed",
+        "bytes": 312923,
+        "sha256": "a2c990900a7a63cb587b815665f16ad606a1187e321060a0f1b13bb5695c3b6a",
+        "company": "kospo",
+        "catalog_url": "https://www.data.go.kr/data/15095404/fileData.do",
+        "catalog_registration_date": "2026-04-09",
+        "raw_rows": 1977,
+        "normalized_all_rows": 47448,
+        "normalized_2026_rows": 1416,
+        "raw_columns": [
+          "년월일",
+          "호기",
+          "총량(kw)",
+          "평균(kw)",
+          "최대(kw)",
+          "최소(kw)",
+          "최대(시간별_kw)",
+          "최소(시간별_kw)",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24"
+        ],
+        "unit_resolution": {
+          "declared_source_unit": "kwh",
+          "resolved_source_unit": "kwh",
+          "method": "declared_header",
+          "capacity_factor_p99": null,
+          "capacity_factor_max": null
+        },
+        "daily_total_check": {
+          "days": 59,
+          "comparable_days": 59,
+          "mismatch_days": 0,
+          "maximum_absolute_difference_source_scale": 9.094947017729282e-13
+        },
+        "meter_category_values": []
+      },
+      {
+        "path": "file/solar_data_file/한국남부발전/최신공공데이터/[신풍리]태양광발전실적_20260228.csv",
+        "status": "parsed",
+        "bytes": 256303,
+        "sha256": "7bc00ba28be17a62291065b9ae36bacf69e36c31cae6590d7b189b9f0e32b650",
+        "company": "kospo",
+        "catalog_url": "https://www.data.go.kr/data/15109998/fileData.do",
+        "catalog_registration_date": "2026-04-09",
+        "raw_rows": 1765,
+        "normalized_all_rows": 42360,
+        "normalized_2026_rows": 1416,
+        "raw_columns": [
+          "년월일",
+          "호기",
+          "총량(kw)",
+          "평균(kw)",
+          "최대(kw)",
+          "최소(kw)",
+          "최대(시간별_kw)",
+          "최소(시간별_kw)",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12",
+          "13",
+          "14",
+          "15",
+          "16",
+          "17",
+          "18",
+          "19",
+          "20",
+          "21",
+          "22",
+          "23",
+          "24"
+        ],
+        "unit_resolution": {
+          "declared_source_unit": "kwh",
+          "resolved_source_unit": "kwh",
+          "method": "declared_header",
+          "capacity_factor_p99": null,
+          "capacity_factor_max": null
+        },
+        "daily_total_check": {
+          "days": 59,
+          "comparable_days": 59,
+          "mismatch_days": 0,
+          "maximum_absolute_difference_source_scale": 9.094947017729282e-13
+        },
+        "meter_category_values": []
+      }
+    ],
+    "official_plant_metadata": [
+      {
+        "path": "file/solar_data_file/location/한국남동발전㈜_(발전공기업 표준) 신재생에너지 사업현황_20221231.csv",
+        "status": "present",
+        "bytes": 3591,
+        "sha256": "e6821158aa1cc407d821bf49b956694b9d4b7e5f0ba0c48f80d22302338ee298"
+      },
+      {
+        "path": "file/solar_data_file/location/한국남부발전(주)_태양광발전기 사양정보_20250630.csv",
+        "status": "present",
+        "bytes": 6710,
+        "sha256": "11dc994c1fb3fc5d66b45b05f151488bea4c1dbdb7b8bef2de68764831551af3"
+      },
+      {
+        "path": "file/solar_data_file/location/한국동서발전(주)_(발전공기업 표준)신재생에너지 사업현황_20230630.csv",
+        "status": "present",
+        "bytes": 10214,
+        "sha256": "c31c5dabf451c56df927ce87c3a52d9a98c4977fe08654ce2ec863855b7e32c3"
+      },
+      {
+        "path": "file/solar_data_file/location/한국서부발전(주)_신재생에너지사업현황_20231231.csv",
+        "status": "present",
+        "bytes": 4027,
+        "sha256": "45e31e1a3a6ec3fa10ca2bfe5c968701c6e109092d3f14ff352e28a5738098e9"
+      }
+    ],
+    "station_metadata": {
+      "path": "file/KMA_data_file/META_관측지점정보.csv",
+      "status": "present",
+      "bytes": 17170,
+      "sha256": "edb139957bc63be3a0c0b6cb1209bee4f9949ae21a9bb9b9af4fc44887977e71"
+    },
+    "station_mapping": {
+      "path": "config/reviewed_weather_mappings.json",
+      "status": "present",
+      "bytes": 3112,
+      "sha256": "998d6eb8e0f659f484914fe9d0b75b53997951bd130a4ab587f1fc2a3def8929"
+    },
+    "asos_2026": {
+      "path": "file/KMA_data_file/OBS_ASOS_TIM_2026.csv",
+      "status": "missing",
+      "bytes": null,
+      "sha256": null
+    },
+    "weather_staging_manifest": {
+      "path": "artifacts/weather_full_versions/20261104_weather_full_staging_v1/manifest.json",
+      "status": "missing",
+      "bytes": null,
+      "sha256": null
+    },
+    "experiment_config": {
+      "path": "config/experiments/optimized.json",
+      "status": "present",
+      "bytes": 4605,
+      "sha256": "88fecb21c96a6a99dff421d98a8d061a5c9eb32ea4c97f0527702b8a4c3498b1"
+    },
+    "observation_availability": null,
+    "plant_review": null,
+    "forecast_archives": {
+      "1": {
+        "status": "not_configured"
+      },
+      "24": {
+        "path": "file/forecast_weather/open_meteo_jma_msm_24h.csv.gz",
+        "status": "missing",
+        "bytes": null,
+        "sha256": null
+      },
+      "72": {
+        "path": "file/forecast_weather/open_meteo_jma_gsm_72h.csv.gz",
+        "status": "missing",
+        "bytes": null,
+        "sha256": null
+      }
+    }
+  },
+  "generation_2026": {
+    "parsed_rows": 2832,
+    "plant_count": 2,
+    "providers": {
+      "koen": {
+        "normalized_2026_rows": 0,
+        "profiles": 0
+      },
+      "ewp": {
+        "normalized_2026_rows": 0,
+        "profiles": 0
+      },
+      "kospo": {
+        "normalized_2026_rows": 2832,
+        "profiles": 2
+      }
+    },
+    "plants": [
+      {
+        "plant_id": "kospo:신풍리 태양광(제주)",
+        "company": "kospo",
+        "plant": "신풍리 태양광(제주)",
+        "generation_sources": [
+          "file/solar_data_file/한국남부발전/최신공공데이터/[신풍리]태양광발전실적_20260228.csv"
+        ],
+        "source_series_ids": [
+          "kospo:신풍리#1"
+        ],
+        "generator_labels": [
+          "1"
+        ],
+        "meter_points": {},
+        "interval_start_evidence": null,
+        "provisional_start_kst": "2026-01-01T00:00:00",
+        "provisional_end_kst_inclusive": "2026-02-28T23:00:00",
+        "normalized_source_rows": 1416,
+        "duplicate_series_hour_rows": 0,
+        "conflicting_series_hours": 0,
+        "expected_hours_per_series": 1416,
+        "observed_hours_by_series": {
+          "kospo:신풍리#1": 1416
+        },
+        "distinct_plant_hours": 1416,
+        "as_of_observations": {
+          "expected_targets": 1416,
+          "generation_timestamp_rows": 0,
+          "weather_timestamp_rows": 0,
+          "status": "actual_observation_availability_missing"
+        },
+        "address": "서귀포시 성산읍 신풍리 1522",
+        "capacity_mw_values": [
+          0.99072
+        ],
+        "min_generation_mwh": 0.0,
+        "max_generation_mwh": 0.8676,
+        "station": {
+          "id": 188,
+          "name": "성산",
+          "method": "reviewed_config_mapping",
+          "evidence_url": "https://www.data.go.kr/data/15109998/fileData.do",
+          "rationale": "Official metadata locates the plant in Seogwipo-si Seongsan-eup; Seongsan ASOS is the locality station."
+        },
+        "matched_asos_station_hours": 0,
+        "generation_quality_eligible_rows": 1416,
+        "physical_quality_eligible_rows": 1416,
+        "forecasts": {
+          "1": {
+            "expected_targets": 1416,
+            "archive_rows": 0,
+            "aligned_targets": 0,
+            "verified_timing_targets": 0,
+            "coverage": 0.0,
+            "minimum_coverage": 0.98,
+            "status": "archive_not_configured"
+          },
+          "24": {
+            "expected_targets": 1416,
+            "archive_rows": 0,
+            "aligned_targets": 0,
+            "verified_timing_targets": 0,
+            "coverage": 0.0,
+            "minimum_coverage": 0.98,
+            "status": "archive_missing"
+          },
+          "72": {
+            "expected_targets": 1416,
+            "archive_rows": 0,
+            "aligned_targets": 0,
+            "verified_timing_targets": 0,
+            "coverage": 0.0,
+            "minimum_coverage": 0.98,
+            "status": "archive_missing"
+          }
+        },
+        "checks": {
+          "plant_identity": true,
+          "generator_identity": true,
+          "meter_point_identity": false,
+          "generation_mwh": true,
+          "capacity_mw": true,
+          "kst_interval_start": false,
+          "hourly_generation_coverage": true,
+          "actual_observation_availability": false,
+          "location_station_mapping": true,
+          "matched_asos_station_hours": false,
+          "generation_quality": true,
+          "forecast_horizons_and_timing": false
+        },
+        "blocked_by": [
+          "meter_point_identity",
+          "kst_interval_start",
+          "actual_observation_availability",
+          "matched_asos_station_hours",
+          "forecast_horizons_and_timing"
+        ]
+      },
+      {
+        "plant_id": "kospo:제주 용수리 태양광",
+        "company": "kospo",
+        "plant": "제주 용수리 태양광",
+        "generation_sources": [
+          "file/solar_data_file/한국남부발전/최신공공데이터/[용수리]태양광발전실적_20260228.csv"
+        ],
+        "source_series_ids": [
+          "kospo:용수리#1"
+        ],
+        "generator_labels": [
+          "1"
+        ],
+        "meter_points": {},
+        "interval_start_evidence": null,
+        "provisional_start_kst": "2026-01-01T00:00:00",
+        "provisional_end_kst_inclusive": "2026-02-28T23:00:00",
+        "normalized_source_rows": 1416,
+        "duplicate_series_hour_rows": 0,
+        "conflicting_series_hours": 0,
+        "expected_hours_per_series": 1416,
+        "observed_hours_by_series": {
+          "kospo:용수리#1": 1416
+        },
+        "distinct_plant_hours": 1416,
+        "as_of_observations": {
+          "expected_targets": 1416,
+          "generation_timestamp_rows": 0,
+          "weather_timestamp_rows": 0,
+          "status": "actual_observation_availability_missing"
+        },
+        "address": "제주시 한경면 용수리 457 외 2",
+        "capacity_mw_values": [
+          0.88893
+        ],
+        "min_generation_mwh": 0.0,
+        "max_generation_mwh": 0.711587,
+        "station": {
+          "id": 185,
+          "name": "고산",
+          "method": "reviewed_config_mapping",
+          "evidence_url": "https://www.data.go.kr/data/15095404/fileData.do",
+          "rationale": "Official metadata locates the plant in Jeju-si Hangyeong-myeon; Gosan ASOS is the reviewed nearby station."
+        },
+        "matched_asos_station_hours": 0,
+        "generation_quality_eligible_rows": 1416,
+        "physical_quality_eligible_rows": 1416,
+        "forecasts": {
+          "1": {
+            "expected_targets": 1416,
+            "archive_rows": 0,
+            "aligned_targets": 0,
+            "verified_timing_targets": 0,
+            "coverage": 0.0,
+            "minimum_coverage": 0.98,
+            "status": "archive_not_configured"
+          },
+          "24": {
+            "expected_targets": 1416,
+            "archive_rows": 0,
+            "aligned_targets": 0,
+            "verified_timing_targets": 0,
+            "coverage": 0.0,
+            "minimum_coverage": 0.98,
+            "status": "archive_missing"
+          },
+          "72": {
+            "expected_targets": 1416,
+            "archive_rows": 0,
+            "aligned_targets": 0,
+            "verified_timing_targets": 0,
+            "coverage": 0.0,
+            "minimum_coverage": 0.98,
+            "status": "archive_missing"
+          }
+        },
+        "checks": {
+          "plant_identity": true,
+          "generator_identity": true,
+          "meter_point_identity": false,
+          "generation_mwh": true,
+          "capacity_mw": true,
+          "kst_interval_start": false,
+          "hourly_generation_coverage": true,
+          "actual_observation_availability": false,
+          "location_station_mapping": true,
+          "matched_asos_station_hours": false,
+          "generation_quality": true,
+          "forecast_horizons_and_timing": false
+        },
+        "blocked_by": [
+          "meter_point_identity",
+          "kst_interval_start",
+          "actual_observation_availability",
+          "matched_asos_station_hours",
+          "forecast_horizons_and_timing"
+        ]
+      }
+    ]
+  },
+  "candidate": {
+    "status": "blocked",
+    "admitted_2026_rows": 0,
+    "dataset_path": null,
+    "dataset_sha256": null,
+    "eligible_periods": [],
+    "plants_passing_input_checks": [],
+    "blockers": [
+      "baseline_gold_not_physically_verified",
+      "no_plant_passes_input_checks",
+      "versioned_gold_dataset_not_materialized"
+    ]
+  }
+}

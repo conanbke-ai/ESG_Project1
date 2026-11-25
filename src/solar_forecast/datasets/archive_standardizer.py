@@ -130,7 +130,7 @@ class HistoricalGenerationStandardizationService:
             source_dir = self.input_root / directory_name
             for source in sorted(source_dir.rglob("*.csv")):
                 try:
-                    normalized = self._normalize(company, source)
+                    normalized = self.normalize_source(company, source)
                     normalization_attrs = normalized.attrs.copy()
                     normalized = self.metadata.enrich(normalized)
                     normalized.attrs.update(normalization_attrs)
@@ -170,7 +170,8 @@ class HistoricalGenerationStandardizationService:
             raise ValueError(f"Failed to standardize {len(errors)} files. {samples}")
         return StandardizationRun(self.output_dir, manifest_path, tuple(partitions))
 
-    def _normalize(self, company: str, source: Path) -> pd.DataFrame:
+    def normalize_source(self, company: str, source: Path) -> pd.DataFrame:
+        """Normalize a single retained export without writing Silver data."""
         if company == "koen":
             return KoenGenerationNormalizer().read(source)
         raw = read_csv_with_fallback(source)

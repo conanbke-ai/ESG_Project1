@@ -1,0 +1,41 @@
+{
+  "contract": "solar-model-reuse-smoke-evidence.v1",
+  "status": "passed",
+  "device": "cpu",
+  "input": "isolated_test_fixtures",
+  "historical_payload_resume_attempted": false,
+  "gpu_full_training_executed": false,
+  "runtime": {
+    "torch": "2.14.1",
+    "xgboost": "3.2.0",
+    "optuna": "5.0.0",
+    "pandas": "2.3.3",
+    "numpy": "2.4.6",
+    "scikit-learn": "1.9.1",
+    "pytest": "9.1.1"
+  },
+  "pytest": {
+    "passed": 45,
+    "passed_subtests": 31,
+    "failed": 0
+  },
+  "checks": {
+    "torch_wrong_stage_signature_rejected": true,
+    "cnn_interruption_after_first_epoch_resumed_to_third": true,
+    "xgboost_resumed_round_3_to_5_and_reopened_completed_round_5": true,
+    "optuna_retry_preserved_parameters": true,
+    "changed_input_rejected_by_frozen_inventory": true
+  },
+  "optuna": {
+    "first_run": {
+      "existing_finished_trials": 0,
+      "executed_trials": 2,
+      "finished_trials": 2
+    },
+    "reopen": {
+      "existing_finished_trials": 2,
+      "executed_trials": 0,
+      "finished_trials": 2
+    }
+  }
+}

@@ -1,0 +1,1136 @@
+{
+  "contract": "solar-benchmark-model-reuse-audit.v1",
+  "benchmark_id": "20260922_132607_286733",
+  "historical_manifest_sha256": "b7021a0502819704e5b3ddca8427bf563b2d04abd6f885d607e71f405903698b",
+  "historical_code_revision": "187f9322c7467908c45e30df526d88149c7cf5c3",
+  "historical_dataset_recorded_fingerprint": "9386c841d06ca1427be54e77d7277c9c15b72820d762e3e72a2fa3f380093211",
+  "historical_dataset_bytes_reverified": false,
+  "current_dataset": {
+    "configured_path": "/workspace/ESG_Phase2/file/standardized/model_ready_parts",
+    "status": "missing",
+    "fingerprint": null
+  },
+  "current_experiment": "config/experiments/optimized.json",
+  "current_experiment_sha256": "88fecb21c96a6a99dff421d98a8d061a5c9eb32ea4c97f0527702b8a4c3498b1",
+  "historical_fingerprints_matched": 6,
+  "current_config_fingerprints_matched_with_historical_dataset_digest_and_path": 0,
+  "historical_optuna_sqlite_present": false,
+  "historical_original_checkpoint_payloads_present": 0,
+  "fitted_cpu_artifacts_loaded": 6,
+  "historical_exported_trials": 60,
+  "historical_training_resumed_by_audit": false,
+  "models_fitted_by_audit": false,
+  "comparisons": [
+    {
+      "horizon_hours": 1,
+      "model": "cnn_bilstm",
+      "historical_candidate_id": "observed_weather_history_lookback_24h",
+      "historical_resolved_config": "candidates/horizon_1h/cnn_bilstm/observed_weather_history_lookback_24h/20260922_144616_984270/resolved_config.json",
+      "historical_checkpoint_fingerprint": "2aafa194887082c5de15d8a92ba53d82b646016d04d46186ff6da8af25f361aa",
+      "historical_fingerprint_matches": true,
+      "historical_fit_reported_resumed": true,
+      "historical_selected_parameters": {
+        "cnn_channels": 90,
+        "kernel_size": 3,
+        "lstm_hidden": 60,
+        "lstm_layers": 2,
+        "dense_units": 78,
+        "dropout": 0.13736874205941257,
+        "readout": "final_hidden",
+        "lr": 0.00027010527749605503,
+        "weight_decay": 2.9204338471814074e-06
+      },
+      "historical_temporal_split": {
+        "protocol": "global_timestamp_train_validation_calibration_test",
+        "evaluation_protocol": "historical_rolling_origin_with_observation_updates",
+        "forecast_horizon_hours": 1,
+        "sequence_length": 24,
+        "continuous_hourly_windows_required": true,
+        "fractions": {
+          "train": 0.6,
+          "validation": 0.15,
+          "calibration": 0.1,
+          "test": 0.15
+        },
+        "counts": {
+          "train": 478747,
+          "validation": 38760,
+          "calibration": 38664,
+          "test": 105336
+        },
+        "boundaries": {
+          "train_end": "2024-06-30T23:00:00",
+          "validation_end": "2024-09-30T23:00:00",
+          "calibration_end": "2024-12-31T23:00:00",
+          "gap_hours": 168,
+          "test_end": "2025-12-31T23:00:00",
+          "split_mode": "calendar"
+        },
+        "test_period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00"
+        },
+        "window_materialization": "lazy_per_batch"
+      },
+      "historical_final_fit_stage": "final_fit_f54fc210c9e5b09adbba",
+      "original_checkpoint_payload_present": false,
+      "fitted_artifact": {
+        "artifact": "candidates/horizon_1h/cnn_bilstm/observed_weather_history_lookback_24h/20260922_144616_984270/20260922_144623_016671/cnn_bilstm.pt",
+        "sha256": "cc1eb25464ce4ee402fdf77018ccc785b662c649cf06f5a87be0e6adcf463b62",
+        "committed_git_blob": "fb657baf021f6313e274276df147dc5797e6b788",
+        "cpu_loaded": true,
+        "architecture": {
+          "n_features": 52,
+          "cnn_channels": 90,
+          "kernel_size": 3,
+          "lstm_hidden": 60,
+          "lstm_layers": 2,
+          "dense_units": 78,
+          "dropout": 0.13736874205941257,
+          "readout": "final_hidden"
+        },
+        "scaler": {
+          "contract": "solar-cnn-input-preprocessing.v2",
+          "strategy": "training_split_median_standard_with_missing_indicators",
+          "fit_scope": "unique_feature_rows_used_in_training_windows",
+          "ordered_features": [
+            "temperature_c",
+            "precipitation_mm",
+            "sunshine_hours",
+            "solar_irradiance_mj_m2",
+            "wind_speed_mps",
+            "humidity_pct",
+            "total_cloud_cover_tenths",
+            "low_mid_cloud_cover_tenths",
+            "hour",
+            "dayofweek",
+            "month",
+            "hour_sin",
+            "hour_cos",
+            "dayofyear_sin",
+            "dayofyear_cos",
+            "generation_lag_24h_mwh",
+            "generation_lag_168h_mwh",
+            "generation_rolling_7d_mean_mwh",
+            "capacity_mw",
+            "tilt_deg",
+            "station_latitude",
+            "station_longitude",
+            "station_elevation_m",
+            "solar_elevation_sin",
+            "clear_sky_irradiance_proxy",
+            "is_daylight"
+          ],
+          "scaler_state_sha256": "5544e2aece916e672d492fc5cd7facfde5c62fe3fdeb577229610e9e6a3bdfc1"
+        },
+        "fitted_target_transform": "identity",
+        "checkpoint_payload_validated_on_cpu": false,
+        "fitted_artifact_has_optimizer_state": false,
+        "historical_stage": "final_fit_f54fc210c9e5b09adbba",
+        "reconstructed_historical_stage_signature": "f54fc210c9e5b09adbbab092966b96697d26be5580300c37484b957c7cf79218"
+      },
+      "optuna_evidence": {
+        "study_name": "historical_cnn_bilstm_1h_observed_weather_history_lookback_24h_2aafa1948870_4997282ef729",
+        "exported_trial_states": {
+          "COMPLETE": 5
+        },
+        "exported_finished_trials": 5,
+        "historically_executed_trials_this_run": 0,
+        "sqlite_study_trial_rows": null,
+        "summary_sha256": "6a3b965ce53e025bb4de4438d0caeefc4bf320386a92c09510ac000ac23bbae3",
+        "trials_csv_sha256": "fb4d1e738ef7b5f7ae17357e9ccf21aa0ed9e2a0670d863ef5f5596ebdc8fb95"
+      },
+      "current_variants": [
+        {
+          "candidate_id": "observed_weather_history_lookback_24h",
+          "effective_config_differences": {
+            "model_values.capacity_column": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": "capacity_mw"
+            },
+            "model_values.future_weather": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": {
+                "enabled": false
+              }
+            },
+            "model_values.input_dataset": {
+              "historical": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+              "current": "/workspace/ESG_Phase2/file/standardized/model_ready_parts"
+            },
+            "model_values.target_transform": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": "capacity_factor"
+            }
+          },
+          "same_archived_dataset_digest_and_path_fingerprint": "f87fa34c0ca46f7d5e47962403758f03e38fd5c99333af9d0433fd22e4ba6f0c",
+          "same_archived_dataset_digest_and_path_matches": false,
+          "path_only_fingerprint": "eb47dc0066a98283edcacf87902ff5ddebf08604ecb6046832f897792b324a52",
+          "configured_paths_with_archived_digest_fingerprint": "517405852360c629004dc455372ed0a1a9707d75df252fbc2f6cb89b8c69e200",
+          "actual_dataset_and_configuration_fingerprint": null,
+          "current_study_name_with_archived_digest_and_path": "historical_cnn_bilstm_1h_observed_weather_history_lookback_24h_f87fa34c0ca4_4997282ef729",
+          "current_study_name_with_actual_dataset": null,
+          "historical_features_and_lookback_equal": true,
+          "current_future_features": [],
+          "global_split_and_purge_equal": true,
+          "current_split": {
+            "train_end": "2024-06-30T23:00:00",
+            "validation_end": "2024-09-30T23:00:00",
+            "calibration_end": "2024-12-31T23:00:00",
+            "test_end": "2025-12-31T23:00:00",
+            "purge_gap_hours": 168
+          },
+          "current_scaler_policy": "training_split_median_standard_with_missing_indicators",
+          "current_input_preprocessing_contract": "solar-cnn-input-preprocessing.v2",
+          "current_target_transform": "capacity_factor",
+          "current_cnn_network_config_fields": [
+            "n_features",
+            "cnn_channels",
+            "kernel_size",
+            "lstm_hidden",
+            "lstm_layers",
+            "dense_units",
+            "dropout",
+            "readout",
+            "n_future_features",
+            "future_units"
+          ],
+          "current_optimizer_search_space_equal": true,
+          "current_final_fit_stage": "requires_effective_features_selected_parameters_and_current_split"
+        }
+      ]
+    },
+    {
+      "horizon_hours": 1,
+      "model": "xgboost",
+      "historical_candidate_id": "observed_weather_history",
+      "historical_resolved_config": "candidates/horizon_1h/xgboost/observed_weather_history/20260922_144606_577378/resolved_config.json",
+      "historical_checkpoint_fingerprint": "a76a6d44b5d86a0be5a761a818bfc43baac92bad3baa07a88c3158f22514320a",
+      "historical_fingerprint_matches": true,
+      "historical_fit_reported_resumed": true,
+      "historical_selected_parameters": {
+        "max_depth": 12,
+        "learning_rate": 0.12106896936002161,
+        "min_child_weight": 2.0873833155670938,
+        "subsample": 0.6727299868828402,
+        "colsample_bytree": 0.6733618039413735,
+        "reg_alpha": 5.472429642032198e-06,
+        "reg_lambda": 0.4205156450913872,
+        "gamma": 5.7210634014350856e-05,
+        "max_bin": 256
+      },
+      "historical_temporal_split": {
+        "protocol": "global_timestamp_train_validation_calibration_test",
+        "evaluation_protocol": "historical_rolling_origin_with_observation_updates",
+        "boundaries": {
+          "train_end": "2024-06-30T23:00:00",
+          "validation_end": "2024-09-30T23:00:00",
+          "calibration_end": "2024-12-31T23:00:00",
+          "gap_hours": 168,
+          "test_end": "2025-12-31T23:00:00",
+          "split_mode": "calendar"
+        },
+        "counts": {
+          "train": 479345,
+          "validation": 38760,
+          "calibration": 38687,
+          "test": 105336
+        },
+        "test_period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00"
+        }
+      },
+      "historical_final_fit_stage": "final_fit_a3c6ff5b6216b7d665a8",
+      "original_checkpoint_payload_present": false,
+      "fitted_artifact": {
+        "artifact": "candidates/horizon_1h/xgboost/observed_weather_history/20260922_144606_577378/model.json",
+        "sha256": "a2243d07719e1c0b692d3b852f012ea36090cc0241cec681af045b386c8faad3",
+        "committed_git_blob": "b3a16b68d5a3143920c571d1a9f1415d26cf79fc",
+        "cpu_loaded": true,
+        "architecture": {
+          "tree_method": "hist",
+          "completed_rounds": 94
+        },
+        "scaler": {
+          "strategy": "xgboost_native_nan_learned_default_direction",
+          "fitted_scaler": false
+        },
+        "checkpoint_payload_validated_on_cpu": true,
+        "historical_stage": "final_fit_a3c6ff5b6216b7d665a8",
+        "reconstructed_historical_stage_signature": "a3c6ff5b6216b7d665a871e97dae5d35ac6f0ed863b6e23ec8e540a6cbd806a4"
+      },
+      "optuna_evidence": {
+        "study_name": "historical_xgboost_1h_observed_weather_history_a76a6d44b5d8",
+        "exported_trial_states": {
+          "COMPLETE": 8,
+          "PRUNED": 7
+        },
+        "exported_finished_trials": 15,
+        "historically_executed_trials_this_run": 0,
+        "sqlite_study_trial_rows": null,
+        "summary_sha256": "94d0cedaac3125bb53dd4409b2b42b6478ef5cd1998a7611a8513cb3b85e72ff",
+        "trials_csv_sha256": "fb4894326d867196b29668bf9f3a432f6268ff22e40a35a840e1c365f3af1755"
+      },
+      "current_variants": [
+        {
+          "candidate_id": "observed_weather_history",
+          "effective_config_differences": {
+            "model_values.future_weather": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": {
+                "enabled": false
+              }
+            },
+            "model_values.input_dataset": {
+              "historical": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+              "current": "/workspace/ESG_Phase2/file/standardized/model_ready_parts"
+            }
+          },
+          "same_archived_dataset_digest_and_path_fingerprint": "4fe5c1216ba8a818a430d4002097ebdaebd2e33927c91eb36f28504fffe54878",
+          "same_archived_dataset_digest_and_path_matches": false,
+          "path_only_fingerprint": "218f53a833ad3f262723b7d41bae7f470439263a07596a5100f322f2af8d33cf",
+          "configured_paths_with_archived_digest_fingerprint": "e419f0ad27c0b097fbfa5bff1e4b16043771b6d0b51fc12602f402b18d60ab73",
+          "actual_dataset_and_configuration_fingerprint": null,
+          "current_study_name_with_archived_digest_and_path": "historical_xgboost_1h_observed_weather_history_4fe5c1216ba8",
+          "current_study_name_with_actual_dataset": null,
+          "historical_features_and_lookback_equal": true,
+          "current_future_features": [],
+          "global_split_and_purge_equal": true,
+          "current_split": {
+            "train_end": "2024-06-30T23:00:00",
+            "validation_end": "2024-09-30T23:00:00",
+            "calibration_end": "2024-12-31T23:00:00",
+            "test_end": "2025-12-31T23:00:00",
+            "purge_gap_hours": 168
+          },
+          "current_scaler_policy": "xgboost_native_nan_learned_default_direction",
+          "current_input_preprocessing_contract": null,
+          "current_target_transform": "identity",
+          "current_cnn_network_config_fields": null,
+          "current_optimizer_search_space_equal": true,
+          "current_final_fit_stage": "requires_effective_features_selected_parameters_and_current_split"
+        }
+      ]
+    },
+    {
+      "horizon_hours": 24,
+      "model": "cnn_bilstm",
+      "historical_candidate_id": "observed_weather_history_lookback_168h",
+      "historical_resolved_config": "candidates/horizon_24h/cnn_bilstm/observed_weather_history_lookback_168h/20260922_172919_141945/resolved_config.json",
+      "historical_checkpoint_fingerprint": "c275f3facd95fc1e76162e59964b177d07f5cba1231774f1700bfe6f62a4ec00",
+      "historical_fingerprint_matches": true,
+      "historical_fit_reported_resumed": true,
+      "historical_selected_parameters": {
+        "cnn_channels": 90,
+        "kernel_size": 3,
+        "lstm_hidden": 60,
+        "lstm_layers": 2,
+        "dense_units": 78,
+        "dropout": 0.13736874205941257,
+        "readout": "final_hidden",
+        "lr": 0.00027010527749605503,
+        "weight_decay": 2.9204338471814074e-06
+      },
+      "historical_temporal_split": {
+        "protocol": "global_timestamp_train_validation_calibration_test",
+        "evaluation_protocol": "historical_rolling_origin_with_observation_updates",
+        "forecast_horizon_hours": 24,
+        "sequence_length": 168,
+        "continuous_hourly_windows_required": true,
+        "fractions": {
+          "train": 0.6,
+          "validation": 0.15,
+          "calibration": 0.1,
+          "test": 0.15
+        },
+        "counts": {
+          "train": 474472,
+          "validation": 38760,
+          "calibration": 38497,
+          "test": 105336
+        },
+        "boundaries": {
+          "train_end": "2024-06-30T23:00:00",
+          "validation_end": "2024-09-30T23:00:00",
+          "calibration_end": "2024-12-31T23:00:00",
+          "gap_hours": 168,
+          "test_end": "2025-12-31T23:00:00",
+          "split_mode": "calendar"
+        },
+        "test_period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00"
+        },
+        "window_materialization": "lazy_per_batch"
+      },
+      "historical_final_fit_stage": "final_fit_3e198e234eeb7897b8ea",
+      "original_checkpoint_payload_present": false,
+      "fitted_artifact": {
+        "artifact": "candidates/horizon_24h/cnn_bilstm/observed_weather_history_lookback_168h/20260922_172919_141945/20260922_172925_196802/cnn_bilstm.pt",
+        "sha256": "d5f264c8e130330d94ab2ac20bf3faa8fc3f9a8b692c877942cca07b38293185",
+        "committed_git_blob": "8fb9a45d5248dfe85d92e6edcb1250dfbfe7c2f4",
+        "cpu_loaded": true,
+        "architecture": {
+          "n_features": 52,
+          "cnn_channels": 90,
+          "kernel_size": 3,
+          "lstm_hidden": 60,
+          "lstm_layers": 2,
+          "dense_units": 78,
+          "dropout": 0.13736874205941257,
+          "readout": "final_hidden"
+        },
+        "scaler": {
+          "contract": "solar-cnn-input-preprocessing.v2",
+          "strategy": "training_split_median_standard_with_missing_indicators",
+          "fit_scope": "unique_feature_rows_used_in_training_windows",
+          "ordered_features": [
+            "temperature_c",
+            "precipitation_mm",
+            "sunshine_hours",
+            "solar_irradiance_mj_m2",
+            "wind_speed_mps",
+            "humidity_pct",
+            "total_cloud_cover_tenths",
+            "low_mid_cloud_cover_tenths",
+            "hour",
+            "dayofweek",
+            "month",
+            "hour_sin",
+            "hour_cos",
+            "dayofyear_sin",
+            "dayofyear_cos",
+            "generation_lag_24h_mwh",
+            "generation_lag_168h_mwh",
+            "generation_rolling_7d_mean_mwh",
+            "capacity_mw",
+            "tilt_deg",
+            "station_latitude",
+            "station_longitude",
+            "station_elevation_m",
+            "solar_elevation_sin",
+            "clear_sky_irradiance_proxy",
+            "is_daylight"
+          ],
+          "scaler_state_sha256": "2ed61f40c3d664df829ddf7041303811b99732fbde4590ea73d0590e50b74910"
+        },
+        "fitted_target_transform": "identity",
+        "checkpoint_payload_validated_on_cpu": false,
+        "fitted_artifact_has_optimizer_state": false,
+        "historical_stage": "final_fit_3e198e234eeb7897b8ea",
+        "reconstructed_historical_stage_signature": "3e198e234eeb7897b8ea23bfa204e7722b35f92fd55a2e0534d8d55b653cd4fc"
+      },
+      "optuna_evidence": {
+        "study_name": "historical_cnn_bilstm_24h_observed_weather_history_lookback_168h_c275f3facd95_4997282ef729",
+        "exported_trial_states": {
+          "COMPLETE": 5
+        },
+        "exported_finished_trials": 5,
+        "historically_executed_trials_this_run": 0,
+        "sqlite_study_trial_rows": null,
+        "summary_sha256": "79a68199e886f0c569b58e70143bb0d196d3c454020bae6edd44a4c0c7081471",
+        "trials_csv_sha256": "812adbdbb7ff21c473c7ef85d3744b47f22fbb69086bf3003736eac24ff0d38e"
+      },
+      "current_variants": [
+        {
+          "candidate_id": "observed_weather_history_lookback_168h_future_aligned_core",
+          "effective_config_differences": {
+            "model_values.benchmark_candidate_id": {
+              "historical": "observed_weather_history_lookback_168h",
+              "current": "observed_weather_history_lookback_168h_future_aligned_core"
+            },
+            "model_values.capacity_column": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": "capacity_mw"
+            },
+            "model_values.future_weather": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": {
+                "enabled": true,
+                "source": "/workspace/ESG_Phase2/file/forecast_weather/open_meteo_jma_msm_24h.csv.gz",
+                "minimum_coverage": 0.98,
+                "source_contract": "solar-future-weather-forecast.v2",
+                "source_model": "jma_msm",
+                "usable_from": "2022-07-03T00:00:00",
+                "feature_profile": "aligned_core"
+              }
+            },
+            "model_values.input_dataset": {
+              "historical": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+              "current": "/workspace/ESG_Phase2/file/standardized/model_ready_parts"
+            },
+            "model_values.optimizer.study_name": {
+              "historical": "historical_cnn_bilstm_24h_observed_weather_history_lookback_168h",
+              "current": "historical_cnn_bilstm_24h_observed_weather_history_lookback_168h_future_aligned_core"
+            },
+            "model_values.target_transform": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": "capacity_factor"
+            }
+          },
+          "same_archived_dataset_digest_and_path_fingerprint": "580db406c0d1eec864425423d3a05ab2c7bd31adfd6e34aebd402bc99dadf28c",
+          "same_archived_dataset_digest_and_path_matches": false,
+          "path_only_fingerprint": "88394c9d5ffc24bb921dea18f8c6c502fa7f65a3d79b63b76529ea1762f3123e",
+          "configured_paths_with_archived_digest_fingerprint": "b9ff2f116dea8d9f415993e75afd8cb4d565f73582c096294399588e47cfa76d",
+          "actual_dataset_and_configuration_fingerprint": null,
+          "current_study_name_with_archived_digest_and_path": "historical_cnn_bilstm_24h_observed_weather_history_lookback_168h_future_aligned_core_580db406c0d1_4997282ef729",
+          "current_study_name_with_actual_dataset": null,
+          "historical_features_and_lookback_equal": true,
+          "current_future_features": [
+            "future_temperature_c",
+            "future_humidity_pct",
+            "future_precipitation_mm",
+            "future_total_cloud_cover_tenths",
+            "future_wind_speed_mps",
+            "future_solar_irradiance_mj_m2",
+            "future_sunshine_hours"
+          ],
+          "global_split_and_purge_equal": true,
+          "current_split": {
+            "train_end": "2024-06-30T23:00:00",
+            "validation_end": "2024-09-30T23:00:00",
+            "calibration_end": "2024-12-31T23:00:00",
+            "test_end": "2025-12-31T23:00:00",
+            "purge_gap_hours": 168
+          },
+          "current_scaler_policy": "training_split_median_standard_with_missing_indicators",
+          "current_input_preprocessing_contract": "solar-cnn-input-preprocessing.v2",
+          "current_target_transform": "capacity_factor",
+          "current_cnn_network_config_fields": [
+            "n_features",
+            "cnn_channels",
+            "kernel_size",
+            "lstm_hidden",
+            "lstm_layers",
+            "dense_units",
+            "dropout",
+            "readout",
+            "n_future_features",
+            "future_units"
+          ],
+          "current_optimizer_search_space_equal": true,
+          "current_final_fit_stage": "requires_effective_features_selected_parameters_and_current_split"
+        },
+        {
+          "candidate_id": "observed_weather_history_lookback_168h_future_aligned_core_plus_components",
+          "effective_config_differences": {
+            "model_values.benchmark_candidate_id": {
+              "historical": "observed_weather_history_lookback_168h",
+              "current": "observed_weather_history_lookback_168h_future_aligned_core_plus_components"
+            },
+            "model_values.capacity_column": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": "capacity_mw"
+            },
+            "model_values.future_weather": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": {
+                "enabled": true,
+                "source": "/workspace/ESG_Phase2/file/forecast_weather/open_meteo_jma_msm_24h.csv.gz",
+                "minimum_coverage": 0.98,
+                "source_contract": "solar-future-weather-forecast.v2",
+                "source_model": "jma_msm",
+                "usable_from": "2022-07-03T00:00:00",
+                "feature_profile": "aligned_core_plus_components"
+              }
+            },
+            "model_values.input_dataset": {
+              "historical": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+              "current": "/workspace/ESG_Phase2/file/standardized/model_ready_parts"
+            },
+            "model_values.optimizer.study_name": {
+              "historical": "historical_cnn_bilstm_24h_observed_weather_history_lookback_168h",
+              "current": "historical_cnn_bilstm_24h_observed_weather_history_lookback_168h_future_aligned_core_plus_components"
+            },
+            "model_values.target_transform": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": "capacity_factor"
+            }
+          },
+          "same_archived_dataset_digest_and_path_fingerprint": "ad79cffffd7126a220524ac06a94152febf1441be56d984a138ae49249203c62",
+          "same_archived_dataset_digest_and_path_matches": false,
+          "path_only_fingerprint": "88394c9d5ffc24bb921dea18f8c6c502fa7f65a3d79b63b76529ea1762f3123e",
+          "configured_paths_with_archived_digest_fingerprint": "59905fb805e207e05ebdba4b9435f534b338c37d999c1af093edb29b16ee398e",
+          "actual_dataset_and_configuration_fingerprint": null,
+          "current_study_name_with_archived_digest_and_path": "historical_cnn_bilstm_24h_observed_weather_history_lookback_168h_future_aligned_core_plus_components_ad79cffffd71_4997282ef729",
+          "current_study_name_with_actual_dataset": null,
+          "historical_features_and_lookback_equal": true,
+          "current_future_features": [
+            "future_temperature_c",
+            "future_humidity_pct",
+            "future_precipitation_mm",
+            "future_total_cloud_cover_tenths",
+            "future_wind_speed_mps",
+            "future_solar_irradiance_mj_m2",
+            "future_sunshine_hours",
+            "future_dni_mj_m2",
+            "future_dhi_mj_m2"
+          ],
+          "global_split_and_purge_equal": true,
+          "current_split": {
+            "train_end": "2024-06-30T23:00:00",
+            "validation_end": "2024-09-30T23:00:00",
+            "calibration_end": "2024-12-31T23:00:00",
+            "test_end": "2025-12-31T23:00:00",
+            "purge_gap_hours": 168
+          },
+          "current_scaler_policy": "training_split_median_standard_with_missing_indicators",
+          "current_input_preprocessing_contract": "solar-cnn-input-preprocessing.v2",
+          "current_target_transform": "capacity_factor",
+          "current_cnn_network_config_fields": [
+            "n_features",
+            "cnn_channels",
+            "kernel_size",
+            "lstm_hidden",
+            "lstm_layers",
+            "dense_units",
+            "dropout",
+            "readout",
+            "n_future_features",
+            "future_units"
+          ],
+          "current_optimizer_search_space_equal": true,
+          "current_final_fit_stage": "requires_effective_features_selected_parameters_and_current_split"
+        }
+      ]
+    },
+    {
+      "horizon_hours": 24,
+      "model": "xgboost",
+      "historical_candidate_id": "observed_weather_history",
+      "historical_resolved_config": "candidates/horizon_24h/xgboost/observed_weather_history/20260922_172910_136079/resolved_config.json",
+      "historical_checkpoint_fingerprint": "d00f8d7ff4dcc78d279bfe48392e49e1f3600531005bbce41bbe9fefae8abb97",
+      "historical_fingerprint_matches": true,
+      "historical_fit_reported_resumed": true,
+      "historical_selected_parameters": {
+        "max_depth": 6,
+        "learning_rate": 0.17254716573280354,
+        "min_child_weight": 12.640395588249113,
+        "subsample": 0.8394633936788146,
+        "colsample_bytree": 0.6624074561769746,
+        "reg_alpha": 2.5348407664333426e-07,
+        "reg_lambda": 0.0019517224641449498,
+        "gamma": 0.3426417745118369,
+        "max_bin": 256
+      },
+      "historical_temporal_split": {
+        "protocol": "global_timestamp_train_validation_calibration_test",
+        "evaluation_protocol": "historical_rolling_origin_with_observation_updates",
+        "boundaries": {
+          "train_end": "2024-06-30T23:00:00",
+          "validation_end": "2024-09-30T23:00:00",
+          "calibration_end": "2024-12-31T23:00:00",
+          "gap_hours": 168,
+          "test_end": "2025-12-31T23:00:00",
+          "split_mode": "calendar"
+        },
+        "counts": {
+          "train": 478814,
+          "validation": 38760,
+          "calibration": 38664,
+          "test": 105336
+        },
+        "test_period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00"
+        }
+      },
+      "historical_final_fit_stage": "final_fit_9554fbb78e5553867ea0",
+      "original_checkpoint_payload_present": false,
+      "fitted_artifact": {
+        "artifact": "candidates/horizon_24h/xgboost/observed_weather_history/20260922_172910_136079/model.json",
+        "sha256": "0f94fff1e1cd9d67585598c86729cf67ad52046c7cd0f3799e6af32ef5005644",
+        "committed_git_blob": "6d09b3b622c9719e0ee7145c91d94b3dbe19d1ac",
+        "cpu_loaded": true,
+        "architecture": {
+          "tree_method": "hist",
+          "completed_rounds": 76
+        },
+        "scaler": {
+          "strategy": "xgboost_native_nan_learned_default_direction",
+          "fitted_scaler": false
+        },
+        "checkpoint_payload_validated_on_cpu": true,
+        "historical_stage": "final_fit_9554fbb78e5553867ea0",
+        "reconstructed_historical_stage_signature": "9554fbb78e5553867ea019f75835c4cdd7dd21f03735a6e12a4acdf21e26a166"
+      },
+      "optuna_evidence": {
+        "study_name": "historical_xgboost_24h_observed_weather_history_d00f8d7ff4dc",
+        "exported_trial_states": {
+          "COMPLETE": 10,
+          "PRUNED": 5
+        },
+        "exported_finished_trials": 15,
+        "historically_executed_trials_this_run": 0,
+        "sqlite_study_trial_rows": null,
+        "summary_sha256": "a7f08a8a111da34574b259fc3c5284be9f55530f382274b6b9f552d3d3ce2a1e",
+        "trials_csv_sha256": "9f0f39e01836372c7e2aa5e196206ff0a171a5770a6594eef7fd7c9d29e5a593"
+      },
+      "current_variants": [
+        {
+          "candidate_id": "observed_weather_history_future_aligned_core",
+          "effective_config_differences": {
+            "model_values.benchmark_candidate_id": {
+              "historical": "observed_weather_history",
+              "current": "observed_weather_history_future_aligned_core"
+            },
+            "model_values.future_weather": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": {
+                "enabled": true,
+                "source": "/workspace/ESG_Phase2/file/forecast_weather/open_meteo_jma_msm_24h.csv.gz",
+                "minimum_coverage": 0.98,
+                "source_contract": "solar-future-weather-forecast.v2",
+                "source_model": "jma_msm",
+                "usable_from": "2022-07-03T00:00:00",
+                "feature_profile": "aligned_core"
+              }
+            },
+            "model_values.input_dataset": {
+              "historical": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+              "current": "/workspace/ESG_Phase2/file/standardized/model_ready_parts"
+            },
+            "model_values.optimizer.study_name": {
+              "historical": "historical_xgboost_24h_observed_weather_history",
+              "current": "historical_xgboost_24h_observed_weather_history_future_aligned_core"
+            }
+          },
+          "same_archived_dataset_digest_and_path_fingerprint": "ce4e15a7842cfdb1cea1c443c7856db311c5a96de30d822802d64455fb8b3b29",
+          "same_archived_dataset_digest_and_path_matches": false,
+          "path_only_fingerprint": "e3649a792ded69cf006ffb61000493df988b296995bf26e4a943d9f785f392b9",
+          "configured_paths_with_archived_digest_fingerprint": "2871f38d82f3c4b10e7254cbe6c511138761012611f934aa3b7f443f5aa40de7",
+          "actual_dataset_and_configuration_fingerprint": null,
+          "current_study_name_with_archived_digest_and_path": "historical_xgboost_24h_observed_weather_history_future_aligned_core_ce4e15a7842c",
+          "current_study_name_with_actual_dataset": null,
+          "historical_features_and_lookback_equal": true,
+          "current_future_features": [
+            "future_temperature_c",
+            "future_humidity_pct",
+            "future_precipitation_mm",
+            "future_total_cloud_cover_tenths",
+            "future_wind_speed_mps",
+            "future_solar_irradiance_mj_m2",
+            "future_sunshine_hours"
+          ],
+          "global_split_and_purge_equal": true,
+          "current_split": {
+            "train_end": "2024-06-30T23:00:00",
+            "validation_end": "2024-09-30T23:00:00",
+            "calibration_end": "2024-12-31T23:00:00",
+            "test_end": "2025-12-31T23:00:00",
+            "purge_gap_hours": 168
+          },
+          "current_scaler_policy": "xgboost_native_nan_learned_default_direction",
+          "current_input_preprocessing_contract": null,
+          "current_target_transform": "identity",
+          "current_cnn_network_config_fields": null,
+          "current_optimizer_search_space_equal": true,
+          "current_final_fit_stage": "requires_effective_features_selected_parameters_and_current_split"
+        },
+        {
+          "candidate_id": "observed_weather_history_future_aligned_core_plus_components",
+          "effective_config_differences": {
+            "model_values.benchmark_candidate_id": {
+              "historical": "observed_weather_history",
+              "current": "observed_weather_history_future_aligned_core_plus_components"
+            },
+            "model_values.future_weather": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": {
+                "enabled": true,
+                "source": "/workspace/ESG_Phase2/file/forecast_weather/open_meteo_jma_msm_24h.csv.gz",
+                "minimum_coverage": 0.98,
+                "source_contract": "solar-future-weather-forecast.v2",
+                "source_model": "jma_msm",
+                "usable_from": "2022-07-03T00:00:00",
+                "feature_profile": "aligned_core_plus_components"
+              }
+            },
+            "model_values.input_dataset": {
+              "historical": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+              "current": "/workspace/ESG_Phase2/file/standardized/model_ready_parts"
+            },
+            "model_values.optimizer.study_name": {
+              "historical": "historical_xgboost_24h_observed_weather_history",
+              "current": "historical_xgboost_24h_observed_weather_history_future_aligned_core_plus_components"
+            }
+          },
+          "same_archived_dataset_digest_and_path_fingerprint": "321a8fea368823c56676faffe88d4e15bcc18ef5d039349feb93a36865fcc129",
+          "same_archived_dataset_digest_and_path_matches": false,
+          "path_only_fingerprint": "e3649a792ded69cf006ffb61000493df988b296995bf26e4a943d9f785f392b9",
+          "configured_paths_with_archived_digest_fingerprint": "e6a80d5f829098d028c77c514050cebdba16b25145a0cf7ae94d6d6d885346a2",
+          "actual_dataset_and_configuration_fingerprint": null,
+          "current_study_name_with_archived_digest_and_path": "historical_xgboost_24h_observed_weather_history_future_aligned_core_plus_components_321a8fea3688",
+          "current_study_name_with_actual_dataset": null,
+          "historical_features_and_lookback_equal": true,
+          "current_future_features": [
+            "future_temperature_c",
+            "future_humidity_pct",
+            "future_precipitation_mm",
+            "future_total_cloud_cover_tenths",
+            "future_wind_speed_mps",
+            "future_solar_irradiance_mj_m2",
+            "future_sunshine_hours",
+            "future_dni_mj_m2",
+            "future_dhi_mj_m2"
+          ],
+          "global_split_and_purge_equal": true,
+          "current_split": {
+            "train_end": "2024-06-30T23:00:00",
+            "validation_end": "2024-09-30T23:00:00",
+            "calibration_end": "2024-12-31T23:00:00",
+            "test_end": "2025-12-31T23:00:00",
+            "purge_gap_hours": 168
+          },
+          "current_scaler_policy": "xgboost_native_nan_learned_default_direction",
+          "current_input_preprocessing_contract": null,
+          "current_target_transform": "identity",
+          "current_cnn_network_config_fields": null,
+          "current_optimizer_search_space_equal": true,
+          "current_final_fit_stage": "requires_effective_features_selected_parameters_and_current_split"
+        }
+      ]
+    },
+    {
+      "horizon_hours": 72,
+      "model": "cnn_bilstm",
+      "historical_candidate_id": "history_calendar_lookback_24h",
+      "historical_resolved_config": "candidates/horizon_72h/cnn_bilstm/history_calendar_lookback_24h/20260922_212525_719632/resolved_config.json",
+      "historical_checkpoint_fingerprint": "297dc03acdd112b9d076c015ba30e55661023048c67233cdc2f2dcd0593b9227",
+      "historical_fingerprint_matches": true,
+      "historical_fit_reported_resumed": true,
+      "historical_selected_parameters": {
+        "cnn_channels": 90,
+        "kernel_size": 3,
+        "lstm_hidden": 60,
+        "lstm_layers": 2,
+        "dense_units": 78,
+        "dropout": 0.13736874205941257,
+        "readout": "final_hidden",
+        "lr": 0.00027010527749605503,
+        "weight_decay": 2.9204338471814074e-06
+      },
+      "historical_temporal_split": {
+        "protocol": "global_timestamp_train_validation_calibration_test",
+        "evaluation_protocol": "historical_rolling_origin_with_observation_updates",
+        "forecast_horizon_hours": 72,
+        "sequence_length": 24,
+        "continuous_hourly_windows_required": true,
+        "fractions": {
+          "train": 0.6,
+          "validation": 0.15,
+          "calibration": 0.1,
+          "test": 0.15
+        },
+        "counts": {
+          "train": 477160,
+          "validation": 38760,
+          "calibration": 38593,
+          "test": 105336
+        },
+        "boundaries": {
+          "train_end": "2024-06-30T23:00:00",
+          "validation_end": "2024-09-30T23:00:00",
+          "calibration_end": "2024-12-31T23:00:00",
+          "gap_hours": 168,
+          "test_end": "2025-12-31T23:00:00",
+          "split_mode": "calendar"
+        },
+        "test_period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00"
+        },
+        "window_materialization": "lazy_per_batch"
+      },
+      "historical_final_fit_stage": "final_fit_6adfcb7c766800b2ef6c",
+      "original_checkpoint_payload_present": false,
+      "fitted_artifact": {
+        "artifact": "candidates/horizon_72h/cnn_bilstm/history_calendar_lookback_24h/20260922_212525_719632/20260922_212531_334616/cnn_bilstm.pt",
+        "sha256": "945f9afd9bd7d7d9be31700ea89375ec12c469f51760dcee07ece5707bd8d9c7",
+        "committed_git_blob": "5d1f3c985a327a9aa654f7abb4ec02304802e7fe",
+        "cpu_loaded": true,
+        "architecture": {
+          "n_features": 36,
+          "cnn_channels": 90,
+          "kernel_size": 3,
+          "lstm_hidden": 60,
+          "lstm_layers": 2,
+          "dense_units": 78,
+          "dropout": 0.13736874205941257,
+          "readout": "final_hidden"
+        },
+        "scaler": {
+          "contract": "solar-cnn-input-preprocessing.v2",
+          "strategy": "training_split_median_standard_with_missing_indicators",
+          "fit_scope": "unique_feature_rows_used_in_training_windows",
+          "ordered_features": [
+            "hour",
+            "dayofweek",
+            "month",
+            "hour_sin",
+            "hour_cos",
+            "dayofyear_sin",
+            "dayofyear_cos",
+            "generation_lag_24h_mwh",
+            "generation_lag_168h_mwh",
+            "generation_rolling_7d_mean_mwh",
+            "capacity_mw",
+            "tilt_deg",
+            "station_latitude",
+            "station_longitude",
+            "station_elevation_m",
+            "solar_elevation_sin",
+            "clear_sky_irradiance_proxy",
+            "is_daylight"
+          ],
+          "scaler_state_sha256": "e09e5c018b394947804214e0b92e45fe9fb5f797d14da304a9367fb7d94a9b7e"
+        },
+        "fitted_target_transform": "identity",
+        "checkpoint_payload_validated_on_cpu": false,
+        "fitted_artifact_has_optimizer_state": false,
+        "historical_stage": "final_fit_6adfcb7c766800b2ef6c",
+        "reconstructed_historical_stage_signature": "6adfcb7c766800b2ef6c7d942dbff21f37c3fa58bcf6b09c21ba1a405a26ba36"
+      },
+      "optuna_evidence": {
+        "study_name": "historical_cnn_bilstm_72h_history_calendar_lookback_24h_297dc03acdd1_4997282ef729",
+        "exported_trial_states": {
+          "COMPLETE": 5
+        },
+        "exported_finished_trials": 5,
+        "historically_executed_trials_this_run": 0,
+        "sqlite_study_trial_rows": null,
+        "summary_sha256": "f974a95178cf8d762b4f8c1db83ff4eba0d0940ef608df676c83e1f4e385eae8",
+        "trials_csv_sha256": "d4d1e5977e6362fe60e8e4407f1c0c7649c6fca7ccd7d72ee633afd1326154ac"
+      },
+      "current_variants": [
+        {
+          "candidate_id": "history_calendar_lookback_24h",
+          "effective_config_differences": {
+            "model_values.capacity_column": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": "capacity_mw"
+            },
+            "model_values.future_weather": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": {
+                "enabled": true,
+                "source": "/workspace/ESG_Phase2/file/forecast_weather/open_meteo_jma_gsm_72h.csv.gz",
+                "minimum_coverage": 0.98,
+                "source_contract": "solar-future-weather-forecast.v2",
+                "source_model": "jma_gsm",
+                "usable_from": "2018-01-01T00:00:00",
+                "feature_profile": "aligned_meteorology_core"
+              }
+            },
+            "model_values.input_dataset": {
+              "historical": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+              "current": "/workspace/ESG_Phase2/file/standardized/model_ready_parts"
+            },
+            "model_values.target_transform": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": "capacity_factor"
+            }
+          },
+          "same_archived_dataset_digest_and_path_fingerprint": "be881ad79ea329e5b38dd50f5926fffbf9d33ebab4a16b86c5e0146ce5b04e38",
+          "same_archived_dataset_digest_and_path_matches": false,
+          "path_only_fingerprint": "172b18eb9f6df4e961190c49b31c3511048c2c2143ac2eaa1e43970f8e7d4543",
+          "configured_paths_with_archived_digest_fingerprint": "2834464656e682e124c847e3fd0b01fdd88402637b0b7a7d53dd8935895873d9",
+          "actual_dataset_and_configuration_fingerprint": null,
+          "current_study_name_with_archived_digest_and_path": "historical_cnn_bilstm_72h_history_calendar_lookback_24h_be881ad79ea3_4997282ef729",
+          "current_study_name_with_actual_dataset": null,
+          "historical_features_and_lookback_equal": true,
+          "current_future_features": [
+            "future_temperature_c",
+            "future_humidity_pct",
+            "future_precipitation_mm",
+            "future_total_cloud_cover_tenths",
+            "future_wind_speed_mps"
+          ],
+          "global_split_and_purge_equal": true,
+          "current_split": {
+            "train_end": "2024-06-30T23:00:00",
+            "validation_end": "2024-09-30T23:00:00",
+            "calibration_end": "2024-12-31T23:00:00",
+            "test_end": "2025-12-31T23:00:00",
+            "purge_gap_hours": 168
+          },
+          "current_scaler_policy": "training_split_median_standard_with_missing_indicators",
+          "current_input_preprocessing_contract": "solar-cnn-input-preprocessing.v2",
+          "current_target_transform": "capacity_factor",
+          "current_cnn_network_config_fields": [
+            "n_features",
+            "cnn_channels",
+            "kernel_size",
+            "lstm_hidden",
+            "lstm_layers",
+            "dense_units",
+            "dropout",
+            "readout",
+            "n_future_features",
+            "future_units"
+          ],
+          "current_optimizer_search_space_equal": true,
+          "current_final_fit_stage": "requires_effective_features_selected_parameters_and_current_split"
+        }
+      ]
+    },
+    {
+      "horizon_hours": 72,
+      "model": "xgboost",
+      "historical_candidate_id": "history_calendar",
+      "historical_resolved_config": "candidates/horizon_72h/xgboost/history_calendar/20260922_212517_452939/resolved_config.json",
+      "historical_checkpoint_fingerprint": "cb127368497951b816d3a21ea5a814a9f9336f383c1f067392ebcfe09c539211",
+      "historical_fingerprint_matches": true,
+      "historical_fit_reported_resumed": true,
+      "historical_selected_parameters": {
+        "max_depth": 5,
+        "learning_rate": 0.07277150634170934,
+        "min_child_weight": 2.9455874405973264,
+        "subsample": 0.8080272084711243,
+        "colsample_bytree": 0.8186841117373118,
+        "reg_alpha": 4.609885087947832e-07,
+        "reg_lambda": 70.45683638454501,
+        "gamma": 0.05531681668096113,
+        "max_bin": 128
+      },
+      "historical_temporal_split": {
+        "protocol": "global_timestamp_train_validation_calibration_test",
+        "evaluation_protocol": "historical_rolling_origin_with_observation_updates",
+        "boundaries": {
+          "train_end": "2024-06-30T23:00:00",
+          "validation_end": "2024-09-30T23:00:00",
+          "calibration_end": "2024-12-31T23:00:00",
+          "gap_hours": 168,
+          "test_end": "2025-12-31T23:00:00",
+          "split_mode": "calendar"
+        },
+        "counts": {
+          "train": 477758,
+          "validation": 38760,
+          "calibration": 38616,
+          "test": 105336
+        },
+        "test_period": {
+          "start": "2025-01-08T00:00:00",
+          "end": "2025-12-31T23:00:00"
+        }
+      },
+      "historical_final_fit_stage": "final_fit_2063ad54c771264d4b83",
+      "original_checkpoint_payload_present": false,
+      "fitted_artifact": {
+        "artifact": "candidates/horizon_72h/xgboost/history_calendar/20260922_212517_452939/model.json",
+        "sha256": "49718524ac2e4c2d5559277882eb758f3a6cf6fc86bae73db7a7d13b6153aa4b",
+        "committed_git_blob": "821d7793e28c27726de00a560ed6c42f2ac9bcdd",
+        "cpu_loaded": true,
+        "architecture": {
+          "tree_method": "hist",
+          "completed_rounds": 128
+        },
+        "scaler": {
+          "strategy": "xgboost_native_nan_learned_default_direction",
+          "fitted_scaler": false
+        },
+        "checkpoint_payload_validated_on_cpu": true,
+        "historical_stage": "final_fit_2063ad54c771264d4b83",
+        "reconstructed_historical_stage_signature": "2063ad54c771264d4b83337c221b3c289a9af428915c1ccd1250574d1ddcd4d0"
+      },
+      "optuna_evidence": {
+        "study_name": "historical_xgboost_72h_history_calendar_cb1273684979",
+        "exported_trial_states": {
+          "COMPLETE": 6,
+          "PRUNED": 9
+        },
+        "exported_finished_trials": 15,
+        "historically_executed_trials_this_run": 0,
+        "sqlite_study_trial_rows": null,
+        "summary_sha256": "0516be7517e8159b68e0cf70f1138a888c26544bd6f733c7a754105bc91337d9",
+        "trials_csv_sha256": "5fad2e8af7a380bab96d62b7ec8c4f677a42e9f3b4bb63bf00591d02d5d28c59"
+      },
+      "current_variants": [
+        {
+          "candidate_id": "history_calendar",
+          "effective_config_differences": {
+            "model_values.future_weather": {
+              "historical": {
+                "field_absent": true
+              },
+              "current": {
+                "enabled": true,
+                "source": "/workspace/ESG_Phase2/file/forecast_weather/open_meteo_jma_gsm_72h.csv.gz",
+                "minimum_coverage": 0.98,
+                "source_contract": "solar-future-weather-forecast.v2",
+                "source_model": "jma_gsm",
+                "usable_from": "2018-01-01T00:00:00",
+                "feature_profile": "aligned_meteorology_core"
+              }
+            },
+            "model_values.input_dataset": {
+              "historical": "C:\\ESG_Project1\\file\\standardized\\model_ready_parts",
+              "current": "/workspace/ESG_Phase2/file/standardized/model_ready_parts"
+            }
+          },
+          "same_archived_dataset_digest_and_path_fingerprint": "4375cbd8e81c2556713eba42289f5994f38a1ae9916aee2c5cf7d1effa9d34c1",
+          "same_archived_dataset_digest_and_path_matches": false,
+          "path_only_fingerprint": "79c41ca43d00faa5e0bb8606e3d0842c6881ade708d8492a8af907127c1979cf",
+          "configured_paths_with_archived_digest_fingerprint": "b27e75295d4ebe2b738fb78d1853f0ea8088751bba94bbacf961db9439d6c18a",
+          "actual_dataset_and_configuration_fingerprint": null,
+          "current_study_name_with_archived_digest_and_path": "historical_xgboost_72h_history_calendar_4375cbd8e81c",
+          "current_study_name_with_actual_dataset": null,
+          "historical_features_and_lookback_equal": true,
+          "current_future_features": [
+            "future_temperature_c",
+            "future_humidity_pct",
+            "future_precipitation_mm",
+            "future_total_cloud_cover_tenths",
+            "future_wind_speed_mps"
+          ],
+          "global_split_and_purge_equal": true,
+          "current_split": {
+            "train_end": "2024-06-30T23:00:00",
+            "validation_end": "2024-09-30T23:00:00",
+            "calibration_end": "2024-12-31T23:00:00",
+            "test_end": "2025-12-31T23:00:00",
+            "purge_gap_hours": 168
+          },
+          "current_scaler_policy": "xgboost_native_nan_learned_default_direction",
+          "current_input_preprocessing_contract": null,
+          "current_target_transform": "identity",
+          "current_cnn_network_config_fields": null,
+          "current_optimizer_search_space_equal": true,
+          "current_final_fit_stage": "requires_effective_features_selected_parameters_and_current_split"
+        }
+      ]
+    }
+  ]
+}

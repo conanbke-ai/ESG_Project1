@@ -9,6 +9,18 @@
       "purpose": "기존 Gold와 manifest의 전체 행·키·열 순서를 메모리 한도 내 읽기 전용 대조하며 원본을 변경하지 않음",
       "kind": "implementation"
     },
+    "datasets/phase2_admission.py": {
+      "purpose": "2026 발전소별 원천·시간·기상 근거를 검증하고 별도 Gold 데이터 버전의 편입 판정을 생성",
+      "kind": "implementation"
+    },
+    "datasets/source_completeness.py": {
+      "purpose": "보존 원본과 수집 인덱스를 대조하고 발전소·호기별 시간축, 누락, 중복, 정정 후보를 집계",
+      "kind": "implementation"
+    },
+    "evaluation/independent_evaluation.py": {
+      "purpose": "개발 벤치마크 근거와 2026 미노출 평가 후보의 사전 조건 및 비교 계약을 검증",
+      "kind": "implementation"
+    },
     "models/shared/checkpoint_audit.py": {
       "purpose": "기존 fingerprint를 변경하지 않고 Gold 입력 스키마와 체크포인트 메타데이터의 재개 경계를 읽기 전용 검증",
       "kind": "implementation"

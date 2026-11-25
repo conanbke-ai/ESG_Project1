@@ -2,7 +2,7 @@
   "koen": {
     "organization": "한국남동발전(주)",
     "homepage": "https://www.koenergy.kr/kosep/fr/main.do",
-    "generation_page": "https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do",
+    "generation_page": "https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do?menuCd=FN0912020217",
     "mode": "homepage_automation",
     "scope": "nationwide_public_multi_provider"
   },

@@ -22,7 +22,7 @@ from solar_forecast.reporting import DashboardBuilder
 from solar_forecast.config_loader import ModelJobConfig, PROJECT_ROOT, load_model_config
 
 
-TERMINAL_COLLECTION_FAILURES = {"failed", "configuration_required", "unsupported"}
+TERMINAL_COLLECTION_FAILURES = {"failed", "partial", "configuration_required", "unsupported"}
 
 
 @dataclass(frozen=True)
@@ -199,7 +199,7 @@ class PipelineVerificationService:
             ],
             "file_artifacts": len(payload.get("file_artifacts", [])),
             "warnings": [
-                "Latest collection manifest contains failed or unsupported sources: "
+                "Latest collection manifest contains failed, partial, or unsupported sources: "
                 + ", ".join(str(row.get("source")) for row in failures)
             ]
             if failures

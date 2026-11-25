@@ -42,6 +42,17 @@ from solar_forecast.models.cnn_bilstm.network import (
 _DEFAULT_READOUT_SEARCH = {"type": "categorical", "choices": ["final_hidden"]}
 
 
+def scope_cnn_readout_study(
+    settings: OptimizationSettings, search_space: dict[str, object]
+) -> OptimizationSettings:
+    """Bind persistent trial scores to the network readout and preprocessing."""
+    return settings.scoped(stable_signature({
+        "network_contract": "cnn_bilstm_readout.v1",
+        "input_preprocessing_contract": INPUT_PREPROCESSING_CONTRACT,
+        "readout": search_space.get("readout", _DEFAULT_READOUT_SEARCH),
+    }))
+
+
 def _move_inputs(inputs, device: torch.device):
     if isinstance(inputs, (tuple, list)):
         return tuple(value.to(device) for value in inputs)
@@ -299,11 +310,7 @@ def optimize_cnn_bilstm(
         # Old completed trials did not record the readout and must not supply
         # objectives for a newly interpreted architecture. Also isolate studies
         # whose categorical readout choices change.
-        settings = settings.scoped(stable_signature({
-            "network_contract": "cnn_bilstm_readout.v1",
-            "input_preprocessing_contract": INPUT_PREPROCESSING_CONTRACT,
-            "readout": search_space.get("readout", _DEFAULT_READOUT_SEARCH),
-        }))
+        settings = scope_cnn_readout_study(settings, search_space)
     if min(trial_epochs, early_stopping_patience) < 1:
         raise ValueError("optimizer trial epochs and patience must be positive")
 
