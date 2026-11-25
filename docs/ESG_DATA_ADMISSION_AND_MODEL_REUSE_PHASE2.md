@@ -28,7 +28,7 @@ KOEN 2024년 5·9·10월에는 기관 전체 기준으로 모든 달력 날짜�
 
 KOEN 2024년 관측 키는 198,432개였고 동일 값 반복·충돌은 0건이었다. EWP 보존 발전소 파일에서 값 충돌은 0건이었다. KOSPO 누적 스냅샷은 신풍리·용수리에서 2024년 17,568시간과 2025년 2,832시간이 동일 값으로 겹쳤다. 두 발전소의 2026년 보존 시간은 중복·충돌 0건이다. KOSPO 레거시 파일에는 삼척소내의 누락·비수치 92시간과 신인천해수구취수구의 호기 식별자 공란 8,760시간이 별도로 있다. 명시적으로 확인된 수정 공표가 없으면 충돌값을 자동 선택하지 않는다. [원천 검증 JSON](evidence/data_admission_phase2/source_completeness.json)
 
-기존 KOEN 수집 코드는 요청 종료일을 월말로 확대했다. 11월 25일 요청은 30일까지 전송됐으며, 브라우저 예외·다운로드 시간초과·파일 부재에 따라 같은 빈 파일 목록을 반환할 수 있었다. 이제 요청 일자를 달력 월 단위로 정확히 나누고, 수집 manifest에 범위별 캐시·수신·빈 CSV·브라우저 실패와 정규화 결과를 기록한다. 일부 창만 완료되면 `partial`로 표시한다. 동시 수집과 일부 정규화 실패가 발생해도 기존 Bronze와 이미 받은 파일을 보존한다. 11월 실제 원인은 Cloud에서 공식 포털 날짜 대조가 터널 오류로 막혀 미확정이다. 공급자에 원본이 존재하는 것으로 확인된 누락 창만 증분 수집 대상으로 삼는다. [KOEN 공식 조회](https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do?menuCd=FN0912020217) · [KOEN 공개 파일](https://www.data.go.kr/data/15167614/fileData.do) · [EWP 학습자료 게시물](https://www.ewp.co.kr/kor/subpage/content.html?pc=12V5W1N4BPZD35P8P1W818Z0TS07PXA&state=view&idx=43582) · [KOSPO 부산철도 2호기](https://www.data.go.kr/data/15156688/fileData.do)
+기존 KOEN 수집 코드는 11월 25일을 종료일로 지정하면 종료일을 30일로 확대했다. 브라우저 예외·다운로드 시간초과·파일 부재에 따라 같은 빈 파일 목록을 반환할 수 있었다. 이제 요청 일자를 달력 월 단위로 정확히 나누고, 수집 manifest에 범위별 캐시·수신·빈 CSV·브라우저 실패와 정규화 결과를 기록한다. 일부 창만 완료되면 `partial`로 표시한다. 동시 수집과 일부 정규화 실패가 발생해도 기존 Bronze와 이미 받은 파일을 보존한다. 11월 실제 원인은 Cloud에서 공식 포털 날짜 대조가 터널 오류로 막혀 미확정이다. 공급자에 원본이 존재하는 것으로 확인된 누락 창만 증분 수집 대상으로 삼는다. [KOEN 공식 조회](https://www.koenergy.kr/kosep/gv/nf/dt/nfdt21/main.do?menuCd=FN0912020217) · [KOEN 공개 파일](https://www.data.go.kr/data/15167614/fileData.do) · [EWP 학습자료 게시물](https://www.ewp.co.kr/kor/subpage/content.html?pc=12V5W1N4BPZD35P8P1W818Z0TS07PXA&state=view&idx=43582) · [KOSPO 부산철도 2호기](https://www.data.go.kr/data/15156688/fileData.do)
 
 ## P1 2026년 Gold 편입
 
@@ -66,7 +66,14 @@ CPU fixture에서 CNN 1→3 epoch와 XGBoost 3→5 round 복구, 잘못된 stage
 
 ## Windows 읽기 전용 검증
 
-Phase 2 코드 checkout에서 PowerShell로 실행한다. 조사 보고서만 새 임시 경로에 쓴다. 아래 기본 입력은 `C:\ESG_Project1`을 가리킨다.
+Phase 2 코드 checkout에서 기존 Python·모델 의존성이 설치된 환경으로 실행한다. 조사 보고서만 새 임시 경로에 쓴다. 아래 기본 입력은 `C:\ESG_Project1`을 가리킨다. 별도 코드 checkout이 필요하면 임시 경로에 `feat/esg-data-admission-reuse-phase2`를 sparse clone할 수 있다.
+
+```powershell
+$Code = Join-Path ([System.IO.Path]::GetTempPath()) ('esg-phase2-code-' + [Guid]::NewGuid().ToString())
+git clone --depth 1 --filter=blob:none --sparse --branch feat/esg-data-admission-reuse-phase2 https://github.com/conanbke-ai/ESG_Project1.git $Code
+git -C $Code sparse-checkout set src tools tests config docs
+Set-Location $Code
+```
 
 ```powershell
 $Root = 'C:\ESG_Project1'
@@ -102,4 +109,4 @@ python tools/probe_koen_availability.py --output (Join-Path $Out 'koen_availabil
 
 ## 코드와 검증 범위
 
-원격 구조 개선 브랜치의 `44714db22e79ead6bdadaf8ad2522dfa7095a4c0`에서 구현을 시작했다. 작업 중 게시된 `13c4c85ffe1c0421b4bb9b4bd32453863d08d76e`의 읽기 전용 checkpoint 감사와 구조 기준 검증을 반영했다. 원격 main `3dbc598141e1c8fbae4290093aabb67d7ccddf70`에 저장된 발전량 원본과 벤치마크 결과를 재사용했다. 핵심 검증 항목은 조회 범위, 원천 공백 판정, 기존 Gold 보존, 시점 누수 방지와 checkpoint 식별자다. 최초 기준에서 전체 pytest 521개와 하위 검사 136개, 구조·색인·구문 검사 및 P0~P3 보고서 바이트 재현을 확인했다. [작업 상태](../ACTIVE_WORK.md)
+원격 구조 개선 브랜치의 `44714db22e79ead6bdadaf8ad2522dfa7095a4c0`에서 구현을 시작했다. 작업 중 게시된 `13c4c85ffe1c0421b4bb9b4bd32453863d08d76e`의 읽기 전용 checkpoint 감사와 구조 기준 검증을 반영했다. 원격 main `3dbc598141e1c8fbae4290093aabb67d7ccddf70`에 저장된 발전량 원본과 벤치마크 결과를 재사용했다. 핵심 검증 항목은 조회 범위, 원천 공백 판정, 기존 Gold 보존, 시점 누수 방지와 checkpoint 식별자다. `d5d2aefd20808272353323f35331996ea77b818c`에서 전체 pytest 529개와 하위 검사 136개, 구조·색인·Python·JavaScript 구문 검사가 통과했다. P0~P3의 실제 입력 보고서가 바이트 단위까지 재현됐다. [작업 상태](../ACTIVE_WORK.md)
