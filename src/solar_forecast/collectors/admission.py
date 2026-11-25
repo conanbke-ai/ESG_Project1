@@ -8,6 +8,7 @@ import pandas as pd
 
 from solar_forecast.artifacts.manifest import sha256_file, write_json_atomic
 
+from .identity import resolve_generation_identity
 from .normalization import (
     GENERATION_COLUMNS,
     GENERATION_CONTRACT_VERSION,
@@ -26,6 +27,7 @@ class CollectedGenerationFileAdmission:
     end: str | None
     source_bytes: int
     source_sha256: str
+    identity_resolutions: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -135,6 +137,7 @@ class CollectedGenerationAdmissionService:
                 end=frame["timestamp"].max().isoformat(),
                 source_bytes=source_bytes,
                 source_sha256=source_sha256,
+                identity_resolutions=tuple(frame.attrs.get("plant_identity_resolutions", ())),
             )
         except Exception as exc:
             return CollectedGenerationFileAdmission(
@@ -158,7 +161,9 @@ class CollectedGenerationAdmissionService:
         frame["generation_mwh"] = pd.to_numeric(
             frame["generation_mwh"], errors="coerce"
         )
-        return frame.dropna(subset=["timestamp", "generation_mwh"])
+        return resolve_generation_identity(
+            frame.dropna(subset=["timestamp", "generation_mwh"])
+        )
 
 
 def collect_generation_admissions(
