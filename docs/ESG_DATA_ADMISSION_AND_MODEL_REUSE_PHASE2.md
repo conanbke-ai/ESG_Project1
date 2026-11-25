@@ -102,4 +102,4 @@ python tools/probe_koen_availability.py --output (Join-Path $Out 'koen_availabil
 
 ## 코드와 검증 범위
 
-최초 구현 기준은 원격 구조 개선 브랜치의 `44714db22e79ead6bdadaf8ad2522dfa7095a4c0`이다. 원격 main `3dbc598141e1c8fbae4290093aabb67d7ccddf70`에 저장된 발전량 원본과 벤치마크 결과를 재사용했다. 핵심 검증 항목은 조회 범위, 원천 공백 판정, 기존 Gold 보존, 시점 누수 방지와 checkpoint 식별자다. 최초 기준에서 전체 pytest 521개와 하위 검사 136개, 구조·색인·구문 검사, P0~P3 보고서 바이트 재현을 확인했다. [작업 상태](../ACTIVE_WORK.md)
+원격 구조 개선 브랜치의 `44714db22e79ead6bdadaf8ad2522dfa7095a4c0`에서 구현을 시작했다. 작업 중 게시된 `13c4c85ffe1c0421b4bb9b4bd32453863d08d76e`의 읽기 전용 checkpoint 감사와 구조 기준 검증을 반영했다. 원격 main `3dbc598141e1c8fbae4290093aabb67d7ccddf70`에 저장된 발전량 원본과 벤치마크 결과를 재사용했다. 핵심 검증 항목은 조회 범위, 원천 공백 판정, 기존 Gold 보존, 시점 누수 방지와 checkpoint 식별자다. 최초 기준에서 전체 pytest 521개와 하위 검사 136개, 구조·색인·구문 검사 및 P0~P3 보고서 바이트 재현을 확인했다. [작업 상태](../ACTIVE_WORK.md)

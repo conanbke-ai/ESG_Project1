@@ -81,6 +81,7 @@
 기존 fingerprint를 변경하지 않고 Gold 입력 스키마와 체크포인트 메타데이터의 재개 경계를 읽기 전용 검증
 
 - `audit_training_compatibility(config: ModelJobConfig, gold: dict, *, project_root: Path=PROJECT_ROOT)` — Use the unchanged training fingerprint algorithm and saved sidecars.
+- `inspect_checkpoint_metadata(config: ModelJobConfig, *, project_root: Path=PROJECT_ROOT)` — Fingerprint the configured sources and inspect saved metadata and payload presence.
 
 ## [__init__.py](../src/solar_forecast/__init__.py)
 
@@ -183,6 +184,7 @@ prepare-data와 후보 데이터 심사 명령 처리
 
 학습, 하이브리드 평가, 특징 비교, 전체 파이프라인 명령 처리
 
+- `handle_checkpoint_audit_command(args: argparse.Namespace)` — Expose checkpoint metadata inspection independently of the Gold row scan.
 - `handle_benchmark_command(args: argparse.Namespace)`
 - `handle_pipeline_command(args: argparse.Namespace)`
 - `handle_hybrid_command(args: argparse.Namespace)`
@@ -1621,7 +1623,7 @@ Build the browser bundle from named view sources, without a Node dependency.
 
 Check module ownership, naming, imports, generated assets, and source/artifact separation.
 
-`is_generated_python_cache_tree`, `module_exports`, `check_structure`, `compare_structure_baseline`, `main`
+`is_generated_python_cache_tree`, `module_exports`, `check_structure`, `read_approved_baseline`, `compare_structure_baseline`, `capture_structure_baseline`, `capture_structure_baseline.git`, `main`
 
 ### [tools/collect_future_weather_previous_runs.py](../tools/collect_future_weather_previous_runs.py)
 
@@ -1831,7 +1833,7 @@ Future-weather contracts keep fixed lead time and plant-coordinate provenance.
 
 Read-only Gold boundary tests; synthetic CSV and metadata, never model fitting.
 
-`_write`, `gold`, `_audit`, `_update_manifest`, `_codes`, `test_all_fields_keys_order_independent_and_original_bytes_untouched`, `test_same_keys_same_rows_but_changed_feature_detected`, `test_duplicate_across_insert_batches_is_not_hidden`, `test_manifest_claims_checked_against_actual`, `test_partition_row_byte_and_label_claims_checked`, `test_unlisted_partition_cannot_silently_enter_training`, `test_declared_energy_population_is_checked_from_actual_keys`, `test_negative_target_cannot_be_marked_training_eligible`, `test_nonfinite_features_are_reported_without_rewriting_frozen_missing_policy`, `test_column_reordering_is_detected`, `test_invalid_aware_and_nonhourly_timestamps_rejected_without_conversion`, `test_bad_column_count_fails_clearly`, `test_partition_path_escape_rejected_before_read`, `test_external_path_rejected_before_filesystem_resolution`, `test_external_path_rejected_before_filesystem_resolution.guarded`, `_config`, `test_no_checkpoint_is_not_a_false_resume_pass`, `test_relative_path_spelling_is_not_rewritten_in_existing_fingerprint`, `test_metadata_matches_but_never_claims_stage_or_payload_resume`, `test_config_missing_feature_and_wrong_data_rejected`, `test_cli_parser_dispatches_audit_without_running_a_job`, `test_actual_cli_handler_reports_without_training`, `test_cli_handler_fails_nonzero_on_real_data_difference`
+`_write`, `gold`, `_audit`, `_update_manifest`, `_codes`, `test_all_fields_keys_order_independent_and_original_bytes_untouched`, `test_same_keys_same_rows_but_changed_feature_detected`, `test_duplicate_across_insert_batches_is_not_hidden`, `test_manifest_claims_checked_against_actual`, `test_partition_row_byte_and_label_claims_checked`, `test_unlisted_partition_cannot_silently_enter_training`, `test_declared_energy_population_is_checked_from_actual_keys`, `test_negative_target_cannot_be_marked_training_eligible`, `test_nonfinite_features_are_reported_without_rewriting_frozen_missing_policy`, `test_column_reordering_is_detected`, `test_invalid_aware_and_nonhourly_timestamps_rejected_without_conversion`, `test_bad_column_count_fails_clearly`, `test_partition_path_escape_rejected_before_read`, `test_external_path_rejected_before_filesystem_resolution`, `test_external_path_rejected_before_filesystem_resolution.guarded`, `_config`, `test_no_checkpoint_is_not_a_false_resume_pass`, `test_relative_path_spelling_is_not_rewritten_in_existing_fingerprint`, `test_metadata_matches_but_never_claims_stage_or_payload_resume`, `test_config_missing_feature_and_wrong_data_rejected`, `test_cli_parser_dispatches_audit_without_running_a_job`, `test_actual_cli_handler_reports_without_training`, `test_cli_handler_fails_nonzero_on_real_data_difference`, `test_checkpoint_cli_reads_metadata_without_gold_manifest_or_model_load`, `test_checkpoint_cli_reads_metadata_without_gold_manifest_or_model_load.forbidden`, `test_gold_consistency_pass_is_reported_independently_of_model_schema_failure`
 
 ### [tests/test_history_features.py](../tests/test_history_features.py)
 
@@ -1981,7 +1983,7 @@ Structure-policy checks for generated caches and real model source folders.
 
 Exercise the exact diagnostic ratchet independently of existing debt.
 
-`_run`, `_baseline`, `checkout`, `test_strict_still_fails_and_unchanged_baseline_is_accepted`, `test_same_total_cannot_hide_new_violation`, `test_resolved_debt_must_be_removed_and_cannot_return`, `test_wrong_baseline_contract_fails_closed`
+`_run`, `_baseline`, `_git`, `checkout`, `test_strict_still_fails_and_unchanged_baseline_is_accepted`, `test_same_total_cannot_hide_new_violation`, `test_resolved_debt_must_be_removed_and_cannot_return`, `test_finding_added_to_baseline_is_rejected_by_independent_digest`, `test_capture_records_git_source_and_rules_without_overwriting`, `test_snapshot_from_different_rules_is_rejected`, `test_wrong_baseline_contract_fails_closed`
 
 ### [tests/test_temporal_split.py](../tests/test_temporal_split.py)
 

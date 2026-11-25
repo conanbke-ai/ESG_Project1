@@ -4,14 +4,18 @@ from __future__ import annotations
 import argparse
 import ast
 from collections import Counter
+from hashlib import sha256
 import json
 from pathlib import Path
 import re
+import subprocess
 
 from build_dashboard_assets import build_dashboard_bundle
 from update_code_index import render_code_index
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BASELINE_CONTRACT = "solar-structure-baseline.v2"
+RULES_VERSION = "solar-structure-rules.v1"
 GENERIC_MODULE_NAMES = {"service", "config", "models", "model", "data", "base", "utils", "helpers", "common"}
 SOURCE_ARTIFACT_SUFFIXES = {".csv", ".gz", ".parquet", ".pt", ".pth", ".pkl", ".pickle", ".joblib", ".sqlite3", ".db", ".jsonl", ".html"}
 PYTHON_BYTECODE_SUFFIXES = {".pyc", ".pyo"}
@@ -131,38 +135,111 @@ def check_structure(project_root: Path = PROJECT_ROOT) -> list[str]:
     return errors
 
 
-def compare_structure_baseline(findings: list[str], baseline_path: Path) -> tuple[list[str], list[str]]:
-    """Compare full diagnostic identities and multiplicities without masking findings."""
-    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-    if not isinstance(baseline, dict) or baseline.get("contract") != "solar-structure-baseline.v1":
+def read_approved_baseline(baseline_path: Path, expected_sha256: str) -> list[str]:
+    """Use the verifier's separately approved digest, never trust a self-declared hash."""
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", expected_sha256):
+        raise ValueError("Approved baseline SHA-256 must have 64 hexadecimal digits")
+    payload = baseline_path.read_bytes()
+    if sha256(payload).hexdigest() != expected_sha256.lower():
+        raise ValueError("Baseline differs from the approved SHA-256")
+    baseline = json.loads(payload.decode("utf-8"))
+    if not isinstance(baseline, dict) or baseline.get("contract") not in {
+        "solar-structure-baseline.v1", BASELINE_CONTRACT,
+    }:
         raise ValueError("Unsupported structure baseline contract")
+    if baseline["contract"] == BASELINE_CONTRACT:
+        if baseline.get("rules_version") != RULES_VERSION:
+            raise ValueError("Baseline rules version does not match this checker")
+        source_sha = baseline.get("source_sha")
+        if (not isinstance(source_sha, str) or not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", source_sha)
+                or type(baseline.get("source_dirty")) is not bool):
+            raise ValueError("Baseline source provenance is invalid")
     recorded = baseline.get("findings")
     if not isinstance(recorded, list) or any(
         not isinstance(item, str) or not item.strip() or "\n" in item or "\r" in item
         for item in recorded
     ):
         raise ValueError("Structure baseline findings must be nonempty single-line strings")
-    current, previous = Counter(findings), Counter(recorded)
+    return recorded
+
+
+def compare_structure_baseline(findings: list[str], approved: list[str]) -> tuple[list[str], list[str]]:
+    """Compare full diagnostic identities and multiplicities without masking findings."""
+    current, previous = Counter(findings), Counter(approved)
     return sorted((current - previous).elements()), sorted((previous - current).elements())
+
+
+def capture_structure_baseline(
+    root: Path, destination: Path, findings: list[str], *, predecessor_sha256: str | None = None,
+) -> str:
+    """Write a new review artifact, separate from the approved input baseline."""
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", "--no-optional-locks", "-C", str(root), *args],
+            check=True, capture_output=True, text=True, encoding="utf-8",
+        ).stdout.strip()
+
+    if Path(git("rev-parse", "--show-toplevel")).resolve() != root:
+        raise ValueError("Capture requires the root of the Git checkout being inspected")
+    document = {
+        "contract": BASELINE_CONTRACT,
+        "rules_version": RULES_VERSION,
+        "source_sha": git("rev-parse", "HEAD"),
+        "source_dirty": bool(git("status", "--porcelain", "--untracked-files=normal")),
+        "findings": sorted(findings),
+    }
+    if predecessor_sha256 is not None:
+        document["predecessor_sha256"] = predecessor_sha256.lower()
+    payload = (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    with destination.open("xb") as stream:
+        stream.write(payload)
+    return sha256(payload).hexdigest()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project-root", type=Path, default=PROJECT_ROOT,
                         help="Project checkout to inspect (defaults to this checkout)")
-    parser.add_argument("--baseline", type=Path,
-                        help="Fail for new findings or entries that should be retired; default is strict zero findings")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--baseline", type=Path, help="Compare with a separately approved baseline")
+    mode.add_argument("--capture-baseline", type=Path, help="Capture a new snapshot for review, not a gate result")
+    parser.add_argument("--baseline-sha256", help="Approved SHA-256 obtained outside the candidate changes")
+    parser.add_argument("--record-reduction", type=Path, help="Write a new baseline only when verified debt decreases")
     args = parser.parse_args()
-    errors = check_structure(args.project_root.resolve())
+    if args.baseline is not None and not args.baseline_sha256:
+        parser.error("--baseline requires a separately approved --baseline-sha256")
+    if args.baseline is None and (args.baseline_sha256 is not None or args.record_reduction is not None):
+        parser.error("--baseline-sha256 and --record-reduction require --baseline")
+    root = args.project_root.resolve()
+    errors = check_structure(root)
+    if args.capture_baseline is not None:
+        try:
+            digest = capture_structure_baseline(root, args.capture_baseline, errors)
+        except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+            raise SystemExit(f"Cannot capture structure baseline: {exc}") from exc
+        print(f"Structure snapshot for review: {len(errors)} findings, SHA-256 {digest}")
+        return
     if args.baseline is not None:
         try:
-            new, retired = compare_structure_baseline(errors, args.baseline)
+            approved = read_approved_baseline(args.baseline, args.baseline_sha256)
         except (ValueError, OSError) as exc:
             raise SystemExit(f"Invalid structure baseline: {exc}") from exc
-        if new or retired:
+        new, retired = compare_structure_baseline(errors, approved)
+        if new or (retired and args.record_reduction is None):
             lines = [*(f"New finding: {item}" for item in new),
                      *(f"Remove resolved baseline entry: {item}" for item in retired)]
             raise SystemExit("\n".join(lines))
+        if args.record_reduction is not None:
+            if not retired:
+                raise SystemExit("Structure debt did not decrease")
+            try:
+                digest = capture_structure_baseline(
+                    root, args.record_reduction, errors, predecessor_sha256=args.baseline_sha256,
+                )
+            except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+                raise SystemExit(f"Cannot record structure debt reduction: {exc}") from exc
+            print(f"Structure debt decreased by {len(retired)} to {len(errors)} findings, SHA-256 {digest}")
+            return
         print(f"Structure baseline matched: {len(errors)} existing findings, 0 new")
         return
     if errors:

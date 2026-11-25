@@ -303,3 +303,44 @@ def test_cli_handler_fails_nonzero_on_real_data_difference(gold, monkeypatch, ca
         handle_audit_gold_command(Namespace(manifest=str(gold[1]), config=[str(cfg.source)], batch_rows=2, json=True))
     assert exc.value.code == 2
     assert json.loads(capsys.readouterr().out)["status"] == "FAIL"
+
+
+def test_checkpoint_cli_reads_metadata_without_gold_manifest_or_model_load(gold, monkeypatch, capsys):
+    from solar_forecast.cli.parser import build_parser
+    from solar_forecast.models.shared.checkpoint_store import TrainingCheckpointStore
+
+    cfg = _config(gold)
+    gold[1].unlink()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Checkpoint audit must not deserialize a model")
+
+    monkeypatch.setattr(TrainingCheckpointStore, "load_torch", forbidden)
+    monkeypatch.setattr(TrainingCheckpointStore, "load_xgboost", forbidden)
+    args = build_parser().parse_args(["checkpoint-audit", "--config", str(cfg.source), "--json"])
+    args.func(args)
+    result = json.loads(capsys.readouterr().out)
+    assert result["checkpoint_scope"] == "configured_fingerprint_and_saved_metadata_only"
+    assert result["checkpoint_status"] == "NO_EXACT_TRAINING_IDENTITY"
+    assert result["checkpoint_payload_loaded"] is False
+    assert result["resume_executed"] is False
+
+
+def test_gold_consistency_pass_is_reported_independently_of_model_schema_failure(gold, monkeypatch, capsys):
+    from solar_forecast import config_loader
+    from solar_forecast.cli.parser import build_parser
+
+    cfg = _config(gold)
+    cfg.values["feature_columns"].append("absent_from_gold")
+    cfg.source.write_text(json.dumps(cfg.values), encoding="utf-8")
+    monkeypatch.setattr(config_loader, "PROJECT_ROOT", gold[0])
+    args = build_parser().parse_args(["audit-gold", "--manifest", str(gold[1]),
+                                      "--config", str(cfg.source), "--json"])
+    with pytest.raises(SystemExit) as error:
+        args.func(args)
+    assert error.value.code == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["gold_consistency_status"] == "PASS"
+    assert result["status"] == "FAIL"
+    assert result["training_compatibility"][0]["schema_status"] == "FAIL"
+    assert result["data_admission_checked"] is False

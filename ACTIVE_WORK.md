@@ -3,7 +3,7 @@
 ## ESG Data Admission & Model Reuse Phase 2 — 2026-11-25
 
 - 범위는 2024/2026 원천 완전성, 버전 지정 Gold 편입, 저장 모델 재사용, 독립 평가 준비다. 작업 트리는 `/workspace/ESG_Phase2`, 브랜치는 `feat/esg-data-admission-reuse-phase2`, 담당 writer는 이 Codex 채팅이다.
-- 확인한 원격 main은 `3dbc598141e1c8fbae4290093aabb67d7ccddf70`이다. 최초 구현 기준은 기존 구조 개선 PR #2의 `44714db22e79ead6bdadaf8ad2522dfa7095a4c0`이다. 해당 브랜치의 Gold 감사, 학습 식별자, 분할 구현을 사용한다.
+- 확인한 원격 main은 `3dbc598141e1c8fbae4290093aabb67d7ccddf70`이다. 구조 개선 PR #2의 `44714db22e79ead6bdadaf8ad2522dfa7095a4c0`에서 시작해 작업 중 게시된 `13c4c85ffe1c0421b4bb9b4bd32453863d08d76e`를 반영했다. 해당 브랜치의 Gold 감사, 학습 식별자, 분할 구현을 사용한다.
 - 공통 정책 `conanbke-ai/Tori_Common_Project@f34e980c269ffdb121ad49a0d22e9c27ce45ad0b` §26·29–31을 확인했다. 기준 작업 트리는 깨끗했고 원본 checkout의 기존 브랜치와 저장 벤치마크를 참조한다. 현 작업은 main에 통합되지 않았다.
 - 검증 결과와 재현 명령은 [Phase 2 결과](docs/ESG_DATA_ADMISSION_AND_MODEL_REUSE_PHASE2.md)에 있다. 다음 데이터 실행은 기존 Gold와 2026 원본·인덱스의 실제 파일 경로가 확인되는 시점에 해당 범위를 감사하는 것이다.
 

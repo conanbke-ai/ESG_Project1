@@ -8,6 +8,22 @@ from solar_forecast.config_loader import ModelJobConfig, load_model_config
 from solar_forecast.cli.arguments import parse_csv_values, build_sequence_config
 
 
+def handle_checkpoint_audit_command(args: argparse.Namespace) -> None:
+    """Expose checkpoint metadata inspection independently of the Gold row scan."""
+    from solar_forecast.models.shared.checkpoint_audit import inspect_checkpoint_metadata
+
+    try:
+        report = inspect_checkpoint_metadata(load_model_config(Path(args.config)))
+    except (ValueError, OSError, KeyError) as exc:
+        raise SystemExit(f"checkpoint-audit: {exc}") from exc
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return
+    print(f"{report['model']} checkpoint metadata: {report['checkpoint_status']}")
+    print(f"Matching sidecars: {report['matching_metadata_count']}")
+    print("Actual resume requires trainer validation of the stage signature and payload.")
+
+
 def handle_benchmark_command(args: argparse.Namespace) -> None:
     from solar_forecast.evaluation.experiment_config import configure_smoke_experiment, experiment_plan, load_experiment_config
 
