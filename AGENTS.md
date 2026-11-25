@@ -50,3 +50,8 @@ This repository uses the common TORI development-orchestration baseline from `co
 ## Configuration Management & Worktree Traceability
 
 공통 운영 정책 §30을 다음 안전한 checkpoint부터 적용한다. 실제 checkout/worktree 또는 cloud workspace, 담당자/lease, base/HEAD/upstream, scoped diff, tested SHA, 원격 게시·main 통합·로컬 동기화 상태를 기존 ACTIVE_WORK/PR에 기록한다. 로컬 origin/*은 캐시이므로 실제 원격 확인과 구분한다. 기존 브랜치·미커밋 변경·원본 데이터·모델·산출물을 보호하며 무단 cleanup/force/reset/prune을 금지한다. 변경분 미확인 및 권한 차단은 Credit Guard §13에 따라 최소 사용자 조치로 인계하고 다른 독립 작업은 계속한다. 자동 검증 구현과 정책 채택은 별개다.
+
+
+## Delegated Execution & Approval Boundaries
+
+공통 운영 정책 §31의 A/B/C/D 위임 권한을 다음 안전한 checkpoint부터 적용한다. A 일반 개발·검증은 자율 실행, B 검증된 commit/non-force push/PR 및 엄격한 gate를 충족한 저위험 통합·안전 동기화는 조건부 자율 실행, C 비호환 계약·사업/보안 정책·고위험·파괴적 변경·비용 증가·운영 배포는 사용자 명시 승인, D 실제 접근/실행 차단은 최소 사용자 조치 인계다. 기존 작성자/lease, 필수 QA·보안·리뷰, 보호 브랜치 및 개별 PR 승인 범위를 유지한다. 일반적인 commit/push 승인을 반복 요청하지 않으며 실행 권한이 없는 작업을 수행했다고 주장하지 않는다.
