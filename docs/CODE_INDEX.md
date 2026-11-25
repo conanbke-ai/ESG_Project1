@@ -1523,6 +1523,12 @@ preprocessing/training_admission.py로 연결하는 compatibility shim
 
 `main`
 
+### [tools/audit_generation_readiness.py](../tools/audit_generation_readiness.py)
+
+Audit dated meter and capacity evidence for saved generation source series.
+
+`_local_hour`, `_read_review`, `_read_input`, `_capacity_observations`, `_interval_coverage`, `_overlapping_meter_bindings`, `audit_generation_readiness`, `main`
+
 ### [tools/audit_temporal_split.py](../tools/audit_temporal_split.py)
 
 Audit plant/month/season split coverage without importing model frameworks.
@@ -1546,6 +1552,12 @@ Check module ownership, naming, imports, generated assets, and source/artifact s
 Collect leakage-safe fixed-lead weather forecasts for 24h/72h benchmarks.
 
 `_parser`, `_registry`, `_response_reason`, `_request_json`, `_normalize`, `_year_bounds`, `_cache_is_current`, `_sanitize_physical_values`, `collect`
+
+### [tools/compare_future_weather_predictions.py](../tools/compare_future_weather_predictions.py)
+
+Compare completed weather-on and weather-off forecasts on identical saved rows.
+
+`_read_object`, `_benchmark_provenance`, `_settings`, `_load_run`, `_load_fold`, `_score_pair`, `compare`, `main`
 
 ### [tools/inspect_benchmark_status.py](../tools/inspect_benchmark_status.py)
 
@@ -1575,7 +1587,7 @@ Generate the complete Python symbol and dashboard source index from real files.
 
 Validate fixed-lead future-weather archives before model training.
 
-`_parser`, `_manifest`, `_feature_stats`, `_all_missing_breakdown`, `validate`, `main`
+`_parser`, `_manifest`, `_feature_stats`, `_all_missing_breakdown`, `_read_timing_evidence`, `_audit_archive_timing`, `validate`, `main`
 
 ### [tools/verify_benchmark_model_artifacts.py](../tools/verify_benchmark_model_artifacts.py)
 
@@ -1721,6 +1733,18 @@ Future-weather contracts keep fixed lead time and plant-coordinate provenance.
 
 `_archive`, `test_future_weather_profiles_keep_components_out_of_default`, `test_future_weather_accepts_only_fixed_lead_plant_coordinates`, `test_future_weather_rejects_region_or_station_coordinate_fallback`, `test_future_weather_merge_preserves_spatial_provenance`
 
+### [tests/test_future_weather_comparison.py](../tests/test_future_weather_comparison.py)
+
+Regression coverage for the read-only, fixed-cohort forecast comparison.
+
+`_mutate_json`, `_save_candidate`, `paired_runs`, `test_reports_exact_folds_and_paired_metrics`, `test_rejects_mismatched_cohort_or_actuals`, `test_rejects_different_hyperparameters`, `test_rejects_different_source_revision`, `test_rejects_claimed_weather_without_actual_features`
+
+### [tests/test_future_weather_preflight.py](../tests/test_future_weather_preflight.py)
+
+Verify source and hourly coverage evidence in the archive preflight.
+
+`weather_preflight`, `test_archive_key_gaps_and_missing_feature_rows_are_separate`, `test_preflight_checks_configured_model_against_manifest_and_rows`, `test_preflight_rejects_off_hour_keys_and_infinite_weather`, `test_preflight_reports_timezone_representation_mismatch`, `test_timing_evidence_is_matched_to_archive_and_cutoff`
+
 ### [tests/test_generation_collectors.py](../tests/test_generation_collectors.py)
 
 자동 검증 파일.
@@ -1732,6 +1756,12 @@ Future-weather contracts keep fixed lead time and plant-coordinate provenance.
 자동 검증 파일.
 
 `_quality_frame`, `test_quality_policy_flags_negative_without_turning_it_into_zero`, `test_quality_profiler_reports_risk_without_claiming_failure`, `test_quality_audit_distinguishes_pipeline_flatline_from_official_raw`, `_single_bucket_solar`, `test_quality_policy_excludes_daily_total_placed_in_one_night_bucket`, `test_quality_policy_does_not_flag_single_daylight_bucket_as_daily_aggregate`, `test_daily_aggregate_gate_does_not_cross_energy_sources_with_same_plant_id`, `test_quality_policy_requires_enough_consistent_active_days_for_aggregate_gate`, `test_quality_manifest_records_daily_aggregate_hard_gate`
+
+### [tests/test_generation_readiness_audit.py](../tests/test_generation_readiness_audit.py)
+
+자동 검증 파일.
+
+`_inputs`, `_review`, `test_reports_period_conflicts_without_backfilling_capacity`, `test_reports_source_labels_without_claiming_physical_meter`, `test_rejects_invalid_review`, `test_reports_same_physical_meter_binding_across_source_series`
 
 ### [tests/test_gold_audit.py](../tests/test_gold_audit.py)
 
