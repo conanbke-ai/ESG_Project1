@@ -40,3 +40,8 @@ This repository uses the common TORI development-orchestration baseline from `co
 ## Tori Development Framework v2.0
 
 - 신규 작업 및 다음 관련 checkpoint에서 공통 canonical `conanbke-ai/Tori_Common_Project`의 `policies/DEVELOPMENT_TEAM_OPERATING_POLICY.md` §26을 확인하고 적용한다. 기존 baseline은 역사적 기록으로 유지하며 실제 읽은 최신 SHA를 인계에 기록한다. 기존 제품 계약과 QA gate를 보존한다.
+
+## Parallel Architecture Migration Policy
+
+- 공통 운영 정책 §29를 적용한다. 기존 기능 브랜치 전체 완료를 선행 조건으로 두지 않으며, 독립적인 아키텍처 개선과 기능 개발을 병행한다. 기존 동등 workstream 우선 재사용, 필요한 경우 제품당 architecture 전용 branch 최대 1개 예외. 이전 branch 5개 제한 문구는 이 예외에 한해서 §29가 우선하며 WIP3/validation1/single writer/QA/보안/사용량 한도는 유지한다.
+- 목표 구조/명명은 공통 §28과 `docs/TORI_Architecture_Blueprint.md`, `docs/TORI_Migration_Map.csv`를 참조하되 실제 제품 계약과 호출 관계를 확인한 뒤 변경한다. 신규 위반 방지와 기존 위반 점진 개선을 구분하고, 검증된 독립 변경만 통합한다. 실제 작성자/로컬 작업이 확인되지 않은 충돌 범위는 인계 또는 사용자 확인 후 진행한다.
