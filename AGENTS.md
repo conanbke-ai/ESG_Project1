@@ -45,3 +45,8 @@ This repository uses the common TORI development-orchestration baseline from `co
 
 - 공통 운영 정책 §29를 적용한다. 기존 기능 브랜치 전체 완료를 선행 조건으로 두지 않으며, 독립적인 아키텍처 개선과 기능 개발을 병행한다. 기존 동등 workstream 우선 재사용, 필요한 경우 제품당 architecture 전용 branch 최대 1개 예외. 이전 branch 5개 제한 문구는 이 예외에 한해서 §29가 우선하며 WIP3/validation1/single writer/QA/보안/사용량 한도는 유지한다.
 - 목표 구조/명명은 공통 §28과 `docs/TORI_Architecture_Blueprint.md`, `docs/TORI_Migration_Map.csv`를 참조하되 실제 제품 계약과 호출 관계를 확인한 뒤 변경한다. 신규 위반 방지와 기존 위반 점진 개선을 구분하고, 검증된 독립 변경만 통합한다. 실제 작성자/로컬 작업이 확인되지 않은 충돌 범위는 인계 또는 사용자 확인 후 진행한다.
+
+
+## Configuration Management & Worktree Traceability
+
+공통 운영 정책 §30을 다음 안전한 checkpoint부터 적용한다. 실제 checkout/worktree 또는 cloud workspace, 담당자/lease, base/HEAD/upstream, scoped diff, tested SHA, 원격 게시·main 통합·로컬 동기화 상태를 기존 ACTIVE_WORK/PR에 기록한다. 로컬 origin/*은 캐시이므로 실제 원격 확인과 구분한다. 기존 브랜치·미커밋 변경·원본 데이터·모델·산출물을 보호하며 무단 cleanup/force/reset/prune을 금지한다. 변경분 미확인 및 권한 차단은 Credit Guard §13에 따라 최소 사용자 조치로 인계하고 다른 독립 작업은 계속한다. 자동 검증 구현과 정책 채택은 별개다.
