@@ -46,8 +46,25 @@ def audit_training_compatibility(config: ModelJobConfig, gold: dict, *, project_
         issues.append("feature_list_empty_or_duplicate")
     if values["target_column"] != gold["target"]:
         issues.append("target_contract_mismatch")
-    # Path spelling is part of model_values in the existing identity. Do not
-    # replace a relative input_dataset with an absolute path before hashing.
+    return {
+        **inspect_checkpoint_metadata(config, project_root=root),
+        "schema_status": "FAIL" if issues else "PASS",
+        "schema_issues": issues,
+        "missing_columns": missing,
+        "ordered_features": features,
+        "source": str(source),
+        "quality_filter": quality,
+        "energy_source_filter": values.get("energy_source_filter"),
+        "eligible_rows_before_horizon_alignment": gold["dataset"]["eligible_rows"].get(values.get("energy_source_filter")),
+    }
+
+
+def inspect_checkpoint_metadata(config: ModelJobConfig, *, project_root: Path = PROJECT_ROOT) -> dict:
+    """Fingerprint the configured sources and inspect saved metadata and payload presence."""
+    if config.model not in {"xgboost", "cnn_bilstm"}:
+        raise ValueError("Checkpoint metadata inspection supports XGBoost and CNN-BiLSTM configs")
+    # Path spelling is part of model_values in the existing identity.
+    root = Path(project_root).resolve()
     store = TrainingCheckpointStore.from_config(config, project_root=root)
     fingerprint = store.fingerprint
     records = []
@@ -73,11 +90,8 @@ def audit_training_compatibility(config: ModelJobConfig, gold: dict, *, project_
                         "metadata_issues": problems})
     matches = [r for r in records if r["same_training_fingerprint"] and not r["metadata_issues"]]
     return {"model": config.model, "config": str(config.source), "config_sha256": sha256_file(config.source),
-            "schema_status": "FAIL" if issues else "PASS", "schema_issues": issues, "missing_columns": missing,
-            "ordered_features": features, "source": str(source), "quality_filter": quality,
-            "energy_source_filter": values.get("energy_source_filter"),
-            "eligible_rows_before_horizon_alignment": gold["dataset"]["eligible_rows"].get(values.get("energy_source_filter")),
             "training_fingerprint": fingerprint, "checkpoint_directory": str(store.directory),
+            "checkpoint_scope": "configured_fingerprint_and_saved_metadata_only",
             "checkpoint_status": "MATCHING_METADATA_REQUIRES_STAGE_SIGNATURE" if matches else "NO_EXACT_TRAINING_IDENTITY",
             "checkpoints": records, "matching_metadata_count": len(matches),
             "unsupported_checkpoint_contract_count": sum(r["checkpoint_contract"] != CHECKPOINT_CONTRACT for r in records),

@@ -11,6 +11,7 @@ from solar_forecast.cli.dashboard_commands import handle_build_dashboard_command
 from solar_forecast.cli.collection_commands import handle_collect_command
 from solar_forecast.cli.training_commands import (
     handle_benchmark_command,
+    handle_checkpoint_audit_command,
     handle_evaluate_features_command,
     handle_hybrid_command,
 )
@@ -234,6 +235,13 @@ def build_parser() -> argparse.ArgumentParser:
     audit_gold.add_argument("--json", action="store_true", help="Print full audit evidence instead of a short summary")
     audit_gold.add_argument("--batch-rows", type=int, default=5000, help="Temporary key-index insert batch size; never a sampling cap")
     audit_gold.set_defaults(func=handle_audit_gold_command)
+
+    checkpoint_audit = commands.add_parser(
+        "checkpoint-audit", help="Inspect checkpoint metadata for a model config without loading a payload",
+    )
+    checkpoint_audit.add_argument("--config", required=True, help="Model job JSON for XGBoost or CNN-BiLSTM")
+    checkpoint_audit.add_argument("--json", action="store_true", help="Print full metadata inspection")
+    checkpoint_audit.set_defaults(func=handle_checkpoint_audit_command)
 
     job_contract = commands.add_parser(
         "job-contract",

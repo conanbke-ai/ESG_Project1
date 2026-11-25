@@ -8,18 +8,32 @@
 발전소·시각 키, 품질 적격 집계와 전체 필드를 대조한다. `--json`은 상세 결과를 제공한다.
 비교용 SQLite 인덱스는 임시 경로에 저장된다. 감사 명령은 원본과 manifest를 그대로 둔다.
 
-기본 XGBoost·CNN 설정에 필요한 컬럼과 기존 학습 fingerprint도 검사한다.
-fingerprint가 맞는 sidecar가 있어도 실제 재개에는 stage 서명과 payload 검증이 필요하다.
+Gold 감사 출력의 `gold_consistency_status`는 데이터 대조 결과이고 `status`는 기존처럼
+모델 입력 스키마 검사까지 포함한 결과다.
+`python app.py checkpoint-audit --config config/models/xgboost.json --json`은 Gold 행을
+대조하지 않고, 설정과 기존 fingerprint 알고리즘에서 계산한 식별자를 sidecar와 비교한다.
+호환되는 sidecar가 있어도 실제 재개에는 trainer의 stage 서명과 payload 검증이 필요하다.
 기존 manifest에 생성 당시 콘텐츠 해시가 없다면 감사는 현재 파일 간 일치만 검증한다.
+데이터 승인과 운영 성능 평가는 각자의 별도 실행 계약을 사용한다.
 
 ## 구조 검사 기준선
 
-`python tools/check_structure.py`는 기존과 같이 위반이 하나라도 있으면 실패한다.
-레거시 체크아웃의 점진 정리에는 그 체크아웃의 검사기로 확인한 진단을
-`{"contract": "solar-structure-baseline.v1", "findings": [...]}`에 기록하고
-`python tools/check_structure.py --baseline <baseline.json>`으로 비교한다.
-동일한 건수라도 항목이 달라지거나 같은 위반이 늘면 실패한다. 해결한 항목은 기준선에서 함께
-제거한다. GitHub의 기존 엄격 검사는 그대로 유지한다.
+`python tools/check_structure.py`는 위반이 하나라도 있으면 실패한다. GitHub의 구조 검사는
+이 엄격 모드를 사용한다. 레거시를 추적할 때는 검토자가 별도로 확보한 기준선 파일과 SHA-256을 사용한다.
+
+```text
+python tools/check_structure.py --capture-baseline <new-snapshot.json>
+python tools/check_structure.py --baseline <approved.json> --baseline-sha256 <reviewer-held-sha256>
+python tools/check_structure.py --baseline <approved.json> --baseline-sha256 <reviewer-held-sha256> --record-reduction <new-reduced.json>
+```
+
+생성한 v2 JSON에는 검사 규칙 버전, checkout의 Git SHA와 작업 트리 변경 여부가 들어간다.
+Dirty checkout의 SHA는 기준 커밋을 나타내므로 완전한 재현에는 해당 작업 트리 증거도 필요하다.
+v1 기준선도 별도로 확보한 SHA-256으로 비교할 수 있다. 같은 총건수의 항목 교체, 발생 횟수
+증가, 승인 파일 수정은 실패한다. 신규 위반이 없고 실제 감소한 경우에만 이전 승인 파일을
+가리키는 새 감소 기록이 생성된다. 검토자는 감소 기록을 승인하고서야 기준선과 저장한 해시를
+함께 갱신한다. 후보가 제출한 기준선의 해시를 같은 후보에서 계산해 승인 값으로 사용하면
+감사 기준이 달라지므로, 검토자가 관리하는 이전 기록에서 승인 해시를 가져온다.
 
 두 기능은 기존 경로 및 fingerprint 알고리즘을 재사용한다. 데이터 이전과 새로운 저장소·학습
 파이프라인 도입은 기존 파일과 실행 계약을 먼저 검증해야 하므로 이 변경 범위에서 제외했다.

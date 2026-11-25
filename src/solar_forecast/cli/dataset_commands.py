@@ -17,6 +17,8 @@ def handle_audit_gold_command(args: argparse.Namespace) -> None:
     try:
         report = audit_gold_dataset(Path(args.manifest), project_root=PROJECT_ROOT,
                                     batch_rows=args.batch_rows)
+        report["gold_consistency_status"] = report["status"]
+        report["data_admission_checked"] = False
         configs = args.config or ["config/models/cnn_bilstm.json", "config/models/xgboost.json"]
         report["training_compatibility"] = [
             audit_training_compatibility(load_model_config(Path(path)), report)
@@ -27,7 +29,7 @@ def handle_audit_gold_command(args: argparse.Namespace) -> None:
         if args.json:
             print(json.dumps(report, ensure_ascii=False, indent=2))
         else:
-            print(f"Gold/manifest consistency: {report['status']}")
+            print(f"Gold/manifest consistency: {report['gold_consistency_status']}")
             print(f"Rows: {report['dataset']['rows']}; plants: {report['plants']}; partitions: {len(report['partitions'])}")
             print(f"Key/field differences: {report['comparison']}")
             for item in report["training_compatibility"]:
@@ -35,6 +37,7 @@ def handle_audit_gold_command(args: argparse.Namespace) -> None:
                       f"legacy_contracts={item['unsupported_checkpoint_contract_count']}")
             if report["issues"]:
                 print(json.dumps(report["issues"], ensure_ascii=False))
+            print(f"Overall audit: {report['status']}")
             print("No training or resume executed. Matching metadata still requires the trainer's stage signature.")
     except (ValueError, OSError, KeyError, csv.Error, sqlite3.Error) as exc:
         raise SystemExit(f"audit-gold: {exc}") from exc
