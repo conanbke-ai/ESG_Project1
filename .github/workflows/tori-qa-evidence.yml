@@ -1,0 +1,27 @@
+name: TORI QA evidence contract
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Contract regression tests
+        run: python -m unittest discover -s tests -p 'test_qa_contract_gate.py' -v
+      - name: Require and validate feature QA evidence
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(qa/evidence/*.json)
+          if (( ${#files[@]} == 0 )); then
+            echo "::error::Missing qa/evidence/*.json QA evidence"
+            exit 1
+          fi
+          python tools/qa_contract_gate.py "${files[@]}"
