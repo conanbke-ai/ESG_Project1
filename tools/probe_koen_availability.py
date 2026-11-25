@@ -18,8 +18,8 @@ from solar_forecast.infrastructure.artifact_store import write_json_atomic
 DEFAULT_WINDOWS = ("2026-10-31:2026-10-31", "2026-11-01:2026-11-25", "2026-11-01:2026-11-30")
 RESULT_SNAPSHOT = r"""
 const dates = [], emptyMessages = [];
-const dateHeader = /^(일자|일시|날짜|발전일자|발전일시|발전일|기준일자)$/;
-const dateText = /^\d{4}[-./]?\d{2}[-./]?\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/;
+const dateHeader = /^(일자|일시|날짜|년\/월\/일|발전일자|발전일시|발전일|기준일자)$/;
+const dateText = /^(?:\d{4}[-./]?\d{2}[-./]?\d{2}|\d{2}[-./]\d{2}[-./]\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/;
 const emptyMessage = /(?:조회\s*(?:된|결과)|등록\s*된|해당).*?(?:데이터|자료|내역|결과|정보).*?없/;
 for (const table of document.querySelectorAll('table')) {
   if (!table.getClientRects().length) continue;
@@ -54,12 +54,15 @@ def _window(value: str) -> tuple[date, date]:
     raise argparse.ArgumentTypeError("Use an inclusive ISO START:END date window")
 
 
-def _days(texts: list[str]) -> list[date]:
+def _days(texts: list[str], reference_year: int) -> list[date]:
     days = set()
     for text in texts:
-        if match := re.fullmatch(r"(\d{4})[-./]?(\d{2})[-./]?(\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?", text):
+        if match := re.fullmatch(r"(\d{4}|\d{2}(?=[-./]))[-./]?(\d{2})[-./]?(\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?", text):
             try:
-                days.add(date(*map(int, match.groups())))
+                year, month, day = map(int, match.groups())
+                if len(match[1]) == 2:
+                    year += reference_year // 100 * 100
+                days.add(date(year, month, day))
             except ValueError:
                 continue
     return sorted(days)
@@ -67,8 +70,8 @@ def _days(texts: list[str]) -> list[date]:
 
 def _result(snapshot: dict, expected: tuple[date, date], *, refreshed: bool) -> dict:
     first, last = expected
-    days = _days(snapshot["dates"])
-    filters_match = [re.sub(r"\D", "", value) for value in snapshot["fields"]] == [f"{first:%Y%m%d}", f"{last:%Y%m%d}"]
+    days = _days(snapshot["dates"], first.year)
+    filters_match = [_days([value], first.year) for value in snapshot["fields"]] == [[first], [last]]
     if days and any(not first <= day <= last for day in days):
         status = "stale_or_out_of_window_results"
     elif not refreshed:
@@ -109,7 +112,7 @@ def _probe(driver, browser, first: date, last: date, timeout: int) -> dict:
             refreshed = staleness_of(old_document)(current_driver) or any(
                 snapshot[key] != before[key] for key in ("dates", "emptyMessages")
             )
-            return refreshed and (bool(_days(snapshot["dates"])) or bool(snapshot["emptyMessages"]))
+            return refreshed and (bool(_days(snapshot["dates"], first.year)) or bool(snapshot["emptyMessages"]))
 
         try:
             WebDriverWait(driver, timeout).until(read_result)

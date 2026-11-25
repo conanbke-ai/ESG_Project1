@@ -216,18 +216,34 @@ class KoenHomepageCollector:
         windows = downloader.download_range(self.config.start_date, self.config.end_date)
         files = [window.path for window in windows if window.path is not None]
         normalized_files: list[Path] = []
+        evidence = []
+        normalized_rows = 0
+        complete_windows = 0
         normalizer = KoenGenerationNormalizer()
-        for source in files:
+        for window in windows:
+            item = window.evidence()
+            evidence.append(item)
+            source = window.path
+            if source is None:
+                continue
             destination = (
                 self.config.standardized_output_dir
                 / self.name
                 / f"{source.stem}_표준화.csv"
             )
-            normalized_files.append(normalizer.write(source, destination))
-        missing_windows = len(windows) - len(files)
-        if not files:
+            try:
+                output = normalizer.write(source, destination)
+                rows = _csv_data_rows(output)
+            except (ValueError, OSError) as error:
+                item.update(normalization_status="failed", normalization_error=str(error))
+                continue
+            normalized_files.append(output)
+            normalized_rows += rows
+            complete_windows += bool(rows)
+            item.update(normalization_status="completed" if rows else "empty", normalized_rows=rows)
+        if not complete_windows:
             status = "failed"
-        elif missing_windows:
+        elif complete_windows < len(windows):
             status = "partial"
         else:
             status = "cached" if all(window.status == "cached" for window in windows) else "downloaded"
@@ -235,7 +251,7 @@ class KoenHomepageCollector:
             self.name,
             status,
             [*files, *normalized_files],
-            rows=sum(_csv_data_rows(path) for path in normalized_files),
-            message=f"KOEN returned CSV data for {len(files)}/{len(windows)} requested windows",
-            windows=[window.evidence() for window in windows],
+            rows=normalized_rows,
+            message=f"KOEN received CSVs for {len(files)}/{len(windows)} windows and normalized {complete_windows}",
+            windows=evidence,
         )

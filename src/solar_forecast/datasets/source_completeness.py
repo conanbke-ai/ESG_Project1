@@ -197,9 +197,10 @@ def _read_indexes(raw_root: Path, extra_indexes: tuple[Path, ...]) -> list[dict[
                     continue
                 evidence = {key: result.get(key) for key in ("source", "status", "rows")}
                 if result.get("windows"):
-                    fields = ("start_date", "end_date", "status", "source_rows", "detail", "path")
+                    fields = ("start_date", "end_date", "status", "source_rows", "detail", "path",
+                              "normalization_status", "normalization_error", "normalized_rows")
                     evidence["windows"] = [
-                        {key: window.get(key) for key in fields} for window in result["windows"]
+                        {key: window[key] for key in fields if key in window} for window in result["windows"]
                     ]
                 results.append(evidence)
             item.update({

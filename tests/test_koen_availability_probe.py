@@ -26,6 +26,14 @@ def test_query_outcome_needs_fresh_matching_visible_evidence(dates, empty, refre
     assert probe._result(snapshot, WINDOW, refreshed=refreshed)["status"] == status
 
 
+def test_query_reads_koen_two_digit_year_table_and_filter_values():
+    control_day = date(2026, 10, 31)
+    snapshot = {"dates": ["26/10/31"], "emptyMessages": [], "fields": ["26/10/31", "26/10/31"]}
+    outcome = probe._result(snapshot, (control_day, control_day), refreshed=True)
+    assert outcome["status"] == "visible_in_window_dates"
+    assert outcome["visible_dates"] == ["2026-10-31"]
+
+
 def test_navigation_error_and_form_alert_do_not_mean_empty_month():
     driver = Mock()
     browser = Mock()

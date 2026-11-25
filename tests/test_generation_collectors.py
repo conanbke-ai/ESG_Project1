@@ -1,4 +1,5 @@
 from datetime import date
+import json
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -6,6 +7,7 @@ import pytest
 
 from solar_forecast.collectors.collection_config import CollectionConfig
 from solar_forecast.collectors.collection_config import load_source_catalog
+from solar_forecast.collectors.collection_service import CollectionService
 from solar_forecast.datasets.archive_standardizer import HistoricalGenerationStandardizationService
 from solar_forecast.collectors.kma_browser import KmaAsosBrowserCollector
 from solar_forecast.collectors.koen_browser import KoenBrowserDownloader
@@ -87,6 +89,18 @@ def test_koen_bronze_move_preserves_provider_bytes(tmp_path):
     assert not source.exists()
 
 
+def test_koen_bronze_move_keeps_an_existing_snapshot(tmp_path):
+    destination = tmp_path / "raw.csv"
+    duplicate = tmp_path / "new-response.csv"
+    destination.write_bytes(b"first provider response")
+    duplicate.write_bytes(b"later provider response")
+    downloader = KoenBrowserDownloader(tmp_path)
+
+    assert downloader._move_original(duplicate, destination) == destination
+    assert destination.read_bytes() == b"first provider response"
+    assert not duplicate.exists()
+
+
 def test_kma_hourly_chunks_never_exceed_one_year():
     chunks = list(KmaAsosBrowserCollector._chunks(date(2023, 6, 1), date(2025, 6, 1)))
     assert chunks[0] == (date(2023, 6, 1), date(2023, 12, 31))
@@ -146,6 +160,31 @@ def test_koen_records_browser_failure_without_claiming_no_provider_data(tmp_path
     assert result.windows == [{"start_date": "2026-11-01", "end_date": "2026-11-25",
                               "status": "browser_open_failed", "source_rows": 0,
                               "detail": "RuntimeError", "path": None}]
+
+
+def test_koen_silver_failure_preserves_both_bronze_files_and_window_evidence(tmp_path, monkeypatch):
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    valid, invalid = raw / "valid.csv", raw / "invalid.csv"
+    first, last = date(2026, 10, 31), date(2026, 11, 1)
+    headers = ["일자", "발전구분", "호기", *(f"{hour}시 발전량(kWh)" for hour in range(1, 25))]
+    valid.write_text(",".join(headers) + "\n" + ",".join([str(first), "영동태양광", "1", *["0"] * 24]) + "\n",
+                     encoding="utf-8")
+    invalid.write_text(f"일자\n{last}\n", encoding="utf-8")
+    windows = [KoenDownloadWindow(first, first, "downloaded", valid, 1),
+               KoenDownloadWindow(last, last, "downloaded", invalid, 1)]
+    monkeypatch.setattr(KoenBrowserDownloader, "download_range", lambda *args: windows)
+    config = CollectionConfig(first, last, sources=("koen",), output_dir=raw,
+                              standardized_output_dir=tmp_path / "silver")
+
+    result, = CollectionService(config).run()
+
+    assert result.status == "partial"
+    assert result.files[:2] == [valid, invalid]
+    assert result.rows == 24
+    manifest = json.loads(next(raw.glob("runs/*/collection_manifest.json")).read_text(encoding="utf-8"))
+    assert [window["normalization_status"] for window in manifest["results"][0]["windows"]] == ["completed", "failed"]
+    assert sum(file["role"] == "provider_original_bronze" for file in manifest["file_artifacts"]) == 2
 
 
 def test_koen_normalizer_converts_24_hour_columns_to_rows():

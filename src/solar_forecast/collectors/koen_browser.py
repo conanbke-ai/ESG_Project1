@@ -217,10 +217,16 @@ class KoenBrowserDownloader:
         """Move provider bytes unchanged; encoding conversion belongs to Silver."""
 
         destination.parent.mkdir(parents=True, exist_ok=True)
-        if destination.exists() and not self.overwrite:
-            source.unlink(missing_ok=True)
-            return destination
-        source.replace(destination)
+        if self.overwrite:
+            source.replace(destination)
+        else:
+            # Both paths are on the same archive filesystem. The link publishes
+            # the complete CSV without racing another collection of this window.
+            try:
+                os.link(source, destination)
+            except FileExistsError:
+                pass
+            source.unlink()
         return destination
 
 
